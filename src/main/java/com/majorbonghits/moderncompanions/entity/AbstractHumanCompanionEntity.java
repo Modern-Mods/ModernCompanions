@@ -462,6 +462,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             return;
         }
         CompanionJob job = getJob();
+        if (job == CompanionJob.NONE) {
+            // NONE is an explicit return to regular companion behavior.
+            setPatrolling(false);
+            setGuarding(false);
+        } else {
+            // A job always works from the exact place where its owner assigned it.
+            setPatrolPos(blockPosition());
+            setPatrolling(true);
+            equipJobToolIfNeeded();
+        }
         if (job == CompanionJob.HUNTER && ModConfig.safeGet(ModConfig.JOB_HUNTER_ENABLED) && !isHunting()) {
             setHunting(true);
         }
@@ -840,6 +850,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private void equipJobToolIfNeeded() {
         CompanionJob job = getJob();
         if (job == CompanionJob.NONE || !isPatrolling()) return;
+        if (job == CompanionJob.HUNTER && !cachedPatrolWeapon.isEmpty()) {
+            setItemSlot(EquipmentSlot.MAINHAND, cachedPatrolWeapon);
+            return;
+        }
         ItemStack current = this.getMainHandItem();
         if (isJobTool(current, job)) {
             // Already holding a tool; remember it so we can return it later if we missed caching.
@@ -866,6 +880,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             case LUMBERJACK -> stack.getItem() instanceof net.minecraft.world.item.AxeItem;
             case MINER -> stack.getItem() instanceof net.minecraft.world.item.PickaxeItem;
             case FISHER -> stack.getItem() instanceof net.minecraft.world.item.FishingRodItem;
+            case HUNTER -> stack.getItem() instanceof net.minecraft.world.item.SwordItem
+                    || stack.getItem() instanceof net.minecraft.world.item.AxeItem
+                    || stack.getItem() instanceof net.minecraft.world.item.BowItem
+                    || stack.getItem() instanceof net.minecraft.world.item.CrossbowItem;
             default -> false;
         };
     }

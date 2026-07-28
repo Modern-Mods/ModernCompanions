@@ -114,3 +114,7 @@
 - 2025-12-04 (lumberjack UX): Expose a config knob for the new stall watchdog (idle seconds before repath/skip) and surface a brief actionbar/WTHIT hint when a lumberjack recovers from a stall so players know why it jumped targets.
 - 2025-12-04 (lumberjack stance): Add a config for ground-stand search radius/offset and an optional client hint that shows the chosen stand tile, so players can adjust behavior on uneven terrain without changing code.
 - 2025-12-06: For Fishers, consider caching the last successful stand/water pair and probing outward from it (with a cap) before doing a full scan; this keeps "nearest water" pathing snappy without lifting the scan throttle.
+## 2026-07-27
+- Add an integration test world with a protection mod and manually validate that worker block changes respect its cancellation hooks; companion actions do not have a player-break context.
+## 2026-07-27
+- Add a small screenshot-based GUI smoke test if future sidebar layout changes become frequent.

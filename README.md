@@ -27,6 +27,16 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
 - **Custom Skins:** You can assign specific companions any skin you want! Using the command `/companionskin "NAME" URL` you can assign skins to your companions like so; `/companionskin "Daniel George" https://i.imgur.com/FWADR65.png`
 
 ## Curio / Backpack Support
+
+## Worker Jobs
+
+- Assigning Miner, Fisher, Lumberjack, Chef, or Hunter anchors the companion at its current block and equips its required held tool. Selecting `None` restores normal behavior and the prior combat weapon.
+- Workers only act from a dry, two-block-high, path-reachable standing position with line of sight and interaction range. Failed sites are abandoned instead of breaking arbitrary terrain.
+- Miners only pursue ore inside their patrol cube with planned safe steps; they stop at fluids, fire, magma, unsafe routes, or missing ore. Lumberjacks skip unreachable logs, preserve lower-log priority, and only clear safe tree foliage. Couriers report inaccessible chests and never clear a route.
+- Fishers use reachable shoreline/water pairs, cast toward valid water, and reel only after a server-side bobber bite. Chefs require a reachable heat-source stand; furnaces/smokers use their inventory contract and campfires cook only while standing at a valid site.
+
+Manual dev-world checks remain required for modded protection hooks, complex cave return paths, and multi-miner tick cost.
+
 - **Curios (optional)**: If Curios is installed, companions expose Curio slots and a render toggle so you can hide/show equipped curios per companion. Metadata marks Curios as optional; the mod runs fine without it.
 - **Sophisticated Backpacks (optional)**: When a companion wears a sophisticated backpack in the Curios back slot, all picked-up items are inserted into the backpack before the companion’s own 6×9 inventory (uses SB’s backpack IO wrapper with capability fallback).
 

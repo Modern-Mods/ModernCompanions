@@ -27,12 +27,10 @@ public class AvoidCreeperGoal extends AvoidEntityGoal<Creeper> {
     @Override
     public void start() {
         super.start();
-        companion.setAlert(true);
     }
 
     @Override
     public void stop() {
         super.stop();
-        companion.setAlert(false);
     }
 }

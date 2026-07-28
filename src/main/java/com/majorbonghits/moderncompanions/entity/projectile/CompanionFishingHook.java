@@ -22,6 +22,8 @@ import javax.annotation.Nullable;
 public class CompanionFishingHook extends Projectile {
     private static final EntityDataAccessor<Integer> DATA_OWNER_ID =
             SynchedEntityData.defineId(CompanionFishingHook.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DATA_BITING =
+            SynchedEntityData.defineId(CompanionFishingHook.class, EntityDataSerializers.BOOLEAN);
     private static final int MAX_LIFETIME = 20 * 60;
 
     private int lifeTicks;
@@ -41,6 +43,7 @@ public class CompanionFishingHook extends Projectile {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_OWNER_ID, 0);
+        builder.define(DATA_BITING, false);
     }
 
     @Override
@@ -62,10 +65,18 @@ public class CompanionFishingHook extends Projectile {
             this.setPos(bobberPos.x, bobberPos.y, bobberPos.z);
         }
         this.setDeltaMovement(Vec3.ZERO);
+        if (!this.level().isClientSide) {
+            // Small server-authoritative bite state; fishing jobs must wait for it before reeling.
+            this.entityData.set(DATA_BITING, isLineInWater() && lifeTicks > 80 && random.nextInt(100) == 0);
+        }
     }
 
     public boolean isLineInWater() {
         return this.level().getFluidState(this.blockPosition()).is(FluidTags.WATER);
+    }
+
+    public boolean isBiting() {
+        return this.entityData.get(DATA_BITING);
     }
 
     @Nullable

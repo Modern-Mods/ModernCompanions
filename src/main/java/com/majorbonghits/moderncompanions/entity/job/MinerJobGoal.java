@@ -61,8 +61,6 @@ public class MinerJobGoal extends Goal {
     private int breakTicksRemaining;
     private int swingCooldown;
     private int progressStallTicks = 0;
-    private int forceBreakTicker = 0;
-    private BlockPos lastStallTarget = null;
     private Vec3 lastProgressPos = Vec3.ZERO;
     private int globalRescanTicker = 0;
     private boolean sessionPlanned = false;
@@ -74,6 +72,9 @@ public class MinerJobGoal extends Goal {
     private int plannedUp = 0;
     private int plannedDown = 0;
     private boolean announcedNoWork = false;
+    private static final int SURVEY_BUDGET = 384;
+    private boolean surveyInProgress;
+    private int surveyX, surveyY, surveyZ, surveyMaxX, surveyMaxY, surveyMaxZ;
 
     public MinerJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
         this.companion = companion;
@@ -119,8 +120,6 @@ public class MinerJobGoal extends Goal {
         lastActionTick = 0;
         idleTicks = 0;
         announcedNoWork = false;
-        lastStallTarget = null;
-        forceBreakTicker = 0;
         info("Goal stopped; state persisted (remaining=%d, mined=%d)", oreQueue.size(), companion.getMinerOresMined());
     }
 
@@ -139,7 +138,6 @@ public class MinerJobGoal extends Goal {
             if (digQueue.isEmpty()) return;
         }
         BlockPos current = digQueue.peekFirst();
-        trackStallTarget(current);
         idleTicks = 0;
 
         // If the current block was removed externally, pop and continue.
@@ -158,8 +156,7 @@ public class MinerJobGoal extends Goal {
                 companion.getNavigation().stop();
                 searchCooldown = 0;
             }
-            ensureDiggingProgress();
-            forceBreakImmediate();
+            abandonCurrentOre();
             dumpDigQueue();
             return;
         }
@@ -191,9 +188,8 @@ public class MinerJobGoal extends Goal {
                 if (!planPathToOre(targetOre)) {
                     tryPlanNextOre();
                 }
-                dropCurrentIfStillStuck();
-                ensureDiggingProgress();
-                forceBreakImmediate();
+                abandonCurrentOre();
+                abandonCurrentOre();
                 return;
             }
         } else {
@@ -217,7 +213,6 @@ public class MinerJobGoal extends Goal {
             mine(current);
             digQueue.pollFirst();
             progressStallTicks = 0;
-            forceBreakTicker = 0;
             lastActionTick = companion.tickCount;
             if (digQueue.isEmpty()) {
                 tryPlanNextOre();
@@ -283,19 +278,31 @@ public class MinerJobGoal extends Goal {
         pruneInvalidOres();
     }
 
-    private void surveyAndPersist(boolean resetMined) {
-        oreQueue.clear();
-        unreachableOres.clear();
-        plannedCenter = workCenter();
-        plannedRadius = horizontalRadius();
-        plannedUp = verticalRadiusUp();
-        plannedDown = verticalRadiusDown();
-        Level level = companion.level();
-        for (BlockPos pos : BlockPos.betweenClosed(plannedCenter.offset(-plannedRadius, -plannedDown, -plannedRadius),
-                plannedCenter.offset(plannedRadius, plannedUp, plannedRadius))) {
-            if (!isOreState(level.getBlockState(pos))) continue;
-            oreQueue.add(pos.immutable());
+    private boolean surveyAndPersist(boolean resetMined) {
+        if (!surveyInProgress) {
+            oreQueue.clear();
+            unreachableOres.clear();
+            plannedCenter = workCenter();
+            plannedRadius = horizontalRadius();
+            plannedUp = verticalRadiusUp();
+            plannedDown = verticalRadiusDown();
+            surveyX = plannedCenter.getX() - plannedRadius;
+            surveyY = plannedCenter.getY() - plannedDown;
+            surveyZ = plannedCenter.getZ() - plannedRadius;
+            surveyMaxX = plannedCenter.getX() + plannedRadius;
+            surveyMaxY = plannedCenter.getY() + plannedUp;
+            surveyMaxZ = plannedCenter.getZ() + plannedRadius;
+            surveyInProgress = true;
+            if (resetMined) companion.setMinerOresMined(0);
         }
+        Level level = companion.level();
+        int budget = SURVEY_BUDGET;
+        while (surveyInProgress && budget-- > 0) {
+            BlockPos pos = new BlockPos(surveyX, surveyY, surveyZ);
+            if (isOreState(level.getBlockState(pos))) oreQueue.add(pos.immutable());
+            advanceSurvey();
+        }
+        if (surveyInProgress) return false;
         oreQueue.sort(Comparator.comparingDouble(p -> p.distSqr(companion.blockPosition())));
         oreIndex = 0;
         companion.setMinerOreIndex(0);
@@ -305,10 +312,19 @@ public class MinerJobGoal extends Goal {
         companion.setMinerPlanUp(plannedUp);
         companion.setMinerPlanDown(plannedDown);
         companion.setMinerOresCounted(oreQueue.size());
-        if (resetMined) companion.setMinerOresMined(0);
         announcedNoWork = oreQueue.isEmpty();
         info("Surveyed %d ores in cube center=%s r=%d up=%d down=%d (resetMined=%s)",
                 oreQueue.size(), fmt(plannedCenter), plannedRadius, plannedUp, plannedDown, resetMined);
+        return true;
+    }
+
+    private void advanceSurvey() {
+        if (++surveyZ <= surveyMaxZ) return;
+        surveyZ = plannedCenter.getZ() - plannedRadius;
+        if (++surveyX <= surveyMaxX) return;
+        surveyX = plannedCenter.getX() - plannedRadius;
+        if (++surveyY <= surveyMaxY) return;
+        surveyInProgress = false;
     }
 
     private void mergeNewlyFoundOres() {
@@ -350,10 +366,9 @@ public class MinerJobGoal extends Goal {
                 continue;
             }
             if (!isOreState(level.getBlockState(pos))) {
-                companion.incrementMinerOresMined();
                 oreQueue.remove(i);
                 changed = true;
-                debug("Pruned missing ore (counting as mined): %s", fmt(pos));
+                debug("Pruned externally removed ore without counting it: %s", fmt(pos));
             }
         }
         if (changed) {
@@ -402,72 +417,23 @@ public class MinerJobGoal extends Goal {
         info("No ores left within patrol cube; notifying owner %s", player.getScoreboardName());
     }
 
-    // Invoked when pathing would otherwise stall: keep breaking toward goal even if navigation cannot find a route yet.
+    // A failed native path is not an excavation instruction; leave the site and choose another ore.
     private void ensureDiggingProgress() {
         if (digQueue.isEmpty()) return;
         BlockPos current = digQueue.peekFirst();
         double dist = companion.distanceToSqr(Vec3.atCenterOf(current));
         if (dist < 9.0D) return; // already in range to swing
-        // If navigation failed to produce a path, fall back to direct move to let block breaking open a corridor.
+        // Retry the approved plan once; never force a direct tunnel through terrain.
         if (companion.getNavigation().isDone()) {
-            companion.getNavigation().moveTo(current.getX() + 0.5D, current.getY(), current.getZ() + 0.5D, 1.05D);
-            debug("Force-moving toward dig target to unblock tunnel: %s", fmt(current));
-            // If we're too far and navigation is stuck, break the head block immediately to open space.
-            forceBreakImmediate();
+            moveToCurrentDigPos();
         }
     }
 
-    /** If the head-of-queue block is unmineable or we've been stuck, discard it so we don't hang forever. */
-    private void dropCurrentIfStillStuck() {
-        BlockPos current = digQueue.peekFirst();
-        if (current == null) return;
-        BlockState state = companion.level().getBlockState(current);
-        if (!isMineableBlock(state)) {
-            digQueue.pollFirst();
-            info("Dropping unmineable/stuck block %s (state=%s) from queue", fmt(current), state.getBlock().getName().getString());
-            return;
-        }
-        // If we've already waited multiple stall cycles, mine-and-pop the head to advance.
-        companion.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
-        lastActionTick = companion.tickCount;
-        mine(current);
-        digQueue.pollFirst();
-        info("Dropping stalled block %s to advance queue (remaining dig=%d)", fmt(current), digQueue.size());
-    }
-
-    /** As a last resort, forcibly break the current block to keep progress moving. */
-    private void forceBreakImmediate() {
-        if (digQueue.isEmpty()) return;
-        BlockPos current = digQueue.peekFirst();
-        if (current == null) return;
-        BlockState state = companion.level().getBlockState(current);
-        if (!isMineableBlock(state)) {
-            digQueue.pollFirst();
-            info("Force-break skipped unmineable %s (removed)", fmt(current));
-            forceBreakTicker = 0;
-            return;
-        }
-        info("Force-breaking stalled block %s (%s) to resume", fmt(current), state.getBlock().getName().getString());
-        companion.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
-        lastActionTick = companion.tickCount;
-        mine(current);
-        digQueue.pollFirst();
-        forceBreakTicker = 0;
-    }
-
-    private void trackStallTarget(BlockPos current) {
-        if (current == null) {
-            lastStallTarget = null;
-            forceBreakTicker = 0;
-            return;
-        }
-        if (current.equals(lastStallTarget)) {
-            // accumulate stall time per head block
-            forceBreakTicker++;
-        } else {
-            lastStallTarget = current;
-            forceBreakTicker = 0;
-        }
+    private void abandonCurrentOre() {
+        if (targetOre != null) unreachableOres.add(targetOre);
+        digQueue.clear();
+        targetOre = null;
+        companion.getNavigation().stop();
     }
 
     private void dumpDigQueue() {
@@ -507,12 +473,13 @@ public class MinerJobGoal extends Goal {
     private boolean tryPlanNextOre() {
         bootstrapPlan();
         pruneInvalidOres();
-        if (workAreaChanged()) {
+        if (surveyInProgress) {
+            surveyAndPersist(false);
+        } else if (workAreaChanged()) {
             surveyAndPersist(true);
-        } else {
-            mergeNewlyFoundOres();
         }
         if (oreQueue.isEmpty()) {
+            if (surveyInProgress) return false;
             notifyNoWork();
             companion.getNavigation().stop();
             searchCooldown = 0;
@@ -556,17 +523,6 @@ public class MinerJobGoal extends Goal {
             unreachableOres.add(ore);
         }
 
-        // No reachable ore; try a filler start to keep digging.
-        targetOre = findNearestMineable(false);
-        if (targetOre != null) {
-            digQueue.clear();
-            if (planPathToOre(targetOre)) {
-                persistPlanProgress();
-                announcedNoWork = false;
-                debug("Fallback tunneling toward filler at %s", fmt(targetOre));
-                return true;
-            }
-        }
         notifyNoWork();
         companion.getNavigation().stop();
         searchCooldown = 0; // allow quick retry next tick
@@ -594,7 +550,7 @@ public class MinerJobGoal extends Goal {
                 debug("Path abort: next stair outside volume %s", fmt(next));
                 return false;
             }
-            if (isHazard(level.getBlockState(next))) {
+            if (!safeStep(level, cursor, next)) {
                 info("Path abort: hazard at %s", fmt(next));
                 return false;
             }
@@ -629,7 +585,7 @@ public class MinerJobGoal extends Goal {
                 debug("Path abort: next step outside volume %s", fmt(next));
                 return false;
             }
-            if (isHazard(level.getBlockState(next))) {
+            if (!safeStep(level, cursor, next)) {
                 info("Path abort: hazard at %s", fmt(next));
                 return false;
             }
@@ -668,6 +624,12 @@ public class MinerJobGoal extends Goal {
         if (isMineableBlock(state)) {
             digQueue.addLast(pos.immutable());
         }
+    }
+
+    private boolean safeStep(Level level, BlockPos from, BlockPos to) {
+        return WorkerSafetyPredicates.stepHeightIsSafe(from.getY(), to.getY())
+                && !isHazard(level.getBlockState(to)) && !isHazard(level.getBlockState(to.above()))
+                && !isHazard(level.getBlockState(to.above(2))) && !isHazard(level.getBlockState(to.below()));
     }
 
     /* -------------------- Block classification -------------------- */
@@ -719,9 +681,9 @@ public class MinerJobGoal extends Goal {
     }
 
     private boolean isHazard(BlockState state) {
-        // Allow water; only treat lava/fire/magma as hazardous.
+        // Any fluid is unsafe for a mine route; workers never step into water or lava.
         if (state.is(Blocks.LAVA) || state.is(Blocks.FIRE) || state.is(Blocks.MAGMA_BLOCK)) return true;
-        if (state.getFluidState().isSource() && state.getFluidState().is(net.minecraft.tags.FluidTags.LAVA)) return true;
+        if (!state.getFluidState().isEmpty()) return true;
         return false;
     }
 
@@ -730,7 +692,11 @@ public class MinerJobGoal extends Goal {
     private void moveToCurrentDigPos() {
         BlockPos current = digQueue.peekFirst();
         if (current == null) return;
-        BlockPos stand = findAdjacentAir(current).orElse(current);
+        BlockPos stand = WorkerSite.findStand(companion, current, 2);
+        if (stand == null) {
+            abandonCurrentOre();
+            return;
+        }
         debug("Navigating toward dig target %s (stand at %s)", fmt(current), fmt(stand));
         companion.getNavigation().moveTo(stand.getX() + 0.5D, stand.getY(), stand.getZ() + 0.5D, 1.05D);
     }
@@ -752,18 +718,16 @@ public class MinerJobGoal extends Goal {
 
     private void mine(BlockPos pos) {
         if (!(companion.level() instanceof ServerLevel server)) return;
-        if (!server.hasChunkAt(pos)) return;
         BlockState state = server.getBlockState(pos);
         if (!isMineableBlock(state)) return;
         boolean wasOre = isOreState(state);
-        var blockEntity = server.getBlockEntity(pos);
-        var drops = Block.getDrops(state, server, pos, blockEntity, companion, companion.getMainHandItem());
-        server.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-        for (ItemStack drop : drops) {
-            ItemStack leftover = companion.getInventory().addItem(drop.copy());
-            if (!leftover.isEmpty()) {
-                companion.spawnAtLocation(leftover);
-            }
+        BlockPos stand = WorkerSite.findStand(companion, pos, 2);
+        if (stand == null || !WorkerBlockActions.breakBlock(companion, pos, stand)) return;
+        // Stop this plan if the completed step has severed native return navigation.
+        var returnPath = companion.getNavigation().createPath(workCenter(), 0);
+        if (returnPath == null || !returnPath.canReach()) {
+            abandonCurrentOre();
+            return;
         }
         if (wasOre) {
             companion.incrementMinerOresMined();
@@ -789,7 +753,7 @@ public class MinerJobGoal extends Goal {
         if (companion.getJob() != CompanionJob.MINER) return false;
         if (!companion.isPatrolling()) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (!hasPickaxe()) return false;
+        if (!(companion.getMainHandItem().getItem() instanceof PickaxeItem)) return false;
         return true;
     }
 

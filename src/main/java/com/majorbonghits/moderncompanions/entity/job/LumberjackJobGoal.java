@@ -43,6 +43,7 @@ public class LumberjackJobGoal extends Goal {
     private final int searchRadius;
     private final boolean enabled;
     private BlockPos targetLog;
+    private BlockPos standPos;
     private BlockPos stumpPos;
     private final Queue<BlockPos> pendingLogs = new PriorityQueue<>(this::compareLogPriority);
     private int searchCooldown;
@@ -148,9 +149,12 @@ public class LumberjackJobGoal extends Goal {
             }
             return;
         }
-        double horizDist = horizontalDistanceTo(targetLog);
-        // horizontalDistanceTo returns squared distance; allow up to ~4 blocks away (distance <= 4 => distSq <= 16)
-        if (horizDist > 16.0D) {
+        if (standPos == null || !WorkerSite.isValid(companion, targetLog, standPos)) {
+            targetLog = nextLogTarget();
+            return;
+        }
+        double horizDist = companion.distanceToSqr(Vec3.atCenterOf(standPos));
+        if (horizDist > 2.25D) {
             moveToTarget();
             // Only consider clearing leaves when pathing failed for a while and leaves are likely blocking.
             var nav = companion.getNavigation();
@@ -274,26 +278,7 @@ public class LumberjackJobGoal extends Goal {
     }
 
     private void chopLog(BlockPos pos) {
-        if (!(companion.level() instanceof ServerLevel server)) {
-            return;
-        }
-        BlockState state = server.getBlockState(pos);
-        if (!state.is(BlockTags.LOGS)) {
-            return;
-        }
-        if (!server.hasChunkAt(pos)) {
-            return;
-        }
-        var blockEntity = server.getBlockEntity(pos);
-        var drops = Block.getDrops(state, server, pos, blockEntity, companion, companion.getMainHandItem());
-        server.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-        for (ItemStack drop : drops) {
-            ItemStack leftover = companion.getInventory().addItem(drop.copy());
-            if (!leftover.isEmpty()) {
-                companion.spawnAtLocation(leftover);
-            }
-        }
-        companion.incrementLumberLogsSession();
+        if (standPos != null && WorkerBlockActions.breakBlock(companion, pos, standPos)) companion.incrementLumberLogsSession();
     }
 
     private double horizontalDistanceTo(BlockPos pos) {
@@ -306,7 +291,7 @@ public class LumberjackJobGoal extends Goal {
         if (targetLog == null) {
             return;
         }
-        BlockPos stand = findGroundStandPos();
+        BlockPos stand = standPos;
         double tx = stand != null ? stand.getX() + 0.5D : targetLog.getX() + 0.5D;
         double tz = stand != null ? stand.getZ() + 0.5D : targetLog.getZ() + 0.5D;
         double baseY = stumpPos != null ? stumpPos.getY() + 0.05D : targetLog.getY();
@@ -319,9 +304,14 @@ public class LumberjackJobGoal extends Goal {
         BlockPos next;
         while ((next = pendingLogs.poll()) != null) {
             if (isTreeLog(next)) {
-                return next;
+                BlockPos site = WorkerSite.findStand(companion, next, 2);
+                if (site != null) {
+                    standPos = site;
+                    return next;
+                }
             }
         }
+        standPos = null;
         return null;
     }
 
@@ -349,7 +339,8 @@ public class LumberjackJobGoal extends Goal {
         for (BlockPos leafPos : BlockPos.betweenClosed(target.offset(-1, 0, -1), target.offset(1, 2, 1))) {
             BlockState state = level.getBlockState(leafPos);
             if (state.is(BlockTags.LEAVES)) {
-                level.destroyBlock(leafPos, true, companion);
+                BlockPos leafStand = WorkerSite.findStand(companion, leafPos, 2);
+                if (leafStand != null) WorkerBlockActions.breakBlock(companion, leafPos, leafStand);
                 return;
             }
         }
@@ -458,7 +449,8 @@ public class LumberjackJobGoal extends Goal {
         BlockItem bi = (BlockItem) sapling.getItem();
         BlockState saplingState = bi.getBlock().defaultBlockState();
         if (!saplingState.canSurvive(server, placePos)) return;
-        if (server.setBlock(placePos, saplingState, 3)) {
+        BlockPos stand = WorkerSite.findStand(companion, placePos, 2);
+        if (stand != null && WorkerBlockActions.place(companion, placePos, stand, saplingState)) {
             sapling.shrink(1);
             stumpPos = null;
         }
@@ -474,7 +466,7 @@ public class LumberjackJobGoal extends Goal {
     }
 
     private boolean hasAxe() {
-        return hasTool(stack -> stack.getItem() instanceof AxeItem);
+        return companion.getMainHandItem().getItem() instanceof AxeItem;
     }
 
     private boolean hasTool(java.util.function.Predicate<ItemStack> matcher) {

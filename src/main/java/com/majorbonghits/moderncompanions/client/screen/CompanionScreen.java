@@ -37,7 +37,6 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final ResourceLocation CLEAR_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/clearbutton.png");
     private static final ResourceLocation PICKUP_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/pickupbutton.png");
     private static final ResourceLocation SPRINT_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/stationerybutton.png");
-    private static final ResourceLocation RELEASE_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/releasebutton.png");
     // Right-hand info panel on inventory_stats.png
     private static final int TOP_STATS_LEFT = 229;
     private static final int TOP_STATS_TOP = 7;
@@ -59,7 +58,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private CompanionButton sprintButton;
     private CompanionButton clearButton;
     private CompanionButton pickupButton;
-    private CompanionButton releaseButton;
+    private Button releaseButton;
     private CompanionButton radiusMinus;
     private CompanionButton radiusPlus;
     private Button curiosButton;
@@ -96,17 +95,28 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         clearButton = addRenderableWidget(new CompanionButton("clear", leftPos + sidebarX + 5, row3, 31, 12, 0, 0, 13, CLEAR_BTN, () -> sendAction("clear_target"), false));
         int row4 = row3 + rowHeight;
         pickupButton = addRenderableWidget(new CompanionButton("pickup", leftPos + sidebarX + 3, row4, 34, 12, 0, 0, 0, PICKUP_BTN, () -> sendToggle("pickup"), true));
-        releaseButton = addRenderableWidget(new CompanionButton("release", leftPos + sidebarX + 3, topPos + 120, 34, 12, 0, 0, 13, RELEASE_BTN, () -> {
-            sendAction("release");
-            this.onClose();
-        }, false));
+        // Text buttons avoid the old icon atlas's black/hidden release and job controls.
+        int actionY = topPos + 118;
+        releaseButton = addRenderableWidget(Button.builder(Component.literal("Release"), b -> {
+                    sendAction("release");
+                    this.onClose();
+                })
+                .pos(leftPos + sidebarX + 1, actionY)
+                .size(42, 16)
+                .build());
 
-        int radiusY = topPos + 120 + 16;
+        int jobInfoY = actionY + 18;
+        jobInfoButton = addRenderableWidget(Button.builder(Component.literal("Jobs"), b -> openJobInfo())
+                .pos(leftPos + sidebarX + 1, jobInfoY)
+                .size(42, 16)
+                .build());
+
+        int radiusY = jobInfoY + 18;
         ResourceLocation radiusTex = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/gui/radiusbutton.png");
         radiusMinus = addRenderableWidget(new CompanionButton("radius-", leftPos + sidebarX + 3, radiusY, 16, 12, 17, 0, 13, radiusTex, () -> adjustRadius(-2), false));
         radiusPlus = addRenderableWidget(new CompanionButton("radius+", leftPos + sidebarX + 21, radiusY, 16, 12, 0, 0, 13, radiusTex, () -> adjustRadius(2), false));
 
-        int curiosY = topPos + 152; // move curios up
+        int curiosY = radiusY + 18;
         if (ModList.get().isLoaded("curios")) {
             curiosButton = addRenderableWidget(Button.builder(Component.literal("Curios"), b -> openCurios())
                     .pos(leftPos + sidebarX + 2, curiosY)
@@ -114,13 +124,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
                     .build());
         }
 
-        int jobInfoY = curiosY + 18;
-        jobInfoButton = addRenderableWidget(Button.builder(Component.literal("Job"), b -> openJobInfo())
-                .pos(leftPos + sidebarX + 2, jobInfoY)
-                .size(38, 16)
-                .build());
-
-        int journalY = jobInfoY + 18;
+        int journalY = curiosY + (ModList.get().isLoaded("curios") ? 18 : 0);
         journalButton = addRenderableWidget(Button.builder(Component.translatable("button.modern_companions.journal"), b -> openJournal())
                 .pos(leftPos + sidebarX + 2, journalY)
                 .size(38, 16)

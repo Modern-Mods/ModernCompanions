@@ -68,6 +68,16 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
 }
 
+tasks.register("workerSafetyCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.job.WorkerSafetyPredicatesTest"
+    jvmArgs "-ea"
+}
+
+tasks.named("check") {
+    dependsOn tasks.named("workerSafetyCheck")
+}
+
 tasks.processResources.configure {
     // Re-run when any expanded property changes (e.g., version/mod_id).
     inputs.properties([

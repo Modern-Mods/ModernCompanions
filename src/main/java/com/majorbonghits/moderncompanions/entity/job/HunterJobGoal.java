@@ -47,7 +47,8 @@ public class HunterJobGoal extends Goal {
     public void tick() {
         if (tickDown-- > 0) return;
         tickDown = CHECK_INTERVAL;
-        if (companion.getTarget() != null && companion.getTarget().isAlive()) return;
+        if (companion.getTarget() != null && validTarget(companion.getTarget())) return;
+        companion.setTarget(null);
         LivingEntity target = findTarget();
         if (target != null) {
             companion.setTarget(target);
@@ -56,14 +57,36 @@ public class HunterJobGoal extends Goal {
 
     private LivingEntity findTarget() {
         AABB box = companion.getBoundingBox().inflate(searchRadius);
+        LivingEntity best = null;
+        double bestDistance = Double.MAX_VALUE;
         for (LivingEntity entity : companion.level().getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
-            for (Class<?> c : CompanionData.huntMobs) {
-                if (c.isInstance(entity) && !entity.isAlliedTo(companion)) {
-                    return entity;
-                }
+            if (!validTarget(entity)) continue;
+            double distance = companion.distanceToSqr(entity);
+            if (distance < bestDistance) {
+                best = entity;
+                bestDistance = distance;
             }
         }
-        return null;
+        return best;
+    }
+
+    private boolean validTarget(LivingEntity entity) {
+        if (!entity.isAlive() || entity.isAlliedTo(companion) || !withinPatrol(entity.blockPosition())) return false;
+        boolean huntable = false;
+        for (Class<?> c : CompanionData.huntMobs) {
+            if (c.isInstance(entity)) {
+                huntable = true;
+                break;
+            }
+        }
+        if (!huntable) return false;
+        var path = companion.getNavigation().createPath(entity, 0);
+        return path != null && path.canReach();
+    }
+
+    private boolean withinPatrol(net.minecraft.core.BlockPos pos) {
+        return companion.getPatrolPos().isPresent()
+                && companion.getPatrolPos().get().distSqr(pos) <= (long) companion.getPatrolRadius() * companion.getPatrolRadius();
     }
 
     private boolean isActiveJob() {
@@ -76,10 +99,9 @@ public class HunterJobGoal extends Goal {
     }
 
     private boolean hasWeapon() {
-        return hasTool(stack -> stack.getItem() instanceof SwordItem
-                || stack.getItem() instanceof AxeItem
-                || stack.getItem() instanceof BowItem
-                || stack.getItem() instanceof CrossbowItem);
+        ItemStack stack = companion.getMainHandItem();
+        return stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem
+                || stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem;
     }
 
     private boolean hasTool(java.util.function.Predicate<ItemStack> matcher) {

@@ -2030,3 +2030,13 @@
   - Bumped version to 1.2.12.
 - Rationale: Prevents targeting submerged water blocks and keeps the bobber visible at the surface.
 - Build/Test: Not run (build failed earlier due to CRLF in `gradlew`).
+## 2026-07-27 (Safe worker jobs)
+- Prompt/task: Implement `TASK.md` Jobs AI safety batch.
+- Steps: Added shared reachable work-site and server block-action gates; anchored job assignments and main-hand tool checks; removed miner/courier forced terrain recovery; made fish bites server-authoritative; validated lumber, chef, hunter, and chest sites.
+- Rationale: A worker either reaches and visibly interacts with an approved site, or abandons it. This prevents destructive recovery paths and keeps player Alert independent from creeper avoidance.
+- Build/Test: `gradlew.bat build` passed with JDK 21; includes `workerSafetyCheck` assertions.
+## 2026-07-27 (Visible job controls)
+- Prompt/task: Reported missing Jobs button and black Release button in companion inventory.
+- Steps: Replaced the icon-only Release control with a text button and moved explicit Jobs into the visible sidebar stack ahead of radius, Curios, and Bio.
+- Rationale: The old sidebar placement could be covered by the legacy layout; text controls are visible without a texture-atlas state.
+- Build/Test: `gradlew.bat build` passed with JDK 21.

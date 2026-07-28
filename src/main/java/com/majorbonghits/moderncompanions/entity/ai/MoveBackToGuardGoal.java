@@ -13,6 +13,7 @@ public class MoveBackToGuardGoal extends Goal {
 
     public MoveBackToGuardGoal(AbstractHumanCompanionEntity companion) {
         this.companion = companion;
+        this.setFlags(java.util.EnumSet.of(Flag.MOVE));
     }
 
     @Override

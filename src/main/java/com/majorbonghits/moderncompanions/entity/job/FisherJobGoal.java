@@ -16,6 +16,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -54,6 +56,7 @@ public class FisherJobGoal extends Goal {
     private int scanRing;
     private int recastCooldown;
     private CompanionFishingHook activeHook;
+    private final Map<BlockPos, Integer> rejectedWater = new HashMap<>();
 
     public FisherJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
         this.companion = companion;
@@ -65,7 +68,8 @@ public class FisherJobGoal extends Goal {
     @Override
     public boolean canUse() {
         if (!isActiveJob()) return false;
-        if (waterSpot != null && standPos != null && isFishableWater(waterSpot) && isStandValid(standPos)) {
+        if (waterSpot != null && standPos != null && isFishableWater(waterSpot) && isStandValid(standPos)
+                && !isRejected(waterSpot)) {
             return true;
         }
         if (searchCooldown-- > 0) return false;
@@ -77,7 +81,8 @@ public class FisherJobGoal extends Goal {
 
     @Override
     public boolean canContinueToUse() {
-        return isActiveJob() && waterSpot != null && standPos != null && isFishableWater(waterSpot) && isStandValid(standPos);
+        return isActiveJob() && waterSpot != null && standPos != null && isFishableWater(waterSpot) && isStandValid(standPos)
+                && !isRejected(waterSpot);
     }
 
     @Override
@@ -97,6 +102,7 @@ public class FisherJobGoal extends Goal {
     public void tick() {
         if (waterSpot == null || standPos == null) return;
         if (!isFishableWater(waterSpot) || !isStandValid(standPos)) {
+            rejectWater();
             if (!findWaterAndStand()) {
                 clearLine();
                 return;
@@ -131,6 +137,7 @@ public class FisherJobGoal extends Goal {
         if (dist <= 2.25D && !hasLineCast()) {
             // Only cast once we are close enough to the shoreline stand position.
             if (recastCooldown-- <= 0) {
+                faceWater();
                 castLine(selectCastTarget());
                 recastCooldown = 0;
             }
@@ -138,17 +145,18 @@ public class FisherJobGoal extends Goal {
             recastCooldown--;
         }
         if (!hasLineCast()) return;
-        if (fishCooldown-- > 0) return;
         if (!activeHook.isLineInWater()) {
             // Do not reel in unless the line is actually in water.
+            rejectWater();
             clearLine();
             recastCooldown = RECAST_DELAY;
             return;
         }
-        fishCooldown = FISH_INTERVAL + random.nextInt(40);
+        if (!activeHook.isBiting()) return;
         faceWater();
         companion.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
         reelIn();
+        companion.getMainHandItem().hurtAndBreak(1, companion, net.minecraft.world.entity.EquipmentSlot.MAINHAND);
         clearLine();
         recastCooldown = RECAST_DELAY;
     }
@@ -215,14 +223,14 @@ public class FisherJobGoal extends Goal {
                     for (int dz = -r; dz <= r; dz++) {
                         if (Math.abs(dx) != r && Math.abs(dz) != r) continue; // perimeter only
                         BlockPos candidate = origin.offset(dx, dy, dz);
-                        if (patrolCenter.distSqr(candidate) > radiusSq) continue;
+                        if (patrolCenter.distSqr(candidate) > radiusSq || isRejected(candidate)) continue;
                         BlockPos stand = candidate.above();
                         if (!isStandValid(stand)) continue;
                         BlockPos water = adjacentFishableWater(level, candidate);
                         if (water == null) continue;
                         // Path to the stand air block so navigation targets the actual feet position.
                         var path = companion.getNavigation().createPath(stand, 0);
-                        if (path == null) continue;
+                        if (path == null || !path.canReach()) continue;
                         standPos = stand.immutable();
                         waterSpot = water.immutable();
                         scanRing = 0;
@@ -350,15 +358,20 @@ public class FisherJobGoal extends Goal {
         var floorState = level.getBlockState(floor);
         var feet = level.getBlockState(pos);
         // Need a solid floor with an open stand space for navigation.
-        return floorState.isSolid()
-                && !floorState.liquid()
-                && feet.getFluidState().isEmpty()
-                && feet.getCollisionShape(level, pos).isEmpty();
+        return WorkerSite.isSafeStand(level, pos);
     }
 
     private void moveToStand() {
         if (standPos == null) return;
         companion.getNavigation().moveTo(standPos.getX() + 0.5D, standPos.getY(), standPos.getZ() + 0.5D, 1.0D);
+    }
+
+    private boolean isRejected(BlockPos water) {
+        return rejectedWater.getOrDefault(water, 0) > companion.tickCount;
+    }
+
+    private void rejectWater() {
+        if (waterSpot != null) rejectedWater.put(waterSpot.immutable(), companion.tickCount + 20 * 30);
     }
 
     private boolean isActiveJob() {
@@ -371,7 +384,7 @@ public class FisherJobGoal extends Goal {
     }
 
     private boolean hasRod() {
-        return hasTool(stack -> stack.is(Items.FISHING_ROD));
+        return companion.getMainHandItem().is(Items.FISHING_ROD);
     }
 
     private boolean hasTool(java.util.function.Predicate<ItemStack> matcher) {

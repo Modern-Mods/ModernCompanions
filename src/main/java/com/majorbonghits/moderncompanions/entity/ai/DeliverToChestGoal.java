@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.entity.ai;
 
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
+import com.majorbonghits.moderncompanions.entity.job.WorkerSite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -11,18 +12,13 @@ import net.minecraft.world.phys.Vec3;
 import java.util.EnumSet;
 import java.util.Optional;
 
-/**
- * Courier loop: when a working companion has cargo and an assigned chest,
- * walk over and dump everything except equipped gear. Pauses politely if the
- * chunk is missing or the chest vanished.
- */
+/** Courier only uses a reachable chest-side stand; inaccessible chests never trigger terrain edits. */
 public class DeliverToChestGoal extends Goal {
-    private static final double STANDOFF_RANGE_SQR = 4.0D; // stop within 2 blocks of chest
     private static final int STUCK_ALERT_TICKS = 200;
-
     private final AbstractHumanCompanionEntity companion;
     private final double speed;
     private BlockPos targetChest;
+    private BlockPos chestStand;
     private int stuckTicks;
 
     public DeliverToChestGoal(AbstractHumanCompanionEntity companion, double speed) {
@@ -31,61 +27,47 @@ public class DeliverToChestGoal extends Goal {
         this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK, Flag.JUMP));
     }
 
-    @Override
-    public boolean canUse() {
-        if (!(companion.level() instanceof ServerLevel server)) return false;
-        if (!companion.isTame() || companion.isOrderedToSit()) return false;
-        if (companion.getJob() == CompanionJob.NONE) return false;
+    @Override public boolean canUse() {
+        if (!(companion.level() instanceof ServerLevel server) || !companion.isTame() || companion.isOrderedToSit()
+                || companion.getJob() == CompanionJob.NONE || companion.getTarget() != null) return false;
         boolean forced = companion.isForceDeliverRequested();
-        if (!companion.isPatrolling() && !forced) return false; // job behaviors engage while patrolling unless forced
-        if (companion.getTarget() != null) return false; // do not courier mid-fight
-        boolean hasCargo = companion.hasDeliverableCargo();
-        if (!hasCargo && !forced) return false;
-
-        long gameTime = server.getGameTime();
-        boolean inventoryFull = companion.isInventoryFull();
-        boolean dayElapsed = gameTime - companion.getLastDeliveryGameTime() >= 24000L;
-
-        if (!forced && !(inventoryFull || dayElapsed)) return false;
-
-        Optional<BlockPos> chestPos = companion.getAssignedChest();
-        Optional<net.minecraft.resources.ResourceKey<Level>> dim = companion.getAssignedChestDimension();
-        if (chestPos.isEmpty() || dim.isEmpty()) return false;
-        if (!server.dimension().equals(dim.get())) return false;
-
-        targetChest = chestPos.get();
+        if (!companion.isPatrolling() && !forced) return false;
+        if (!companion.hasDeliverableCargo() && !forced) return false;
+        if (!forced && !(companion.isInventoryFull() || server.getGameTime() - companion.getLastDeliveryGameTime() >= 24000L)) return false;
+        Optional<BlockPos> chest = companion.getAssignedChest();
+        Optional<net.minecraft.resources.ResourceKey<Level>> dimension = companion.getAssignedChestDimension();
+        if (chest.isEmpty() || dimension.isEmpty() || !server.dimension().equals(dimension.get())) return false;
+        targetChest = chest.get();
         companion.refreshDeliveryChunkTicket(server);
         if (!server.isLoaded(targetChest)) {
             companion.alertChestUnloaded();
             return false;
         }
+        chestStand = WorkerSite.findStand(companion, targetChest, 2);
+        if (chestStand == null) {
+            reportStuck();
+            return false;
+        }
         return true;
     }
 
-    @Override
-    public boolean canContinueToUse() {
-        return targetChest != null && companion.hasDeliverableCargo();
+    @Override public boolean canContinueToUse() {
+        return targetChest != null && chestStand != null && companion.hasDeliverableCargo()
+                && companion.getTarget() == null && companion.getJob() != CompanionJob.NONE
+                && WorkerSite.isValid(companion, targetChest, chestStand);
     }
 
-    @Override
-    public void start() {
-        moveTowardChest();
-    }
+    @Override public void start() { moveTowardChest(); }
 
-    @Override
-    public void stop() {
+    @Override public void stop() {
         targetChest = null;
-        companion.getNavigation().stop();
+        chestStand = null;
         stuckTicks = 0;
+        companion.getNavigation().stop();
     }
 
-    @Override
-    public void tick() {
-        if (!(companion.level() instanceof ServerLevel server)) {
-            stop();
-            return;
-        }
-        if (targetChest == null) {
+    @Override public void tick() {
+        if (!(companion.level() instanceof ServerLevel server) || targetChest == null || chestStand == null) {
             stop();
             return;
         }
@@ -94,59 +76,33 @@ public class DeliverToChestGoal extends Goal {
             stop();
             return;
         }
-
-        double dist = companion.distanceToSqr(Vec3.atCenterOf(targetChest));
-        if (dist > STANDOFF_RANGE_SQR) {
-            if (companion.getNavigation().isDone()) {
-                moveTowardChest();
-            }
-            stuckTicks++;
-            if (stuckTicks % 40 == 0) {
-                tryNudgePath(server);
-            }
-            if (stuckTicks >= STUCK_ALERT_TICKS) {
-                companion.notifyCourierOwnerText(net.minecraft.network.chat.Component.translatable(
-                        "message.modern_companions.courier.stuck",
-                        targetChest.getX(), targetChest.getY(), targetChest.getZ()));
-                stuckTicks = 0;
+        if (!WorkerSite.isValid(companion, targetChest, chestStand)) {
+            reportStuck();
+            stop();
+            return;
+        }
+        if (companion.distanceToSqr(Vec3.atCenterOf(chestStand)) > 2.25D) {
+            moveTowardChest();
+            if (++stuckTicks >= STUCK_ALERT_TICKS) {
+                reportStuck();
+                stop();
             }
             return;
         }
-
-        AbstractHumanCompanionEntity.DeliveryResult result = companion.deliverInventoryToChest(server, targetChest);
-        switch (result) {
-            case SUCCESS -> {}
+        switch (companion.deliverInventoryToChest(server, targetChest)) {
             case FULL -> companion.notifyCourierOwnerText(net.minecraft.network.chat.Component.translatable("message.modern_companions.courier.full"));
             case MISSING -> companion.notifyCourierOwnerText(net.minecraft.network.chat.Component.translatable("message.modern_companions.courier.missing"));
+            case SUCCESS -> { }
         }
         stop();
     }
 
-    private void tryNudgePath(ServerLevel server) {
-        if (targetChest == null) return;
-        // Break soft blockers along line of sight
-        Vec3 start = companion.position();
-        Vec3 end = Vec3.atCenterOf(targetChest);
-        int steps = (int) Math.max(4, start.distanceTo(end));
-        for (int i = 1; i <= steps; i++) {
-            double t = i / (double) steps;
-            BlockPos pos = BlockPos.containing(start.x + (end.x - start.x) * t,
-                    start.y + (end.y - start.y) * t,
-                    start.z + (end.z - start.z) * t);
-            if (!server.isLoaded(pos)) continue;
-            var state = server.getBlockState(pos);
-            if (state.isAir()) continue;
-            if (state.is(net.minecraft.tags.BlockTags.LEAVES) || state.is(net.minecraft.tags.BlockTags.DIRT)
-                    || state.is(net.minecraft.tags.BlockTags.BASE_STONE_OVERWORLD) || state.is(net.minecraft.world.level.block.Blocks.GRASS_BLOCK)) {
-                server.destroyBlock(pos, true, companion);
-                break;
-            }
-        }
-        companion.getNavigation().moveTo(targetChest.getX() + 0.5D, targetChest.getY() + 1.0D, targetChest.getZ() + 0.5D, speed);
+    private void moveTowardChest() {
+        if (chestStand != null) companion.getNavigation().moveTo(chestStand.getX() + .5D, chestStand.getY(), chestStand.getZ() + .5D, speed);
     }
 
-    private void moveTowardChest() {
-        if (targetChest == null) return;
-        companion.getNavigation().moveTo(targetChest.getX() + 0.5D, targetChest.getY() + 1.0D, targetChest.getZ() + 0.5D, speed);
+    private void reportStuck() {
+        if (targetChest != null) companion.notifyCourierOwnerText(net.minecraft.network.chat.Component.translatable(
+                "message.modern_companions.courier.stuck", targetChest.getX(), targetChest.getY(), targetChest.getZ()));
     }
 }

@@ -40,6 +40,7 @@ public class ChefJobGoal extends Goal {
     private final int searchRadius;
     private final boolean enabled;
     private BlockPos heatSource;
+    private BlockPos heatStand;
     private int cooldown;
 
     public ChefJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
@@ -53,12 +54,13 @@ public class ChefJobGoal extends Goal {
     public boolean canUse() {
         if (!isActiveJob()) return false;
         heatSource = findHeatSource();
-        return heatSource != null;
+        return heatSource != null && heatStand != null;
     }
 
     @Override
     public boolean canContinueToUse() {
-        return isActiveJob() && heatSource != null && isHeatSource(heatSource);
+        return isActiveJob() && heatSource != null && heatStand != null && isHeatSource(heatSource)
+                && WorkerSite.isValid(companion, heatSource, heatStand);
     }
 
     @Override
@@ -69,20 +71,21 @@ public class ChefJobGoal extends Goal {
     @Override
     public void stop() {
         heatSource = null;
+        heatStand = null;
         companion.getNavigation().stop();
     }
 
     @Override
     public void tick() {
-        if (heatSource == null) return;
-        if (!isHeatSource(heatSource)) {
+        if (heatSource == null || heatStand == null) return;
+        if (!isHeatSource(heatSource) || !WorkerSite.isValid(companion, heatSource, heatStand)) {
             heatSource = findHeatSource();
             if (heatSource == null) return;
             moveToHeat();
             return;
         }
-        double dist = companion.distanceToSqr(heatSource.getX() + 0.5D, heatSource.getY() + 0.5D, heatSource.getZ() + 0.5D);
-        if (dist > 4.0D) {
+        double dist = companion.distanceToSqr(heatStand.getX() + 0.5D, heatStand.getY(), heatStand.getZ() + 0.5D);
+        if (dist > 2.25D) {
             moveToHeat();
             return;
         }
@@ -98,7 +101,7 @@ public class ChefJobGoal extends Goal {
         if (be instanceof AbstractFurnaceBlockEntity furnace) {
             cooked = pullCooked(furnace) || cookInFurnace(furnace);
         }
-        if (!cooked) {
+        if (!cooked && server.getBlockState(heatSource).is(Blocks.CAMPFIRE)) {
             cookDirect();
         }
     }
@@ -199,7 +202,9 @@ public class ChefJobGoal extends Goal {
         Level level = companion.level();
         for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-searchRadius, -1, -searchRadius),
                 origin.offset(searchRadius, 2, searchRadius))) {
-            if (isHeatSource(pos)) {
+            BlockPos stand = WorkerSite.findStand(companion, pos, 2);
+            if (isHeatSource(pos) && stand != null) {
+                heatStand = stand;
                 return pos.immutable();
             }
         }
@@ -213,7 +218,7 @@ public class ChefJobGoal extends Goal {
 
     private void moveToHeat() {
         if (heatSource == null) return;
-        companion.getNavigation().moveTo(heatSource.getX() + 0.5D, heatSource.getY() + 0.5D, heatSource.getZ() + 0.5D, 1.0D);
+        if (heatStand != null) companion.getNavigation().moveTo(heatStand.getX() + 0.5D, heatStand.getY(), heatStand.getZ() + 0.5D, 1.0D);
     }
 
     private boolean isActiveJob() {

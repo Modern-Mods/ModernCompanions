@@ -1,6 +1,7 @@
 package com.majorbonghits.moderncompanions.entity.ai;
 
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.phys.Vec3;
 
@@ -14,11 +15,13 @@ public class MoveBackToPatrolGoal extends Goal {
 
     public MoveBackToPatrolGoal(AbstractHumanCompanionEntity companion, int radius) {
         this.companion = companion;
+        this.setFlags(java.util.EnumSet.of(Flag.MOVE));
         this.radius = radius;
     }
 
     @Override
     public boolean canUse() {
+        if (companion.getJob() != CompanionJob.NONE) return false;
         if (this.companion.getPatrolPos().isEmpty() || !companion.isPatrolling()) {
             return false;
         }

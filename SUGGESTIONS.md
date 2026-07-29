@@ -118,3 +118,7 @@
 - Add an integration test world with a protection mod and manually validate that worker block changes respect its cancellation hooks; companion actions do not have a player-break context.
 ## 2026-07-27
 - Add a small screenshot-based GUI smoke test if future sidebar layout changes become frequent.
+## 2026-07-29
+- Add visible on/off state or tooltips to the text sidebar buttons only if players need feedback beyond their resulting companion behavior.
+## 2026-07-29
+- Add a dedicated selected-button sprite only if the standard Minecraft focused appearance is not distinct enough during in-game playtesting.

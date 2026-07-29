@@ -23,6 +23,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.neoforged.fml.ModList;
 
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 
 /**
  * Companion inventory screen styled like the original mod, including sidebar buttons and right-hand stats.
@@ -31,12 +32,6 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final ResourceLocation BG = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/inventory_stats.png");
     private static final int BG_WIDTH = 345;
     private static final int BG_HEIGHT = 256;
-    private static final ResourceLocation ALERT_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/alertbutton.png");
-    private static final ResourceLocation HUNT_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/huntingbutton.png");
-    private static final ResourceLocation PATROL_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/patrolbutton.png");
-    private static final ResourceLocation CLEAR_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/clearbutton.png");
-    private static final ResourceLocation PICKUP_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/pickupbutton.png");
-    private static final ResourceLocation SPRINT_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/stationerybutton.png");
     // Right-hand info panel on inventory_stats.png
     private static final int TOP_STATS_LEFT = 229;
     private static final int TOP_STATS_TOP = 7;
@@ -52,12 +47,6 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final int FOOD_RIGHT = 327;
     private static final int FOOD_BOTTOM = 236;
 
-    private CompanionButton alertButton;
-    private CompanionButton huntButton;
-    private CompanionButton patrolButton;
-    private CompanionButton sprintButton;
-    private CompanionButton clearButton;
-    private CompanionButton pickupButton;
     private Button releaseButton;
     private CompanionButton radiusMinus;
     private CompanionButton radiusPlus;
@@ -80,54 +69,47 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         super.init();
         // Nudge whole GUI down by 1px to align with texture shadow
         this.topPos += 1;
-        int rowHeight = 15;
-        int col1 = leftPos + sidebarX + 3;
-        int col2 = col1 + 19;
+        // Vanilla buttons keep every command legible without the fragile icon atlas.
+        int sidebarButtonX = leftPos + sidebarX + 1;
+        int actionY = topPos + 5;
+        addRenderableWidget(new ToggleButton("Alert", sidebarButtonX, actionY, () -> safeCompanion().map(AbstractHumanCompanionEntity::isAlert).orElse(false), () -> sendToggle("alert")));
+        addRenderableWidget(new ToggleButton("Hunting", sidebarButtonX, actionY + 18, () -> safeCompanion().map(AbstractHumanCompanionEntity::isHunting).orElse(false), () -> sendToggle("hunt")));
+        addRenderableWidget(Button.builder(Component.literal("Patrol"), b -> sendAction("cycle_orders")).pos(sidebarButtonX, actionY + 36).size(42, 16).build());
+        addRenderableWidget(new ToggleButton("Sprint", sidebarButtonX, actionY + 54, () -> safeCompanion().map(AbstractHumanCompanionEntity::isSprintEnabled).orElse(false), () -> sendToggle("sprint")));
+        addRenderableWidget(Button.builder(Component.literal("Clear"), b -> sendAction("clear_target")).pos(sidebarButtonX, actionY + 72).size(42, 16).build());
+        addRenderableWidget(new ToggleButton("Pickup", sidebarButtonX, actionY + 90, () -> safeCompanion().map(AbstractHumanCompanionEntity::isPickupEnabled).orElse(false), () -> sendToggle("pickup")));
 
-        int row1 = topPos + 50;
-        int row2 = row1 + rowHeight;
-        int row3 = row2 + rowHeight;
+        int radiusY = actionY + 108;
+        ResourceLocation radiusTex = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/gui/radiusbutton.png");
+        radiusMinus = addRenderableWidget(new CompanionButton(leftPos + sidebarX + 3, radiusY, 16, 12, 17, 0, 13, radiusTex, () -> adjustRadius(-2)));
+        radiusPlus = addRenderableWidget(new CompanionButton(leftPos + sidebarX + 21, radiusY, 16, 12, 0, 0, 13, radiusTex, () -> adjustRadius(2)));
 
-        alertButton = addRenderableWidget(new CompanionButton("alert", col1, row1, 16, 12, 0, 0, 13, ALERT_BTN, () -> sendToggle("alert"), true));
-        huntButton = addRenderableWidget(new CompanionButton("hunting", col2, row1, 16, 12, 0, 0, 13, HUNT_BTN, () -> sendToggle("hunt"), true));
-        patrolButton = addRenderableWidget(new CompanionButton("patrolling", col1, row2, 16, 12, 0, 0, 13, PATROL_BTN, () -> sendAction("cycle_orders"), true));
-        sprintButton = addRenderableWidget(new CompanionButton("sprint", col2, row2, 16, 12, 0, 0, 13, SPRINT_BTN, () -> sendToggle("sprint"), true));
-        clearButton = addRenderableWidget(new CompanionButton("clear", leftPos + sidebarX + 5, row3, 31, 12, 0, 0, 13, CLEAR_BTN, () -> sendAction("clear_target"), false));
-        int row4 = row3 + rowHeight;
-        pickupButton = addRenderableWidget(new CompanionButton("pickup", leftPos + sidebarX + 3, row4, 34, 12, 0, 0, 0, PICKUP_BTN, () -> sendToggle("pickup"), true));
-        // Text buttons avoid the old icon atlas's black/hidden release and job controls.
-        int actionY = topPos + 118;
+        int jobInfoY = radiusY + 18;
+        jobInfoButton = addRenderableWidget(Button.builder(Component.literal("Jobs"), b -> openJobInfo())
+                .pos(sidebarButtonX, jobInfoY)
+                .size(42, 16)
+                .build());
+
+        int journalY = jobInfoY + 18;
+        journalButton = addRenderableWidget(Button.builder(Component.translatable("button.modern_companions.journal"), b -> openJournal())
+                .pos(sidebarButtonX, journalY)
+                .size(42, 16)
+                .build());
+
+        int curiosY = journalY + 18;
+        if (ModList.get().isLoaded("curios")) {
+            curiosButton = addRenderableWidget(Button.builder(Component.literal("Curios"), b -> openCurios())
+                    .pos(sidebarButtonX, curiosY)
+                    .size(42, 16)
+                    .build());
+        }
+
         releaseButton = addRenderableWidget(Button.builder(Component.literal("Release"), b -> {
                     sendAction("release");
                     this.onClose();
                 })
-                .pos(leftPos + sidebarX + 1, actionY)
+                .pos(sidebarButtonX, topPos + 203)
                 .size(42, 16)
-                .build());
-
-        int jobInfoY = actionY + 18;
-        jobInfoButton = addRenderableWidget(Button.builder(Component.literal("Jobs"), b -> openJobInfo())
-                .pos(leftPos + sidebarX + 1, jobInfoY)
-                .size(42, 16)
-                .build());
-
-        int radiusY = jobInfoY + 18;
-        ResourceLocation radiusTex = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/gui/radiusbutton.png");
-        radiusMinus = addRenderableWidget(new CompanionButton("radius-", leftPos + sidebarX + 3, radiusY, 16, 12, 17, 0, 13, radiusTex, () -> adjustRadius(-2), false));
-        radiusPlus = addRenderableWidget(new CompanionButton("radius+", leftPos + sidebarX + 21, radiusY, 16, 12, 0, 0, 13, radiusTex, () -> adjustRadius(2), false));
-
-        int curiosY = radiusY + 18;
-        if (ModList.get().isLoaded("curios")) {
-            curiosButton = addRenderableWidget(Button.builder(Component.literal("Curios"), b -> openCurios())
-                    .pos(leftPos + sidebarX + 2, curiosY)
-                    .size(38, 16)
-                    .build());
-        }
-
-        int journalY = curiosY + (ModList.get().isLoaded("curios") ? 18 : 0);
-        journalButton = addRenderableWidget(Button.builder(Component.translatable("button.modern_companions.journal"), b -> openJournal())
-                .pos(leftPos + sidebarX + 2, journalY)
-                .size(38, 16)
                 .build());
     }
 
@@ -140,7 +122,9 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        // vanilla labels suppressed; we draw custom stats at right
+        gfx.drawString(this.font, Component.literal("Companion Inventory"), 5, 5, 0x000000, false);
+        gfx.drawString(this.font, Component.literal("Inventory"), 5, 130, 0x000000, false);
+        // Vanilla labels are replaced with section headers and custom stats at right.
         safeCompanion().ifPresent(companion -> {
             // renderLabels already translates to (leftPos, topPos); use texture-relative coords
             int statsX = TOP_STATS_LEFT + 4;
@@ -251,66 +235,40 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     private class CompanionButton extends Button {
-        private final String name;
-        private int yTexStart;
+        private final int yTexStart;
         private final int yDiffTex;
         private final ResourceLocation texture;
-        private final boolean toggleFlag;
-        private final int baseY;
-        private int xTexStart;
+        private final int xTexStart;
 
-        CompanionButton(String name, int x, int y, int w, int h, int xTexStart, int yTexStart, int yDiffTex, ResourceLocation texture, Runnable onClick, boolean toggleFlag) {
+        CompanionButton(int x, int y, int w, int h, int xTexStart, int yTexStart, int yDiffTex, ResourceLocation texture, Runnable onClick) {
             super(x, y, w, h, Component.empty(), b -> onClick.run(), DEFAULT_NARRATION);
-            this.name = name;
             this.xTexStart = xTexStart;
             this.yTexStart = yTexStart;
-            this.baseY = yTexStart;
             this.yDiffTex = yDiffTex;
             this.texture = texture;
-            this.toggleFlag = toggleFlag;
         }
 
         @Override
         public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-            updateTex();
-            int v = this.yTexStart;
-            if (toggleFlag) {
-                v = this.isHoveredOrFocused() ? this.yTexStart + this.yDiffTex : this.yTexStart;
-            } else if (this.isHoveredOrFocused()) {
-                v = this.yTexStart + this.yDiffTex;
-            }
+            int v = this.isHoveredOrFocused() ? this.yTexStart + this.yDiffTex : this.yTexStart;
             RenderSystem.enableBlend();
             gfx.blit(this.texture, this.getX(), this.getY(), this.xTexStart, v, this.width, this.height, 256, 256);
             RenderSystem.disableBlend();
         }
+    }
 
+    private class ToggleButton extends Button {
+        private final BooleanSupplier selected;
 
-        private void updateTex() {
-            AbstractHumanCompanionEntity c = safeCompanion().orElse(null);
-            this.yTexStart = this.baseY;
-            switch (name) {
-                case "alert" -> this.xTexStart = flag(c != null && c.isAlert(), 0, 17);
-                case "hunting" -> this.xTexStart = flag(c != null && c.isHunting(), 0, 17);
-                case "sprint" -> this.xTexStart = flag(c != null && c.isSprintEnabled(), 0, 17);
-                case "pickup" -> {
-                    boolean on = c != null && c.isPickupEnabled();
-                    this.xTexStart = 0;
-                    this.yTexStart = on ? this.baseY + 13 : this.baseY;
-                }
-                case "patrolling" -> {
-                    if (c == null) { this.xTexStart = 0; break; }
-                    if (c.isFollowing()) this.xTexStart = 0;
-                    else if (c.isPatrolling()) this.xTexStart = 17;
-                    else this.xTexStart = 34;
-                }
-                case "radius+" -> this.xTexStart = 0;
-                case "radius-" -> this.xTexStart = 17;
-                default -> this.xTexStart = 0;
-            }
+        ToggleButton(String label, int x, int y, BooleanSupplier selected, Runnable onClick) {
+            super(x, y, 42, 16, Component.literal(label), b -> onClick.run(), DEFAULT_NARRATION);
+            this.selected = selected;
         }
 
-        private int flag(boolean value, int on, int off) {
-            return value ? on : off;
+        @Override
+        public boolean isFocused() {
+            // Keep the vanilla highlighted sprite while the server-synced toggle remains enabled.
+            return selected.getAsBoolean();
         }
     }
 

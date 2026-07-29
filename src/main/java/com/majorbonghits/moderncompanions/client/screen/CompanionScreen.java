@@ -82,7 +82,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.journal"),
                 buttonX, topPos + 192, () -> false, this::openJournal));
         if (ModList.get().isLoaded("sophisticatedbackpacks") && ModList.get().isLoaded("curios")) {
-            addRenderableWidget(new TexturedButton("Backpack", buttonX, topPos + 210, () -> false, this::openBackpack));
+            addRenderableWidget(new TexturedButton("Pack", buttonX, topPos + 210, () -> false, this::openBackpack));
         }
         if (ModList.get().isLoaded("curios")) {
             addRenderableWidget(new TexturedButton("Curios", buttonX, topPos + 228, () -> false, this::openCurios));

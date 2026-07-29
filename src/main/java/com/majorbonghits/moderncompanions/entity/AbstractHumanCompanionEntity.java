@@ -370,7 +370,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(2, new AvoidCreeperGoal(this, 1.5D, 1.5D));
         this.goalSelector.addGoal(3, new MoveBackToGuardGoal(this));
-        this.goalSelector.addGoal(3, new CustomFollowOwnerGoal(this, followSpeed(), followStartDistance(), followStopDistance(), true));
+        this.goalSelector.addGoal(3, new CustomFollowOwnerGoal(this, followSpeed(), true));
         this.goalSelector.addGoal(4, new DeliverToChestGoal(this, 1.1D));
         if (ModConfig.safeGet(ModConfig.JOB_LUMBERJACK_ENABLED)) {
             int radius = ModConfig.safeGet(ModConfig.JOB_LUMBERJACK_RADIUS);
@@ -2171,20 +2171,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (hasTrait("trait_quickstep")) base += 0.05D;
         if (hasTrait("trait_cautious")) base -= 0.05D;
         return Math.max(1.05D, base);
-    }
-
-    private float followStartDistance() {
-        float start = 8.0F;
-        if (hasTrait("trait_cautious")) start = 10.0F;
-        if (hasTrait("trait_guardian")) start = 7.0F;
-        return start;
-    }
-
-    private float followStopDistance() {
-        float stop = 2.5F;
-        if (hasTrait("trait_cautious")) stop = 3.5F;
-        if (hasTrait("trait_brave") || hasTrait("trait_guardian")) stop = 2.0F;
-        return stop;
     }
 
     public void release() {

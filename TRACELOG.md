@@ -2040,3 +2040,10 @@
 - Steps: Replaced the icon-only Release control with a text button and moved explicit Jobs into the visible sidebar stack ahead of radius, Curios, and Bio.
 - Rationale: The old sidebar placement could be covered by the legacy layout; text controls are visible without a texture-atlas state.
 - Build/Test: `gradlew.bat build` passed with JDK 21.
+## 2026-07-29 (follow radius)
+- Prompt/task: "Companions seem to walk to a point, then immediately path back to the player... loosen it so they wander around the player within their assigned radius."
+- Steps:
+  - Made the saved companion radius the follow leash and changed return paths to end inside that radius rather than on the owner.
+  - Limited idle follow wandering to destinations inside the same owner-centered radius, then bumped the version to 1.2.24 and documented the behavior.
+- Rationale: A single shared radius now governs both casual wandering and recall, removing the competing unbounded stroll/direct-to-owner loop.
+- Build: `gradlew.bat build --console=plain --no-daemon` succeeded with Java 21.

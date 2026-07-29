@@ -58,3 +58,11 @@ SophisticatedBackpacks-1.20.x
 BetterCombat-1.20.1
 minecraft-comes-alive-1.20.1
 minecraft-comes-alive-1.21.1
+
+TACZ-1.21.1-neoforge-1.21.1/
+SophisticatedCore-1.21.x/
+SophisticatedBackpacks-1.21.x/
+pointblank-neoforge-1.21-1.11.1/
+build/
+.vscode/
+.gradle/

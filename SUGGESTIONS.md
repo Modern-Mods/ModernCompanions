@@ -122,3 +122,5 @@
 - Add visible on/off state or tooltips to the text sidebar buttons only if players need feedback beyond their resulting companion behavior.
 ## 2026-07-29
 - Add a dedicated selected-button sprite only if the standard Minecraft focused appearance is not distinct enough during in-game playtesting.
+## 2026-07-29
+- Add configurable companion spacing only if playtesting shows parties still overlap; the saved radius already controls the follow leash and idle area.

@@ -164,6 +164,10 @@ Manual dev-world checks remain required for modded protection hooks, complex cav
 
 ## Config & Packmaker Notes
 - Friendly fire, fall damage, spawn armor/weapon, and house spacing are configurable.
+- Companion inventory includes owner-only Villager and PvP safety controls. Both default to safe: companions cannot target or damage villagers or other players until explicitly enabled.
+- With Curios and Sophisticated Backpacks installed, equip a Sophisticated Backpack in the companion's back slot. It renders on the companion and the optional Backpack button opens its storage. A companion's Bio records its randomly selected favorite food; feeding it doubles Bond XP and morale gain.
+- The Backpack button opens Sophisticated Backpacks' native storage container, so its upgrades and settings tabs work exactly as they do for a player-worn backpack.
+- TacZ firearms are optional: companions equip a supplied gun, aim at a valid target, shoot, reload from their own inventory, and notify their owner after an ammo failure.
 - Data pack uses pack_format 48; loot injections use NeoForge global loot modifiers for compatibility.
 - Better Combat detected: reach modifiers are skipped to avoid stacking with that mod’s reach.
 

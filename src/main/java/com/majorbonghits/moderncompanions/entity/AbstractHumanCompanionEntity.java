@@ -1,6 +1,7 @@
 package com.majorbonghits.moderncompanions.entity;
 
 import com.majorbonghits.moderncompanions.core.ModConfig;
+import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.entity.ai.*;
 import com.majorbonghits.moderncompanions.entity.personality.CompanionPersonality;
@@ -41,6 +42,7 @@ import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
@@ -125,6 +127,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> PICKUP_ITEMS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> ALLOW_VILLAGER_HARM = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> ALLOW_PLAYER_HARM = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Optional<BlockPos>> PATROL_POS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.OPTIONAL_BLOCK_POS);
     private static final EntityDataAccessor<Integer> PATROL_RADIUS = SynchedEntityData
@@ -136,6 +142,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final EntityDataAccessor<String> FOOD1 = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> FOOD2 = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> FAVORITE_FOOD = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> FOOD1_AMT = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
@@ -306,6 +314,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(GUARDING, false);
         builder.define(SPRINT_ENABLED, false);
         builder.define(PICKUP_ITEMS, true);
+        builder.define(ALLOW_VILLAGER_HARM, false);
+        builder.define(ALLOW_PLAYER_HARM, false);
         builder.define(PATROL_POS, Optional.empty());
         builder.define(PATROL_RADIUS, 10);
         builder.define(DELIVERY_CHEST, Optional.empty());
@@ -315,6 +325,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         minerOreIndex = 0;
         builder.define(FOOD1, "");
         builder.define(FOOD2, "");
+        builder.define(FAVORITE_FOOD, "");
         builder.define(FOOD1_AMT, 0);
         builder.define(FOOD2_AMT, 0);
         builder.define(EXP_PROGRESS, 0.0F);
@@ -368,6 +379,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(0, new EatGoal(this));
         this.goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
+        this.goalSelector.addGoal(2, new FirearmAttackGoal(this));
         this.goalSelector.addGoal(2, new AvoidCreeperGoal(this, 1.5D, 1.5D));
         this.goalSelector.addGoal(3, new MoveBackToGuardGoal(this));
         this.goalSelector.addGoal(3, new CustomFollowOwnerGoal(this, followSpeed(), true));
@@ -922,6 +934,22 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(PICKUP_ITEMS, value);
     }
 
+    public boolean canHarmVillagers() {
+        return this.entityData.get(ALLOW_VILLAGER_HARM);
+    }
+
+    public void setCanHarmVillagers(boolean value) {
+        this.entityData.set(ALLOW_VILLAGER_HARM, value);
+    }
+
+    public boolean canHarmPlayers() {
+        return this.entityData.get(ALLOW_PLAYER_HARM);
+    }
+
+    public void setCanHarmPlayers(boolean value) {
+        this.entityData.set(ALLOW_PLAYER_HARM, value);
+    }
+
     public boolean isSprintEnabled() {
         return this.entityData.get(SPRINT_ENABLED);
     }
@@ -1006,6 +1034,21 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return "";
     }
 
+    public String getFavoriteFoodName() {
+        String id = this.entityData.get(FAVORITE_FOOD);
+        ResourceLocation key = ResourceLocation.tryParse(id);
+        return key == null ? "Unknown" : BuiltInRegistries.ITEM.get(key).getDescription().getString();
+    }
+
+    public boolean isFavoriteFood(ItemStack stack) {
+        return !stack.isEmpty() && BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(this.entityData.get(FAVORITE_FOOD));
+    }
+
+    private void assignFavoriteFood() {
+        Item favorite = CompanionData.ALL_FOODS[this.random.nextInt(CompanionData.ALL_FOODS.length)];
+        this.entityData.set(FAVORITE_FOOD, BuiltInRegistries.ITEM.getKey(favorite).toString());
+    }
+
     public String getWantedFoodsCompact() {
         int amt1 = entityData.get(FOOD1_AMT);
         int amt2 = entityData.get(FOOD2_AMT);
@@ -1022,6 +1065,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public SimpleContainer getInventory() {
         return inventory;
+    }
+
+    /** Firearms take precedence over class weapons so per-tick selectors cannot unequip them. */
+    protected ItemStack getEquippedOrInventoryFirearm() {
+        if (FirearmSupport.isFirearm(getMainHandItem())) return getMainHandItem();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (FirearmSupport.isFirearm(stack)) return stack;
+        }
+        return ItemStack.EMPTY;
     }
 
     public Map<Item, Integer> getFoodRequirements() {
@@ -1677,11 +1730,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                     if (!this.level().isClientSide() && CompanionData.isFood(held) && this.getHealth() < this.getMaxHealth() - 0.1F) {
                         ItemStack single = held.copyWithCount(1);
                         if (healFromFoodStack(single)) {
+                            boolean favorite = isFavoriteFood(held);
                             held.shrink(1);
-                            int feedXp = applyBondTraitMultiplier(ModConfig.safeGet(ModConfig.BOND_FEED_XP), true, false, false);
+                            int feedXp = applyBondTraitMultiplier(ModConfig.safeGet(ModConfig.BOND_FEED_XP), true, false, false)
+                                    * (favorite ? 2 : 1);
                             awardBondXp(feedXp);
                             if (ModConfig.safeGet(ModConfig.MORALE_ENABLED)) {
-                                adjustMorale(ModConfig.safeGet(ModConfig.MORALE_FEED_DELTA).floatValue());
+                                float morale = ModConfig.safeGet(ModConfig.MORALE_FEED_DELTA).floatValue();
+                                adjustMorale(favorite ? morale * 2.0F : morale);
                             }
                             return InteractionResult.CONSUME;
                         }
@@ -1768,7 +1824,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             // Companion summons are utility allies; never mark them as valid targets.
             return false;
         }
-        return super.wantsToAttack(target, owner);
+        return canHarm(target) && super.wantsToAttack(target, owner);
     }
 
     @Override
@@ -1797,6 +1853,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putBoolean("Guarding", this.isGuarding());
         tag.putBoolean("SprintEnabled", this.isSprintEnabled());
         tag.putBoolean("Pickup", this.isPickupEnabled());
+        tag.putBoolean("AllowVillagerHarm", this.canHarmVillagers());
+        tag.putBoolean("AllowPlayerHarm", this.canHarmPlayers());
         tag.putInt("radius", this.getPatrolRadius());
         tag.putInt("sex", this.getSex());
         tag.putString("JobId", this.getJob().id());
@@ -1807,6 +1865,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("KillCount", this.getKillCount());
         tag.putString("food1", entityData.get(FOOD1));
         tag.putString("food2", entityData.get(FOOD2));
+        tag.putString("FavoriteFood", entityData.get(FAVORITE_FOOD));
         tag.putInt("food1_amt", entityData.get(FOOD1_AMT));
         tag.putInt("food2_amt", entityData.get(FOOD2_AMT));
         tag.putInt("Strength", getBaseStrength());
@@ -1864,6 +1923,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.setSprintEnabled(false);
         }
         this.setPickupEnabled(tag.contains("Pickup") ? tag.getBoolean("Pickup") : true);
+        this.setCanHarmVillagers(tag.getBoolean("AllowVillagerHarm"));
+        this.setCanHarmPlayers(tag.getBoolean("AllowPlayerHarm"));
         this.setPatrolRadius(tag.getInt("radius"));
         this.setSex(tag.getInt("sex"));
         this.setJob(CompanionJob.fromId(tag.getString("JobId")));
@@ -1875,6 +1936,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         syncExpProgress();
         entityData.set(FOOD1, tag.getString("food1"));
         entityData.set(FOOD2, tag.getString("food2"));
+        entityData.set(FAVORITE_FOOD, tag.getString("FavoriteFood"));
         entityData.set(FOOD1_AMT, tag.getInt("food1_amt"));
         entityData.set(FOOD2_AMT, tag.getInt("food2_amt"));
         foodRequirements.clear();
@@ -1963,6 +2025,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.lastTrackZ = this.getZ();
         // Backfill missing flavor data for pre-journal companions
         rollMissingFlavorData();
+        if (entityData.get(FAVORITE_FOOD).isBlank()) {
+            assignFavoriteFood();
+        }
         if (tag.contains("patrol_pos")) {
             int[] positions = tag.getIntArray("patrol_pos");
             setPatrolPos(new BlockPos(positions[0], positions[1], positions[2]));
@@ -2114,6 +2179,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         personality.setMorale(0.0F);
         syncPersonalityToData();
         assignFoodRequirements();
+        assignFavoriteFood();
 
         if (ModConfig.safeGet(ModConfig.SPAWN_ARMOR)) {
             for (int i = 0; i < 4; i++) {
@@ -2290,6 +2356,19 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return super.hurt(source, adjusted);
     }
 
+    /** Shared PvE/PvP and villager safety gate for every target source. */
+    public boolean canHarm(Entity entity) {
+        if (entity instanceof Villager && !canHarmVillagers()) {
+            return false;
+        }
+        return !(entity instanceof Player) || entity == this.getOwner() || canHarmPlayers();
+    }
+
+    @Override
+    public void setTarget(@Nullable LivingEntity target) {
+        super.setTarget(target != null && !canHarm(target) ? null : target);
+    }
+
     @Override
     public void die(DamageSource source) {
         if (!this.level().isClientSide()) {
@@ -2342,6 +2421,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     @Override
     public boolean doHurtTarget(Entity entity) {
+        if (!canHarm(entity)) {
+            return false;
+        }
         forceSwingAnimation(InteractionHand.MAIN_HAND);
         ItemStack itemstack = this.getMainHandItem();
         if (!this.level().isClientSide && !itemstack.isEmpty() && entity instanceof LivingEntity) {
@@ -2434,6 +2516,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             case "alert" -> setAlert(value);
             case "sprint" -> setSprintEnabled(value);
             case "pickup" -> setPickupEnabled(value);
+            case "villagers" -> setCanHarmVillagers(value);
+            case "players" -> setCanHarmPlayers(value);
             default -> {
             }
         }
@@ -2448,6 +2532,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             case "alert" -> isAlert();
             case "sprint" -> isSprintEnabled();
             case "pickup" -> isPickupEnabled();
+            case "villagers" -> canHarmVillagers();
+            case "players" -> canHarmPlayers();
             default -> false;
         };
     }

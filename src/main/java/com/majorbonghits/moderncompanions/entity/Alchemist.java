@@ -46,6 +46,12 @@ public class Alchemist extends AbstractHumanCompanionEntity {
 
     private void checkPotionSlot() {
         ItemStack hand = this.getMainHandItem();
+        ItemStack firearm = getEquippedOrInventoryFirearm();
+        if (!firearm.isEmpty()) {
+            if (!ItemStack.isSameItemSameComponents(hand, firearm)) this.setItemSlot(EquipmentSlot.MAINHAND, firearm);
+            setPreferredWeaponBonus(true);
+            return;
+        }
         // Prefer a usable weapon if available, otherwise default to potions.
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack stack = this.inventory.getItem(i);

@@ -128,6 +128,7 @@
   "gui.modern_companions.traits.secondary": "Secondary: %s",
   "gui.modern_companions.age": "Age: %s",
   "gui.modern_companions.backstory": "%s",
+  "gui.modern_companions.favorite_food": "Favorite food: %s",
   "gui.modern_companions.morale.label": "Morale: %s",
   "gui.modern_companions.morale.positive": "In good spirits",
   "gui.modern_companions.morale.neutral": "Steady",

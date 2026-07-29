@@ -124,3 +124,7 @@
 - Add a dedicated selected-button sprite only if the standard Minecraft focused appearance is not distinct enough during in-game playtesting.
 ## 2026-07-29
 - Add configurable companion spacing only if playtesting shows parties still overlap; the saved radius already controls the follow leash and idle area.
+## 2026-07-29
+- Add a small Sophisticated Backpacks runtime smoke world only if future upstream GUI/context changes require a repeatable compatibility check.
+## 2026-07-29
+- Add a focused TacZ dev-world smoke check only if a future TacZ release changes its entity item-handler API; the standard companion inventory capability now covers native reload and ammo consumption.

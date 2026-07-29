@@ -57,6 +57,12 @@ public class Stormcaller extends AbstractHumanCompanionEntity {
 
     private void checkTrident() {
         ItemStack hand = this.getItemBySlot(EquipmentSlot.MAINHAND);
+        ItemStack firearm = getEquippedOrInventoryFirearm();
+        if (!firearm.isEmpty()) {
+            if (!ItemStack.isSameItemSameComponents(hand, firearm)) this.setItemSlot(EquipmentSlot.MAINHAND, firearm);
+            setPreferredWeaponBonus(true);
+            return;
+        }
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack stack = this.inventory.getItem(i);
             if (stack.is(Items.TRIDENT) || stack.getItem() instanceof SpearItem || stack.getItem() instanceof GlaiveItem) {

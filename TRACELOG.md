@@ -2047,3 +2047,33 @@
   - Limited idle follow wandering to destinations inside the same owner-centered radius, then bumped the version to 1.2.24 and documented the behavior.
 - Rationale: A single shared radius now governs both casual wandering and recall, removing the competing unbounded stroll/direct-to-owner loop.
 - Build: `gradlew.bat build --console=plain --no-daemon` succeeded with Java 21.
+## 2026-07-29 (optional backpacks and combat safety)
+- Prompt/task: Add Sophisticated Backpacks support, explicit villager/PvP safety, favorite foods, and optional TacZ/PointBlank firearm support.
+- Steps: Reused the existing Curios back slot and render layer; added an owner-only backpack storage screen and button gated by Sophisticated Backpacks. Added persisted PvE/villager flags enforced in the shared target and living-damage paths, plus visible red/green controls. Added a persisted random favorite food to Bio and doubled feed Bond/morale rewards. Added reflection-based TacZ firearm equip/aim/shoot/reload behavior without a hard dependency.
+- Rationale: Optional integrations must not classload when absent, and damage safety must be centralized so projectiles, fire, explosions, and class splash cannot bypass a UI toggle. PointBlank's public firing/reload methods require a Player, so only its safe equipment recognition is enabled.
+- Build/Test: `gradlew.bat compileJava --console=plain --no-daemon` passed with Java 21; full dev-world testing remains required for rendered backpacks, Curios synchronization, damage sources, and mod firearm behavior.
+## 2026-07-29 (native backpack screen and firearm retention)
+- Prompt/task: Replace the broken companion backpack screen with Sophisticated Backpacks' authentic UI, make handed TacZ/PointBlank guns remain equipped, and compact Villager/PvP controls to `V`/`P` beside Release.
+- Steps: Removed the duplicate backpack menu/screen and registered the companion Curios back slot as an optional Sophisticated Backpacks item context, then opened its upstream `BackpackContainer` so upgrades and settings retain their native tabs. Centralized firearm priority before every class weapon selector. Moved the red/green safety controls to adjacent 16px buttons.
+- Rationale: Reusing the upstream container preserves Sophisticated Backpacks features; a shared firearm priority prevents per-tick class selectors from replacing a handed gun.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21. Native Backpack GUI and firearm-equipment behavior still require the listed mod runtime smoke test.
+## 2026-07-29 (TacZ draw state and PointBlank identification)
+- Prompt/task: TacZ companions aim and track targets but never fire despite carrying ammunition; PointBlank guns do not equip.
+- Steps: Traced TacZ's `ShootResult.NOT_DRAW` path and now draw/aim the gun through its `IGunOperator` before firing, honoring the returned shot result instead of treating every call as a shot. Added a class-name fallback for PointBlank's `GunItem` detection.
+- Rationale: TacZ refuses to fire until its living-entity operator owns the drawn gun state. PointBlank's current public fire/reload API still requires a `Player`, but that restriction does not apply to equipment recognition.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21; verify TacZ firing/reload and PointBlank equipping in a modded dev world.
+## 2026-07-29 (PointBlank companion firing bridge)
+- Prompt/task: Allow companions to use PointBlank guns despite its Player-only public methods.
+- Steps: Added a server-side compatibility player positioned and aimed from the companion. It temporarily receives the companion's gun and inventory references, then invokes PointBlank's own server projectile/hitscan/reload handlers. PointBlank-origin damage resolves back to the companion for PvE/PvP and villager safety.
+- Rationale: This preserves PointBlank's projectile, ammo, reload, and hit-scan code instead of duplicating firearm logic, while keeping the companion as the visible actor and safety authority.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21; PointBlank projectile, hitscan, reload, and multiplayer smoke tests remain required.
+## 2026-07-29 (PointBlank inventory-path investigation)
+- Prompt/task: PointBlank firearms still do not equip from the latest compatibility jar, while TacZ firearms work.
+- Steps: Reproduced the issue with Douglas's equipped-in-inventory M4A1 MOD I. Removed the incorrect direct hand-off experiment and replaced PointBlank's fragile class-name probe with its public fire-mode resolver, which returns a value only for a genuine PointBlank gun stack.
+- Rationale: The existing companion inventory flow must remain the sole equipment path, and the compatibility check should use PointBlank's own gun classification rather than making an assumption about its runtime item class.
+- Build/Test: Pending full build and the focused PointBlank companion-inventory smoke test.
+## 2026-07-29 (TacZ-only firearms and companion reloads)
+- Prompt/task: Remove all PointBlank support and ensure TacZ companions reload from compatible ammunition in their own inventory.
+- Steps: Deleted the PointBlank compatibility bridge and removed its firearm detection, attack routing, safety mapping, and current documentation. Registered every companion entity's existing `SimpleContainer` as NeoForge's entity item-handler capability, which TacZ queries for reload checks and subsequently consumes during its native reload.
+- Rationale: Exposing the real inventory fixes the shared root cause without copying stacks or emulating a player; TacZ keeps ownership of compatible-ammo selection, reload timing, and consumption.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21 (1.2.33). A TacZ dev-world reload smoke test remains required.

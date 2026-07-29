@@ -63,6 +63,7 @@ public class CompanionJournalScreen extends Screen {
             y = drawLine(gfx, Component.literal(companion.getName().getString()).withStyle(style -> style.withUnderlined(true)), x, y, width);
             y = drawLine(gfx, Component.translatable("gui.modern_companions.age", companion.getAgeYears()), x, y, width);
             y = drawLine(gfx, Component.translatable("gui.modern_companions.backstory", backstoryName(companion.getBackstoryId())), x, y, width);
+            y = drawLine(gfx, Component.translatable("gui.modern_companions.favorite_food", companion.getFavoriteFoodName()), x, y, width);
             y += 4;
 
             y = drawLine(gfx, Component.translatable("gui.modern_companions.traits").withStyle(style -> style.withUnderlined(true)), x, y, width);

@@ -6,6 +6,7 @@ import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.network.CompanionActionPayload;
 import com.majorbonghits.moderncompanions.network.OpenCompanionCuriosPayload;
+import com.majorbonghits.moderncompanions.network.OpenCompanionBackpackPayload;
 import com.majorbonghits.moderncompanions.network.SetPatrolRadiusPayload;
 import com.majorbonghits.moderncompanions.network.ToggleFlagPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -80,9 +81,18 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         addRenderableWidget(new TexturedButton("Jobs", buttonX, topPos + 174, () -> false, this::openJobInfo));
         addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.journal"),
                 buttonX, topPos + 192, () -> false, this::openJournal));
-        if (ModList.get().isLoaded("curios")) {
-            addRenderableWidget(new TexturedButton("Curios", buttonX, topPos + 210, () -> false, this::openCurios));
+        if (ModList.get().isLoaded("sophisticatedbackpacks") && ModList.get().isLoaded("curios")) {
+            addRenderableWidget(new TexturedButton("Backpack", buttonX, topPos + 210, () -> false, this::openBackpack));
         }
+        if (ModList.get().isLoaded("curios")) {
+            addRenderableWidget(new TexturedButton("Curios", buttonX, topPos + 228, () -> false, this::openCurios));
+        }
+        addRenderableWidget(new ModeButton(leftPos + 267, topPos + 232, Component.literal("V"),
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmVillagers).orElse(false),
+                () -> sendToggle("villagers")));
+        addRenderableWidget(new ModeButton(leftPos + 284, topPos + 232, Component.literal("P"),
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmPlayers).orElse(false),
+                () -> sendToggle("players")));
         addRenderableWidget(new TexturedButton("Release", leftPos + 301, topPos + 232, () -> false, () -> {
             sendAction("release");
             onClose();
@@ -209,6 +219,13 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         }
     }
 
+    private void openBackpack() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getConnection() != null) {
+            mc.getConnection().send(new ServerboundCustomPayloadPacket(new OpenCompanionBackpackPayload(menu.getCompanionId())));
+        }
+    }
+
     private void openJobInfo() {
         Minecraft mc = Minecraft.getInstance();
         if (mc != null) {
@@ -308,6 +325,28 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
                 releaseAction.run();
             }
             return true;
+        }
+    }
+
+    /** Safety switches use explicit colors instead of the generic on/off button sprite. */
+    private class ModeButton extends Button {
+        private final Component label;
+        private final BooleanSupplier enabled;
+
+        ModeButton(int x, int y, Component label, BooleanSupplier enabled, Runnable onClick) {
+            super(x, y, 16, 16, Component.empty(), button -> onClick.run(), DEFAULT_NARRATION);
+            this.label = label;
+            this.enabled = enabled;
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            boolean on = enabled.getAsBoolean();
+            int color = on ? 0xFFC63C3C : 0xFF3C9C57;
+            if (isHoveredOrFocused()) color = on ? 0xFFE55353 : 0xFF54B86C;
+            gfx.fill(getX(), getY(), getX() + width, getY() + height, color);
+            gfx.renderOutline(getX(), getY(), width, height, 0xFF101010);
+            drawCenteredText(gfx, label, getX() + width / 2, getY() + 4);
         }
     }
 }

@@ -11,10 +11,10 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Companion inventory menu (6x9 slots) plus player inventory/hotbar.
+ * Companion inventory menu (7x9 slots) plus player inventory/hotbar.
  */
 public class CompanionMenu extends AbstractContainerMenu {
-    private static final int COMPANION_ROWS = 6;
+    private static final int COMPANION_ROWS = 7;
     private final Container container;
     private final int companionId;
     private final AbstractHumanCompanionEntity companion;
@@ -38,20 +38,19 @@ public class CompanionMenu extends AbstractContainerMenu {
         // Companion inventory slots
         for (int row = 0; row < COMPANION_ROWS; ++row) {
             for (int col = 0; col < 9; ++col) {
-                this.addSlot(new Slot(container, col + row * 9, 8 + col * 18, 18 + row * 18));
+                this.addSlot(new Slot(container, col + row * 9, 8 + col * 18, 24 + row * 18));
             }
         }
 
-        int offset = (COMPANION_ROWS - 4) * 18 + 1; // drop player inventory by 1px for alignment
-        // Player inventory
+        // The new texture has fixed seven-row and player-grid anchors.
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
-                this.addSlot(new Slot(playerInv, col + row * 9 + 9, 8 + col * 18, 103 + row * 18 + offset));
+                this.addSlot(new Slot(playerInv, col + row * 9 + 9, 8 + col * 18, 165 + row * 18));
             }
         }
         // Hotbar
         for (int col = 0; col < 9; ++col) {
-            this.addSlot(new Slot(playerInv, col, 8 + col * 18, 161 + offset));
+            this.addSlot(new Slot(playerInv, col, 8 + col * 18, 223));
         }
     }
 

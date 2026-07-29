@@ -211,7 +211,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "trait_melancholic_penalty");
     private static final int FOOD_REQUEST_COOLDOWN_TICKS = 600; // ~30s between requests
 
-    protected final SimpleContainer inventory = new SimpleContainer(54);
+    // Seven visible rows in the companion menu; saved inventories keep their existing slot indices.
+    protected final SimpleContainer inventory = new SimpleContainer(63);
     protected final Map<Item, Integer> foodRequirements = new HashMap<>();
     protected final Random rand = new Random();
 
@@ -2422,7 +2423,13 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     /* ---------- Network-driven flag setters ---------- */
     public void applyFlag(String flag, boolean value) {
         switch (flag) {
-            case "follow" -> setFollowing(value);
+            case "follow" -> {
+                setFollowing(value);
+                if (value) {
+                    setPatrolling(false);
+                    setGuarding(false);
+                }
+            }
             case "patrol" -> {
                 setPatrolling(value);
                 setFollowing(!value);

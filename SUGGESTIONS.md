@@ -128,3 +128,28 @@
 - Add a small Sophisticated Backpacks runtime smoke world only if future upstream GUI/context changes require a repeatable compatibility check.
 ## 2026-07-29
 - Add a focused TacZ dev-world smoke check only if a future TacZ release changes its entity item-handler API; the standard companion inventory capability now covers native reload and ammo consumption.
+
+## 2026-07-29 (magic companion runtime smoke)
+- Add a small two-mod dev-world smoke only when Iron's Spellbooks or Ars Nouveau changes its public casting API; reflection keeps both integrations optional, so live casts, summon lifetime, and ally-safe AoE need verification against installed versions.
+
+## 2026-07-29 (conditional worldgen regression)
+- Keep one resource-load smoke with neither magic mod installed whenever adding a gated entity; static structure JSON cannot refer to an entity omitted from the registry.
+- Keep required empty codec fields such as `spawn_overrides: {}` when removing static entries; valid JSON alone does not prove Minecraft's structure codec accepts it.
+
+## 2026-07-29 (conditional registry regression)
+- Keep a no-magic-mod creative-tab/JEI and Curios data-load smoke whenever adding gated companion content; Curios 9.5.1 accepts only direct registered entity IDs here, not entity tags.
+
+## 2026-07-29 (magic metadata regression)
+- Keep an installed-Iron's/Ars launch smoke when changing optional dependency metadata; NeoForge compares full mod version strings such as `1.21.1-3.16.2`.
+
+## 2026-07-29 (magic targeting smoke)
+- Keep a live clear-LOS and blocked-LOS cast smoke for every upstream spell API update; direct projectiles use the caster's look vector while entity resolvers target directly.
+
+## 2026-07-29 (magic ally-safety smoke)
+- Keep a compact Prism test pen: caster owner, same-owner companion, same-owner summon, villager, enemy player, and enemy-player companion. Verify summoned swords never target friendly entries, then verify PvP/villager toggles only unlock their intended enemy categories and Intelligence produces a measurable spell-damage increase.
+
+## 2026-07-29 (Wizard batch-cap smoke)
+- Recheck the three-weapon entity IDs only when upgrading Iron's Spellbooks; they are the narrow live-batch contract that lets Wizards resummon after every prior weapon has actually gone.
+
+## 2026-07-29 (magic gem visuals)
+- Add new gem art only when a reused role-fit gem no longer gives a new class a readable identity; the current nine model files deliberately reuse proven, packaged assets.

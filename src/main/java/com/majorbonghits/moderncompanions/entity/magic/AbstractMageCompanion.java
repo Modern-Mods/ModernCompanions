@@ -32,33 +32,20 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
         if (!this.level().isClientSide()) {
             equipCasterWeapon();
             if (heavyCooldown > 0) heavyCooldown--;
-            faceTargetSmoothly();
         }
         super.tick();
     }
 
-    /** Keep casters from spinning by softly locking yaw toward their target while casting. */
-    private void faceTargetSmoothly() {
-        LivingEntity target = this.getTarget();
-        if (target == null || !target.isAlive()) return;
-
+    /** Align the real spell API's caster-facing vector with its direct target. */
+    protected final void aimAt(LivingEntity target) {
         double dx = target.getX() - this.getX();
+        double dy = target.getEyeY() - this.getEyeY();
         double dz = target.getZ() - this.getZ();
-        double dist2 = dx * dx + dz * dz;
-        if (dist2 < 1.0E-6D) return; // too close to compute stable angle
-
-        // Wrap desired yaw to prevent runaway values
-        float desiredYaw = (float) (Math.atan2(dz, dx) * (180F / Math.PI)) - 90.0F;
-        if (!Float.isFinite(desiredYaw)) return;
-        desiredYaw = Mth.wrapDegrees(desiredYaw);
-
-        float currentYaw = Float.isFinite(this.getYRot()) ? this.getYRot() : 0.0F;
-        float newYaw = Mth.approachDegrees(currentYaw, desiredYaw, 10.0F);
-
-        if (!Float.isFinite(newYaw)) return;
-        this.setYRot(newYaw);
-        this.setYHeadRot(newYaw);
-        this.yBodyRot = newYaw;
+        double horizontal = Math.sqrt(dx * dx + dz * dz);
+        this.setYRot((float) (Mth.atan2(dz, dx) * (180.0D / Math.PI)) - 90.0F);
+        this.setXRot((float) -(Mth.atan2(dy, horizontal) * (180.0D / Math.PI)));
+        this.setYHeadRot(this.getYRot());
+        this.yBodyRot = this.getYRot();
     }
 
     /**
@@ -84,7 +71,7 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
     /**
      * Scales spell damage off Intelligence.
      */
-    protected float magicDamage(float base) {
+    public final float magicDamage(float base) {
         float scale = 1.0F + Math.max(0.0F, (getIntelligence() - 4) * 0.08F);
         return base * scale;
     }

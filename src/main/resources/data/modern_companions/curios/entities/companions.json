@@ -7,13 +7,9 @@
     "modern_companions:vanguard",
     "modern_companions:berserker",
     "modern_companions:beastmaster",
-    "modern_companions:cleric",
     "modern_companions:alchemist",
     "modern_companions:scout",
-    "modern_companions:stormcaller",
-    "modern_companions:fire_mage",
-    "modern_companions:lightning_mage",
-    "modern_companions:necromancer"
+    "modern_companions:stormcaller"
   ],
   "slots": [
     "head",

@@ -2,13 +2,6 @@
 
 
 ## Scratch
-
-
-
-
-
-
-
 - I want to add a new option to the mod; Companions show chat bubbles show over their heard when speaking, instead of chat.
     - This should be a toggle between chat speak and bubble speak, or both so the player can choose.
 - Companions will interact with eachother
@@ -18,9 +11,9 @@
     - Trash talk enemies
     - Ask other companions for food
         - Companions will be able to share edible food between themselves
-
 - Magic Support
     - Add support for popular magic mods so players can have magic wielding companions (mages, sorcerers, wizards, witches, warlocks, necromancers, etc.)
+    - Magic wielding companions only present if respective magic mod is present
 - Firearm Specific Companions
     - If TacZ is present, insert special Companions into the spawn pool
     - These companions will specialize in specific types of firearms

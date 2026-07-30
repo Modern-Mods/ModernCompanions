@@ -76,7 +76,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import com.majorbonghits.moderncompanions.entity.SummonedWitherSkeleton;
 import com.majorbonghits.moderncompanions.core.TagsInit;
 import com.majorbonghits.moderncompanions.entity.job.LumberjackJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.HunterJobGoal;
@@ -1820,20 +1819,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     @Override
     public boolean wantsToAttack(LivingEntity target, LivingEntity owner) {
-        if (target instanceof SummonedWitherSkeleton) {
-            // Companion summons are utility allies; never mark them as valid targets.
-            return false;
-        }
         return canHarm(target) && super.wantsToAttack(target, owner);
     }
 
     @Override
     public boolean isAlliedTo(Entity other) {
-        if (other instanceof SummonedWitherSkeleton skeleton) {
-            // Treat any summoned wither skeleton as an ally so cross-class parties stay
-            // cooperative.
-            return true;
-        }
         return super.isAlliedTo(other);
     }
 
@@ -2358,10 +2348,23 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     /** Shared PvE/PvP and villager safety gate for every target source. */
     public boolean canHarm(Entity entity) {
+        // Owner and same-owner companions stay allies even when PvP is enabled.
+        if (entity == this.getOwner()) {
+            return false;
+        }
         if (entity instanceof Villager && !canHarmVillagers()) {
             return false;
         }
-        return !(entity instanceof Player) || entity == this.getOwner() || canHarmPlayers();
+        if (entity instanceof Player) {
+            return canHarmPlayers();
+        }
+        if (entity instanceof TamableAnimal tame && tame.isTame()) {
+            if (this.getOwnerUUID() != null && this.getOwnerUUID().equals(tame.getOwnerUUID())) {
+                return false;
+            }
+            return canHarmPlayers();
+        }
+        return true;
     }
 
     @Override

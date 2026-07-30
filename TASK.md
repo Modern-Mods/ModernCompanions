@@ -1,144 +1,238 @@
-# Jobs AI: Safe, Player-Like Workers
+# Conditional Magic Companions — Iron’s Spellbooks + Ars Nouveau
 
-## Objective
+## Rule of availability
 
-Make companion jobs behave like competent players: select reachable work sites, traverse safely, react to danger, recover without destroying unrelated terrain, and resume or abandon work predictably.
+Every companion in this document is magic-mod gated. It must not be registered, naturally spawned, offered by summon gem, or shown as an available companion unless its required integration mod is loaded. Make this decision before entity and item registration; do not unconditionally register a magic companion and hide it later.
 
-Implement this as one cohesive Jobs AI batch. Do not copy MineColonies code: it is GPLv3. Use only independently implemented ideas.
+| Gate | Mod ID | Meaning |
+|---|---|---|
+| Iron’s | `irons_spellbooks` | Companion may use Iron’s registered spells |
+| Ars Nouveau | `ars_nouveau` | Companion may use Ars spell glyphs |
 
-## Scope
+A class may use either gate:
 
-Improve these existing jobs:
+- `Iron’s OR Ars`: available if at least one is loaded; its kit uses only the loaded mod’s options.
+- `Iron’s only`: unavailable without Iron’s.
+- `Ars only`: unavailable without Ars Nouveau.
+- Both loaded: one companion entity, with a combined but deliberately small kit—not two duplicate variants.
 
-- Miner
-- Fisher
-- Lumberjack
-- Hunter
-- Chef
-- Courier / chest delivery
+Each approved cast must invoke the real API of the loaded upstream mod and its registered spell/glyph content. Do not emulate, recreate, or invent spell behavior; add only the matching optional compile/runtime integrations needed for those real APIs.
 
-Keep existing job UI, inventory, patrol anchor, and configuration unless this task explicitly changes them.
+Under this requirement, the existing Fire Mage, Lightning Mage, Necromancer, and Cleric also become magic-mod-gated rather than appearing in a vanilla-only installation.
 
-## Non-goals
+## Shared casting limits
 
-- No MineColonies dependency, colony system, custom navmesh, work-order framework, or behavior-tree framework.
-- No bridge building, pillar building, ladders, torches, or arbitrary terrain placement.
-- No prospecting/random digging when no valid ore exists.
-- No generic “break blocks when stuck” recovery.
-- Do not edit `MineColonies/`.
+Every caster gets:
 
-## Required shared behavior
+- One reliable basic cast.
+- One cooldown signature cast.
+- At most one utility/support cast.
+- Strict hostile/owner/allied-target checks before every damaging area effect.
+- Temporary and capped summons only.
+- No block breaking, placement, fire spread, terrain conversion, uncontrolled teleportation, or player-targeted possession.
 
-Create the smallest shared work-site contract needed by multiple jobs:
+The current shared caster AI already supports the basic/signature pattern: it attempts a heavy cast, otherwise performs the normal ranged cast. This fits the design without inventing a large spell framework.
 
-- A work site consists of a target block/entity and a companion standing position.
-- A standing position is valid only when:
-  - Its floor is sturdy and non-hazardous.
-  - Feet and head spaces are clear.
-  - It is not in lava, fire, magma, or an unsafe fluid space.
-  - The native navigation path exists and `canReach()` is true.
-  - The target is within actual interaction range and visible from the stand.
-- Validate an existing site every tick before acting.
-- On path failure, retry once; then temporarily blacklist the site/target and choose another.
-- If no valid site remains, stop working and return toward the patrol anchor. Do not wander or force-break blocks.
+## Existing companion assignments
 
-Jobs must own `MOVE` only while active. Guard/patrol return goals must reserve `MOVE` too and must not compete with an active job.
+| Existing class | Availability | Iron’s Spellbooks assignment | Ars Nouveau assignment | Intended role |
+|---|---|---|---|---|
+| Fire Mage | Iron’s OR Ars | Firebolt → Flaming Barrage or Blaze Storm; Shield/Evasion utility | Projectile + Ignite/Flare; Rune + Ignite; self Bubble | Ranged fire artillery |
+| Lightning Mage | Iron’s OR Ars | Lightning Bolt → Chain Lightning or Ball Lightning; Charge utility | Projectile + Lightning; Projectile + Lightning + Split; Gust/Launch control | Precise anti-group striker |
+| Necromancer | Iron’s OR Ars | Wither Skull → Raise Dead; Ray of Siphoning utility | Projectile + Wither; Summon Undead; Rune + Fangs | Attrition and capped temporary undead |
+| Cleric | Iron’s OR Ars | Heal/Healing Circle → Blessing of Life or Fortify; Cleanse | Heal; Dispel; Bubble; Slowfall | Primary companion healer and protector |
 
-## Job activation and tools
+### Fire Mage
 
-- Assigning any non-`NONE` job must set a patrol anchor at the companion’s current position and enter patrol/work mode.
-- Selecting `NONE` restores normal companion behavior.
-- Show or retain a clear UI indication that the job is working from its patrol anchor.
-- When the job changes during patrol, equip its required tool immediately.
-- Every job action must verify the correct tool is actually in the main hand; inventory presence alone is insufficient.
-- Preserve and restore the previous combat weapon when work mode ends.
+Keep it focused: direct fire damage, not a general Mage.
 
-## Miner
+- Iron’s basic: `Firebolt`.
+- Iron’s signature: `Flaming Barrage` for a precision burst, or `Blaze Storm` only when hostile targets are safely separated from allies.
+- Ars basic: `Projectile + Ignite` or `Projectile + Flare`.
+- Ars signature: `Rune + Ignite` or `Projectile + Ignite + Amplify`.
+- Utility: Iron’s `Evasion` or Ars `Bubble` self-shield.
 
-Replace the current forced-dig recovery with safe step planning.
+Exclude `Magma Bomb`, `Wall of Fire`, `Raise Hell`, and any spell that can alter terrain or leave an uncontrolled fire hazard.
 
-- Remove `forceBreakImmediate` and any “mine the current block because we are stuck” behavior.
-- Mine only ore targets inside the existing 3D patrol cube.
-- Build the route one walkable step at a time:
-  - No vertical shafts.
-  - Intended feet-height changes are at most one block.
-  - Every step has a safe floor and two-block headroom.
-  - Before descending, the completed route back toward the patrol anchor remains traversable.
-  - Check the destination and nearby cells for lava, fire, magma, unsafe fluids, and dangerous drops before breaking.
-- Revalidate the return route after each completed step. If it fails, stop further excavation and return; blacklist that ore.
-- Mine only the planned blocks for the next step. Never break blocks outside the current plan to unblock navigation.
-- If an ore vanishes externally, remove it from the plan without counting it as mined.
-- When no valid ore exists, report/idle at the anchor. Do not tunnel toward arbitrary filler.
-- Replace full-cube repeated rescans with a bounded scan budget per tick or an equivalent resumable scan. Multiple miners must not cause server hitches.
+### Lightning Mage
 
-## Fisher
+Retain the existing identity: quick single-target strikes and a limited chain burst.
 
-Make fishing use a valid shoreline and an actual fishing cycle.
+- Iron’s basic: `Lightning Bolt`.
+- Iron’s signature: `Chain Lightning`; use `Ball Lightning` only if its behaviour can stay contained and ally-safe.
+- Ars basic: `Projectile + Lightning`.
+- Ars signature: `Projectile + Lightning + Split`, or a constrained `Rune + Lightning`.
+- Utility: Iron’s `Charge`, or Ars `Gust`/`Launch` to create space.
 
-- Find and store `(waterPos, standPos)` pairs.
-- Require a reachable dry shoreline stand with headroom, solid floor, line of sight, and a real fishable water area.
-- Reject unreachable or invalid shores temporarily instead of repeatedly selecting them.
-- Face the selected water before casting.
-- Extend `CompanionFishingHook` with a small server-side bite/ready state.
-- Reel only when the bobber bites; clear and retry when the hook lands outside valid water, becomes invalid, or times out.
-- Keep existing loot-table use, inventory insertion, rendering, and rod durability behavior.
+### Necromancer
 
-## Lumberjack
+Keep the current temporary-summon rule. It is the right distinction from a permanent pet class.
 
-- Select a reachable stand for each log, with full 3D interaction-range and line-of-sight checks.
-- Never chop logs merely because they are horizontally nearby.
-- Retain the bounded connected-tree queue, lower-log priority, and sapling replanting.
-- Limit any unstuck clearing to explicitly safe foliage relevant to the selected tree. Do not clear generic terrain.
-- Revalidate every next log; abandon/blacklist an unreachable tree rather than hacking through terrain.
+- Iron’s basic: `Wither Skull`.
+- Iron’s signature: `Raise Dead`.
+- Iron’s utility: `Ray of Siphoning`; this is self-sustain, not party healing.
+- Ars basic: `Projectile + Wither`.
+- Ars signature: `Summon Undead`.
+- Ars control: `Rune + Fangs` as a short ground-control cast.
 
-## Hunter and danger response
+Do not use persistent undead, player resurrection, or summon counts that can grow without a hard cap.
 
-- Select the nearest reachable valid hunt target within the patrol boundary, not the first entity returned by a world query.
-- Clear a hunter target when it exits the patrol area, becomes unreachable, or is invalid; return to the anchor.
-- Safety and owner-defense targets may interrupt work. After combat, resume the saved job site only if it is still valid.
-- Separate the player-controlled Alert setting from temporary creeper avoidance. Creeper escape must not toggle the player’s Alert preference.
+### Cleric
 
-## Chef and courier
+Cleric remains the only reliable companion healer.
 
-- Chef must select a reachable, safe heat-source stand.
-- Do not directly convert food unless the companion is at a valid heat source and the action respects the intended furnace/campfire contract.
-- Courier must use a reachable chest standing position.
-- Remove terrain destruction from courier recovery. If the chest is unreachable, report the problem and retry later.
-- Courier continuation must stop for combat, invalid chest state, changed job/stance, or unloaded destination.
+- Iron’s basic: `Heal`.
+- Iron’s signature: `Healing Circle`, `Blessing of Life`, or `Fortify`.
+- Iron’s utility: `Cleanse`.
+- Ars basic: `Heal`.
+- Ars signature: `Bubble` on an endangered ally.
+- Ars utility: `Dispel` or `Slowfall`.
 
-## Block actions and compatibility
+Other magical companions may shield, conceal, or protect themselves, but should not receive Cleric-grade recurring healing.
 
-Centralize worker block breaking/placement behind one server-side helper.
+## New companion classes
 
-It must:
+| Class | Availability | Basic cast | Signature cast | Utility | Identity |
+|---|---|---|---|---|---|
+| Wizard | Iron’s OR Ars | Magic Missile / Projectile + Harm | Summon Swords / prepared Rune field | Counterspell / Dispel | Deliberate arcane preparation |
+| Sorcerer | Iron’s OR Ars | Firebolt, Icicle, Lightning Bolt / elemental Projectile | Chain Lightning, Blizzard, Blaze Storm / amplified elemental spell | Evasion / Bubble | Innate elemental force |
+| Warlock | Iron’s OR Ars | Eldritch Blast / Projectile + Wither | Ray of Siphoning or Abyssal Shroud / Hex | Blood Step or self-shield | Void and life-drain pressure |
+| Witch | Iron’s OR Ars | Acid Orb or Poison Splash / Hex or Snare | Root or Blight / Rune + Snare | Oakskin / Grow or self-support | Nature, poison, and debuffs |
+| Hag | Iron’s OR Ars | Fangs, Slow / Hex, Fangs, Decoy | Sculk Tentacles or Scapegoat / Linger + Hex zone | Invisibility or Shield | Curse, misdirection, and area denial |
+| Cryomancer | Iron’s OR Ars | Icicle or Ray of Frost / Freeze | Frostwave, Ice Tomb, Blizzard / Rune + Freeze | Frost Step / Slowfall | Dedicated ice control |
+| Druid | Iron’s OR Ars | Firefly Swarm / Grow or Summon Wolves | Root or Oakskin / Summon Wolves + augment | Haste or self-heal-lite | Ally-preserving nature magic |
+| Illusionist | Iron’s OR Ars | Magic Arrow or Slow / Decoy or Invisibility | Arcane Shackle / Linger + Decoy | Invisibility / Blink only if destination-safe | Deception and disruption |
+| Battlemage | Iron’s OR Ars | Spectral Hammer or Echoing Strikes / Touch + Harm | Shield or Fang Ward / self Bubble + offensive touch spell | Haste | Armoured close-range caster |
 
-- Validate the approved target and stand before changing the world.
-- Respect block-break cancellation/protection integration.
-- Use the held tool for harvest, drops, and durability.
-- Preserve modded block/drop behavior where possible.
-- Never directly `setBlock(AIR)` from a job goal.
+## New-class spell detail
 
-## Validation
+### Wizard — arcane control
 
-Add focused automated coverage for the extracted safety predicates and route decisions.
+- Iron’s: `Magic Missile`, `Magic Arrow`, `Arcane Shackle`, `Summon Swords`, `Counterspell`, `Gravity Fissure`.
+- Ars: `Projectile + Harm`, `Rune`, `Delay`, `Wall`, `Dispel`, `Gravity`, `Burst`.
+- Do not give the Wizard `Portal`, `Recall`, `Pocket Dimension`, or unrestricted `Blink` until companion-safe travel rules exist.
 
-Manually verify in a dev world:
+### Sorcerer — elemental specialization
 
-1. Fisher chooses a reachable shore, casts toward water, waits for a bite, and abandons an unreachable pond.
-2. Miner reaches ore below via walkable steps and can return to the patrol anchor.
-3. Miner stops at lava, unsafe drops, blocked routes, and cube boundaries without forced excavation.
-4. Lumberjack does not break high or unreachable logs and replants when supplied a sapling.
-5. Hunter does not chase targets outside its patrol boundary.
-6. Courier never destroys terrain when a chest is inaccessible.
-7. Manual Alert remains enabled/disabled after a creeper avoidance event.
-8. Several miners with maximum configured radius do not cause noticeable server tick spikes.
+A Sorcerer should select one element at spawn or configuration time; do not combine fire, lightning, ice, and broad arcane control on one companion.
 
-## Repository requirements
+- Fire: `Firebolt` → `Flaming Barrage` or Ars `Projectile + Ignite`.
+- Lightning: `Lightning Bolt` → `Chain Lightning` or Ars `Projectile + Lightning`.
+- Ice: `Icicle`/`Ray of Frost` → `Frostwave` or Ars `Projectile + Freeze`.
 
-- Edit only allowed directories.
-- Bump `gradle.properties` version.
-- Add concise comments for non-obvious safety/recovery logic.
-- Update `README.md` with the shipped job behavior and limitations.
-- Add entries to `TRACELOG.md` and `SUGGESTIONS.md`.
-- Run `.\gradlew.bat build` successfully before committing.
-- Review the final diff for unrelated changes.
+This makes the existing Fire Mage and Lightning Mage natural Sorcerer specializations without forcing a rename.
+
+### Warlock — blood and void
+
+- Iron’s: `Eldritch Blast`, `Abyssal Shroud`, `Ray of Siphoning`, `Blood Needles`, `Blood Step`, `Shadow Slash`.
+- Ars: `Projectile + Wither`, `Hex`, `Snare`, `Fangs`, and a limited `Summon Undead`.
+- The Warlock’s sustain is self-only. It should never compete with the Cleric for group-healer identity.
+
+Exclude `Sacrifice`, `Heartstop`, `Pocket Dimension`, and other effects whose player-facing cost or control contract does not translate safely to autonomous companions.
+
+### Witch — poison and natural control
+
+- Iron’s: `Acid Orb`, `Poison Splash`, `Poison Breath`, `Blight`, `Root`, `Oakskin`, `Firefly Swarm`.
+- Ars: `Hex`, `Snare`, `Grow`, `Summon Wolves`, `Conjure Water`, and `Rune` for stationary traps.
+- The Witch’s support is mitigation and preparation: Oakskin, roots, soft crowd control—not large heals.
+
+### Hag — curse and deception
+
+The Hag should not simply be another poison Witch.
+
+- Iron’s: `Fang Strike`, `Fang Swirl`, `Slow`, `Scapegoat`, `Sculk Tentacles`, `Invisibility`.
+- Ars: `Hex`, `Fangs`, `Decoy`, `Linger`, `Invisibility`, `Rune`, `Snare`.
+- Signature pattern: a short-lived hostile-only cursed zone such as `Rune + Hex` or `Linger + Snare`; it must expire and respect ally checks.
+
+### Cryomancer — a worthwhile focused specialist
+
+- Iron’s: `Icicle`, `Ray of Frost`, `Frostwave`, `Ice Tomb`, `Blizzard`.
+- Ars: `Projectile + Freeze`, `Rune + Freeze`, `Cold Snap`.
+- Avoid permanent ice placement and terrain obstruction. The class controls enemies, not the map.
+
+### Druid — nature support without replacing Cleric
+
+- Iron’s: `Root`, `Oakskin`, `Firefly Swarm`, `Haste`, and a constrained `Summon Polar Bear`.
+- Ars: `Grow`, `Summon Wolves`, `Conjure Water`, `Slowfall`.
+- Its summon should be temporary and capped; its direct healing remains intentionally weaker than Cleric healing.
+
+## Required roster
+
+Implement every listed class, with a distinct role:
+
+1. Existing Fire Mage, Lightning Mage, Necromancer, and Cleric—with conditional Iron’s/Ars kits.
+2. Wizard: arcane control.
+3. Sorcerer: elemental specialization.
+4. Warlock: void/blood self-sustain.
+5. Witch: poison and roots.
+6. Hag: curses and deception.
+7. Cryomancer: focused ice control.
+8. Druid: nature support.
+9. Illusionist: deception and disruption.
+10. Battlemage: armoured close-range casting.
+
+Distinct roles remain required: do not collapse Mage, Wizard, Sorcerer, and Warlock into the same projectile with different names.
+
+The source basis for this document is Iron’s registered spell catalogue and Ars Nouveau’s current glyph catalogue, plus the existing companion caster implementation: [Iron’s spell registry](/R:/Users/Zach/Documents/GitHub/ModernCompanions/irons-spells-n-spellbooks-1.21/src/main/java/io/redspace/ironsspellbooks/api/registry/SpellRegistry.java), [Ars glyphs](/R:/Users/Zach/Documents/GitHub/ModernCompanions/Ars-Nouveau-main/src/main/java/com/hollingsworth/arsnouveau/common/lib/GlyphLib.java), and [current shared caster AI](/R:/Users/Zach/Documents/GitHub/ModernCompanions/src/main/java/com/majorbonghits/moderncompanions/entity/magic/AbstractMageCompanion.java).
+
+
+## World discovery, summon items, and companion parity
+
+Every magic companion—existing or new—must be a full Modern Companions class, not a combat-only entity.
+
+When its Iron’s/Ars availability gate passes, each class must:
+
+- Be registered as a companion entity with normal attributes, renderer, localization, inventory, taming, gear, leveling, traits, commands, safety rules, jobs, and UI behavior.
+- Receive its own summon item, matching the current `DeferredSpawnEggItem`/“Summon Gem” pattern.
+- Be added to the appropriate structure spawn pool alongside existing companions, so players can discover it naturally.
+- Have the same spawn-duplication protection as every existing structure companion.
+- Be omitted entirely from the entity list, spawn pool, summon items, natural discovery, and UI when neither required mod is present.
+
+If both mods are loaded, there is still only one entity type and one summon item per class; it receives the combined approved spell options. Do not create an Iron’s Wizard and an Ars Wizard as separate companions.
+
+### Conditional worldgen pools
+
+| Structure pool | Existing companions | Add when eligible |
+|---|---|---|
+| `tower1` | Fire Mage, Lightning Mage | Wizard, Sorcerer, Cryomancer, Illusionist, Battlemage |
+| `tower2` | Necromancer | Warlock, Hag |
+| `alchemist_house` | Alchemist | Witch, Druid |
+| `cleric_house`, `church` | Cleric | Keep Cleric gated by Iron’s or Ars; do not add a second healer class initially |
+
+Each entry is individually filtered by mod presence before random selection. For example:
+
+- If only Ars Nouveau is loaded, Ars-capable Wizard/Sorcerer/Witch/Hag/etc. remain valid choices.
+- If only Iron’s is loaded, Iron’s-capable versions remain valid choices.
+- If neither is loaded, magic entries are removed from their structure pools; a tower must not attempt to spawn a missing magic companion or mark that structure as serviced.
+- Existing Fire Mage, Lightning Mage, Necromancer, and Cleric follow the same rule.
+
+### Required summon items
+
+Every added class receives a counterpart to the existing summon gems:
+
+- Wizard Summon Gem
+- Sorcerer Summon Gem
+- Warlock Summon Gem
+- Witch Summon Gem
+- Hag Summon Gem
+- Cryomancer Summon Gem
+- Druid Summon Gem
+- Illusionist Summon Gem
+- Battlemage Summon Gem
+
+The summon item is only registered and available when that companion’s compatibility gate passes. It uses the same creative-tab placement, localization, spawn behavior, and visual presentation as the current Fire Mage, Lightning Mage, Necromancer, and Cleric summon gems.
+
+You can reuse existing gem assets.
+
+### Class parity requirement
+
+A discovered or summoned magical companion must behave identically to other companion classes outside its spell kit:
+
+- Can be tamed, named, equipped, healed, revived, stored, moved, commanded, and managed through the existing UI.
+- Uses the existing inventory, armor, weapon preference, attribute progression, morale/trait system, owner protection, friendly-fire controls, and job system.
+- Participates in structure-spawn tracking exactly once per generated structure.
+- Uses the same owner/allied safety rules as existing companions before any spell is cast.
+
+This makes the new classes discoverable members of the normal companion roster, rather than optional creatures that only exist through commands or test spawn items.
+
+The current placement system supports this directly: `tower1` already selects Fire Mage or Lightning Mage, `tower2` selects Necromancer, and `alchemist_house`/church-related pools already establish the appropriate discovery patterns. [Structure companion spawning](/R:/Users/Zach/Documents/GitHub/ModernCompanions/src/main/java/com/majorbonghits/moderncompanions/world/StructureCompanionSpawner.java), [existing summon gems](/R:/Users/Zach/Documents/GitHub/ModernCompanions/src/main/java/com/majorbonghits/moderncompanions/core/ModItems.java), and [entity registrations](/R:/Users/Zach/Documents/GitHub/ModernCompanions/src/main/java/com/majorbonghits/moderncompanions/core/ModEntityTypes.java) are the parity model. No files were changed.

@@ -23,13 +23,26 @@ public final class CompanionInventoryCapabilities {
         register(event, ModEntityTypes.VANGUARD.get());
         register(event, ModEntityTypes.BERSERKER.get());
         register(event, ModEntityTypes.BEASTMASTER.get());
-        register(event, ModEntityTypes.CLERIC.get());
+        register(event, ModEntityTypes.CLERIC);
         register(event, ModEntityTypes.ALCHEMIST.get());
         register(event, ModEntityTypes.SCOUT.get());
         register(event, ModEntityTypes.STORMCALLER.get());
-        register(event, ModEntityTypes.FIRE_MAGE.get());
-        register(event, ModEntityTypes.LIGHTNING_MAGE.get());
-        register(event, ModEntityTypes.NECROMANCER.get());
+        register(event, ModEntityTypes.FIRE_MAGE);
+        register(event, ModEntityTypes.LIGHTNING_MAGE);
+        register(event, ModEntityTypes.NECROMANCER);
+        register(event, ModEntityTypes.WIZARD);
+        register(event, ModEntityTypes.SORCERER);
+        register(event, ModEntityTypes.WARLOCK);
+        register(event, ModEntityTypes.WITCH);
+        register(event, ModEntityTypes.HAG);
+        register(event, ModEntityTypes.CRYOMANCER);
+        register(event, ModEntityTypes.DRUID);
+        register(event, ModEntityTypes.ILLUSIONIST);
+        register(event, ModEntityTypes.BATTLEMAGE);
+    }
+
+    private static <T extends AbstractHumanCompanionEntity> void register(RegisterCapabilitiesEvent event, net.neoforged.neoforge.registries.DeferredHolder<EntityType<?>, EntityType<T>> type) {
+        if (type != null) register(event, type.get());
     }
 
     private static <T extends AbstractHumanCompanionEntity> void register(RegisterCapabilitiesEvent event, EntityType<T> type) {

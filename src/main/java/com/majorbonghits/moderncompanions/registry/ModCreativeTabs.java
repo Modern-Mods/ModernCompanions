@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.enchantment.EnchantmentInstance;
 import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.core.component.DataComponents;
@@ -39,13 +40,22 @@ public final class ModCreativeTabs {
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.VANGUARD_SPAWN_EGG.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.BERSERKER_SPAWN_EGG.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.BEASTMASTER_SPAWN_EGG.get());
-                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.CLERIC_SPAWN_EGG.get());
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.CLERIC_SPAWN_EGG);
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.ALCHEMIST_SPAWN_EGG.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.SCOUT_SPAWN_EGG.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.STORMCALLER_SPAWN_EGG.get());
-                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.FIRE_MAGE_SPAWN_EGG.get());
-                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.LIGHTNING_MAGE_SPAWN_EGG.get());
-                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.NECROMANCER_SPAWN_EGG.get());
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.FIRE_MAGE_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.LIGHTNING_MAGE_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.NECROMANCER_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.WIZARD_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.SORCERER_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.WARLOCK_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.WITCH_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.HAG_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.CRYOMANCER_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.DRUID_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.ILLUSIONIST_SPAWN_EGG);
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.BATTLEMAGE_SPAWN_EGG);
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.RESURRECTION_SCROLL.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.COMPANION_MOVER.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.ASSIGNMENT_WAND.get());
@@ -67,6 +77,10 @@ public final class ModCreativeTabs {
 
     public static void register(IEventBus bus) {
         TABS.register(bus);
+    }
+
+    private static void magic(CreativeModeTab.Output output, net.neoforged.neoforge.registries.DeferredHolder<Item, Item> item) {
+        if (item != null) output.accept(item.get());
     }
 
     private static void addEnchantBooks(CreativeModeTab.ItemDisplayParameters params, CreativeModeTab.Output output,

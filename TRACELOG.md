@@ -2077,3 +2077,51 @@
 - Steps: Deleted the PointBlank compatibility bridge and removed its firearm detection, attack routing, safety mapping, and current documentation. Registered every companion entity's existing `SimpleContainer` as NeoForge's entity item-handler capability, which TacZ queries for reload checks and subsequently consumes during its native reload.
 - Rationale: Exposing the real inventory fixes the shared root cause without copying stacks or emulating a player; TacZ keeps ownership of compatible-ammo selection, reload timing, and consumption.
 - Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21 (1.2.33). A TacZ dev-world reload smoke test remains required.
+
+## 2026-07-29 (conditional magic companions)
+- Prompt/task: Implement `TASK.md` conditional Iron's Spellbooks and Ars Nouveau companion roster.
+- Steps: Replaced custom caster attacks with an optional reflection bridge to each loaded upstream API; added the nine requested classes, gated all magic entities/gems/rendering/attributes/Curios/capabilities, and extended structure pools without marking an ineligible magic structure as serviced. Removed now-unused custom magic projectiles and minion entity. Added optional mod metadata, names, and version 1.2.34.
+- Rationale: A vanilla fallback would violate the upstream-spell requirement. Registration-time gating keeps absent magic companions out of registries and discovery while shared companion inheritance preserves inventory, taming, UI, safety, traits, jobs, and gear behavior.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21; includes `test` and `workerSafetyCheck`.
+
+## 2026-07-29 (conditional magic world-load repair)
+- Prompt/task: Prism world would not load after installing Modern Companions 1.2.34.
+- Steps: Read the supplied Prism log. Removed the four static structure spawn entries that named Cleric, Fire Mage, Lightning Mage, and Necromancer after those entities had been gated out of a no-magic-mod registry. Restored required empty `spawn_overrides` maps after Prism's v1.2.35 log showed that Minecraft's structure codec requires the key. The existing `StructureCompanionSpawner` remains the only discovery route and already filters unavailable choices. Bumped version to 1.2.36.
+- Rationale: Minecraft parses structure JSON before a world opens, so a missing optional entity type is fatal even when runtime spawning would skip it. Empty required fields must remain present.
+- Build/Test: All worldgen structure JSON parsed through PowerShell `ConvertFrom-Json`; `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Local `runServer` could not reach registry loading because the workspace NeoForge 21.1.1 is below Curios' required 21.1.60; Prism uses NeoForge 21.1.243.
+
+## 2026-07-29 (conditional magic inventory repair)
+- Prompt/task: Prism world loaded with 1.2.36, then crashed when inventory/JEI built spawn-egg contents; 1.2.38 then blocked world load.
+- Steps: Guarded vanilla Spawn Eggs tab's optional Cleric gem. Removed all gated magic IDs from Curios' static entity list and its unsupported entity-tag syntax. Bumped version to 1.2.39.
+- Rationale: Installed Curios 9.5.1 parses its entity list only as direct resource IDs, so both absent optional IDs and `#` tag syntax are fatal. Static data now names only always-registered companions.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism no-magic inventory/JEI smoke remains required.
+
+## 2026-07-29 (magic dependency version metadata repair)
+- Prompt/task: Prism rejected installed Iron's Spellbooks 1.21.1-3.16.2 as unsupported.
+- Steps: Matched optional Iron's and Ars Nouveau dependency floors to their full 1.21.1 version strings; bumped version to 1.2.40.
+- Rationale: NeoForge compares the mod's full declared version, not only its trailing library version, so the old floors excluded the exact installed builds.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism dependency-resolution smoke remains required.
+
+## 2026-07-29 (magic target discipline)
+- Prompt/task: New magic companions spun while tracking and fired pink projectiles away from enemies.
+- Steps: Fixed shared sight-counter ordering, required five continuous visible ticks before any cast, removed competing per-tick yaw forcing, and aligned caster yaw/pitch to the target only immediately before each offensive spell. Bumped version to 1.2.41.
+- Rationale: The old sight counter reset after incrementing, so it never established stable sight; competing rotation systems also let upstream projectile spells read a stale look vector.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Installed Iron's/Ars direct-target smoke remains required.
+
+## 2026-07-29 (magic ally safety and Intelligence damage)
+- Prompt/task: Stop new-class spells and summons from harming owners, same-owner companions, or allied summons; retain PvP/villager toggles; make Intelligence increase spell damage.
+- Steps: Centralized attacker resolution through projectile, tame-owner, and optional upstream `getSummoner()` ownership; used it for both incoming-damage cancellation and target clearing. Made own-owner and same-owner companions permanent allies, while player/villager and other-player companion harm follows the existing per-companion toggles. Scaled mage-caused final spell damage by the existing Intelligence multiplier. Bumped version to 1.2.42.
+- Rationale: Iron's summoned swords are upstream living entities, so direct-caster-only checks missed their target acquisition and damage. One owner-chain guard covers swords, other upstream summons, projectiles, and future compatible summon APIs without linking the optional mod.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism smoke remains required for swords, both toggle states, and Intelligence damage comparison.
+
+## 2026-07-29 (Wizard sword-batch cap)
+- Prompt/task: Wizard must not summon another sword batch while any sword from its first batch remains alive.
+- Steps: Added an exact loaded-entity check for Iron's `summoned_sword`, `summoned_claymore`, and `summoned_rapier` whose upstream summoner is that Wizard. The heavy cast falls back to the basic spell until none remain. Bumped version to 1.2.43.
+- Rationale: Iron's intentionally returns no-op recast data for mob casters, so its player-only recast lifecycle cannot cap autonomous Wizards. Checking live owned weapons gives one active batch without a timer, stale saved flag, or cross-Wizard interference.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism smoke must confirm exactly three weapons at once and a new batch only after all three die/despawn.
+
+## 2026-07-29 (new magic summon-gem textures)
+- Prompt/task: Fix broken new-class summon-gem textures by reusing fitting existing gem assets.
+- Steps: Added the nine missing item models: Wizard=Cleric gem, Sorcerer=Fire Mage gem, Warlock=Axeguard sigil, Witch=Vanguard emerald, Hag=Berserker ruby, Cryomancer=Stormcaller sapphire, Druid=Knight rune, Illusionist=Necromancer crystal, and Battlemage=Arbalist jewel. Bumped version to 1.2.44.
+- Rationale: The new spawn eggs were registered but had no model JSON, so Minecraft rendered missing-texture squares. Reusing existing packaged assets repairs every item without adding new art or texture files.
+- Build/Test: All nine model JSON files parsed, `ModernCompanions-1.2.44.jar` contains all nine paths, and `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`.

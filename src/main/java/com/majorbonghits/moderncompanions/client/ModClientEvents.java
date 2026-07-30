@@ -31,17 +31,26 @@ public final class ModClientEvents {
         event.registerEntityRenderer(ModEntityTypes.VANGUARD.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.BERSERKER.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.BEASTMASTER.get(), CompanionRenderer::new);
-        event.registerEntityRenderer(ModEntityTypes.CLERIC.get(), CompanionRenderer::new);
+        magic(event, ModEntityTypes.CLERIC);
         event.registerEntityRenderer(ModEntityTypes.ALCHEMIST.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.SCOUT.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.STORMCALLER.get(), CompanionRenderer::new);
-        event.registerEntityRenderer(ModEntityTypes.FIRE_MAGE.get(), CompanionRenderer::new);
-        event.registerEntityRenderer(ModEntityTypes.LIGHTNING_MAGE.get(), CompanionRenderer::new);
-        event.registerEntityRenderer(ModEntityTypes.NECROMANCER.get(), CompanionRenderer::new);
-        event.registerEntityRenderer(ModEntityTypes.SUMMONED_WITHER_SKELETON.get(), net.minecraft.client.renderer.entity.WitherSkeletonRenderer::new);
-        event.registerEntityRenderer(ModEntityTypes.FIREBOLT.get(), ctx -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(ctx, 0.75F, true));
-        event.registerEntityRenderer(ModEntityTypes.FIREBURST.get(), ctx -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(ctx, 1.5F, true));
-        event.registerEntityRenderer(ModEntityTypes.SOFT_WITHER_SKULL.get(), net.minecraft.client.renderer.entity.WitherSkullRenderer::new);
+        magic(event, ModEntityTypes.FIRE_MAGE);
+        magic(event, ModEntityTypes.LIGHTNING_MAGE);
+        magic(event, ModEntityTypes.NECROMANCER);
+        magic(event, ModEntityTypes.WIZARD);
+        magic(event, ModEntityTypes.SORCERER);
+        magic(event, ModEntityTypes.WARLOCK);
+        magic(event, ModEntityTypes.WITCH);
+        magic(event, ModEntityTypes.HAG);
+        magic(event, ModEntityTypes.CRYOMANCER);
+        magic(event, ModEntityTypes.DRUID);
+        magic(event, ModEntityTypes.ILLUSIONIST);
+        magic(event, ModEntityTypes.BATTLEMAGE);
         event.registerEntityRenderer(ModEntityTypes.COMPANION_FISHING_HOOK.get(), CompanionFishingHookRenderer::new);
+    }
+
+    private static <T extends com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity> void magic(EntityRenderersEvent.RegisterRenderers event, net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.entity.EntityType<?>, net.minecraft.world.entity.EntityType<T>> type) {
+        if (type != null) event.registerEntityRenderer(type.get(), CompanionRenderer::new);
     }
 }

@@ -63,11 +63,10 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
         double distSqr = this.caster.distanceToSqr(target);
         boolean hasLineOfSight = this.caster.getSensing().hasLineOfSight(target);
         boolean seenLastTick = this.seeTime > 0;
-        this.seeTime = hasLineOfSight ? this.seeTime + 1 : this.seeTime - 1;
-
         if (hasLineOfSight != seenLastTick) {
             this.seeTime = 0;
         }
+        this.seeTime = hasLineOfSight ? this.seeTime + 1 : this.seeTime - 1;
 
         if (distSqr > (double) this.attackRadiusSqr || this.seeTime < 5) {
             this.caster.getNavigation().moveTo(target, this.speedModifier);
@@ -97,13 +96,12 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
         float normalizedDistance = distance / Mth.sqrt(this.attackRadiusSqr);
         float clamped = Mth.clamp(normalizedDistance, 0.1F, 1.0F);
 
-        // Force facing the target to avoid spinning while casting
+        // Look control owns tracking; direct spell aim happens only at cast time.
         this.caster.getLookControl().setLookAt(target, 45.0F, 45.0F);
-        this.caster.setYHeadRot(this.caster.getYRot());
 
         if (--this.attackTime <= 0) {
-            if (!hasLineOfSight) {
-                this.attackTime = this.baseLightInterval;
+            if (!hasLineOfSight || this.seeTime < 5) {
+                this.attackTime = 1;
                 return;
             }
             boolean heavy = this.caster.tryHeavyAttack(target, clamped);

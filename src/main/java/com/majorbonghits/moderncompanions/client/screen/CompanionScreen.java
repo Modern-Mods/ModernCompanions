@@ -1,7 +1,9 @@
 package com.majorbonghits.moderncompanions.client.screen;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
+import com.majorbonghits.moderncompanions.client.renderer.CompanionRenderer;
 import com.majorbonghits.moderncompanions.client.screen.job.CompanionJobScreen;
+import com.majorbonghits.moderncompanions.compat.sophisticatedbackpacks.SophisticatedBackpackCompat;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.network.CompanionActionPayload;
@@ -14,6 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -30,9 +33,12 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             ModernCompanions.MOD_ID, "textures/gui/newinventory.png");
     private static final ResourceLocation BUTTONS = ResourceLocation.fromNamespaceAndPath(
             ModernCompanions.MOD_ID, "textures/gui/newbuttons.png");
-    private static final int BG_WIDTH = 355;
+    private static final ResourceLocation SMALL_BUTTONS = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/newbuttons_small.png");
+    private static final int BG_WIDTH = 458;
     private static final int BG_HEIGHT = 249;
-    private static final int BUTTON_X = 181;
+    private static final int CONTENT_X_OFFSET = 103;
+    private static final int BUTTON_X = CONTENT_X_OFFSET + 181;
     private static final int BUTTON_Y = 17;
     private static final int TEXT_COLOR = 0xFF000000;
 
@@ -75,25 +81,26 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
                 ModernCompanions.MOD_ID, "textures/gui/radiusbutton.png");
         // The 16px sprites are centered on the former 12px control row.
         int radiusY = topPos + 154;
-        addRenderableWidget(new RadiusButton(leftPos + 182, radiusY, 16, radiusTex, () -> adjustRadius(-2)));
-        addRenderableWidget(new RadiusButton(leftPos + 205, radiusY, 0, radiusTex, () -> adjustRadius(2)));
+        addRenderableWidget(new RadiusButton(leftPos + CONTENT_X_OFFSET + 182, radiusY, 16, radiusTex, () -> adjustRadius(-2)));
+        addRenderableWidget(new RadiusButton(leftPos + CONTENT_X_OFFSET + 205, radiusY, 0, radiusTex, () -> adjustRadius(2)));
 
         addRenderableWidget(new TexturedButton("Jobs", buttonX, topPos + 174, () -> false, this::openJobInfo));
         addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.journal"),
                 buttonX, topPos + 192, () -> false, this::openJournal));
-        if (ModList.get().isLoaded("sophisticatedbackpacks") && ModList.get().isLoaded("curios")) {
-            addRenderableWidget(new TexturedButton("Pack", buttonX, topPos + 210, () -> false, this::openBackpack));
-        }
         if (ModList.get().isLoaded("curios")) {
-            addRenderableWidget(new TexturedButton("Curios", buttonX, topPos + 228, () -> false, this::openCurios));
+            addRenderableWidget(new TexturedButton("Curios", buttonX, topPos + 210, () -> false, this::openCurios));
         }
-        addRenderableWidget(new ModeButton(leftPos + 267, topPos + 232, Component.literal("V"),
+        if (ModList.get().isLoaded("sophisticatedbackpacks") && ModList.get().isLoaded("curios")
+                && safeCompanion().map(SophisticatedBackpackCompat::hasBackpack).orElse(false)) {
+            addRenderableWidget(new TexturedButton("Pack", buttonX, topPos + 228, () -> false, this::openBackpack));
+        }
+        addRenderableWidget(new ModeButton(leftPos + 82, topPos + 147,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmVillagers).orElse(false),
                 () -> sendToggle("villagers")));
-        addRenderableWidget(new ModeButton(leftPos + 284, topPos + 232, Component.literal("P"),
+        addRenderableWidget(new ModeButton(leftPos + 82, topPos + 175,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmPlayers).orElse(false),
                 () -> sendToggle("players")));
-        addRenderableWidget(new TexturedButton("Release", leftPos + 301, topPos + 232, () -> false, () -> {
+        addRenderableWidget(new TexturedButton("Release", leftPos + CONTENT_X_OFFSET + 301, topPos + 232, () -> false, () -> {
             sendAction("release");
             onClose();
         }, true));
@@ -102,12 +109,22 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
         gfx.blit(BG, leftPos, topPos, 0, 0, imageWidth, imageHeight, BG_WIDTH, BG_HEIGHT);
+        safeCompanion().ifPresent(companion -> {
+            CompanionRenderer.setPreviewNameplateSuppressed(true);
+            try {
+                InventoryScreen.renderEntityInInventoryFollowsMouse(gfx,
+                        leftPos + 27, topPos + 40, leftPos + 76, topPos + 107, 30, 0.0625F,
+                        mouseX, mouseY, companion);
+            } finally {
+                CompanionRenderer.setPreviewNameplateSuppressed(false);
+            }
+        });
     }
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
         safeCompanion().ifPresent(companion -> {
-            drawCenteredText(gfx, companion.getDisplayName(), 296, 13);
+            drawCenteredText(gfx, companion.getDisplayName(), CONTENT_X_OFFSET + 296, 13);
             renderCompanionInfo(gfx, companion);
             renderAttributes(gfx, companion);
             renderWantedFood(gfx, companion);
@@ -121,7 +138,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     private void renderCompanionInfo(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
-        int x = 238;
+        int x = CONTENT_X_OFFSET + 238;
         gfx.drawString(font, companion.getClassDisplayName(), x, 55, TEXT_COLOR, false);
         gfx.drawString(font, "Health: %.1f / %d".formatted(companion.getHealth(), (int) companion.getMaxHealth()),
                 x, 65, TEXT_COLOR, false);
@@ -139,7 +156,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     private void renderAttributes(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
-        int x = 246;
+        int x = CONTENT_X_OFFSET + 246;
         drawStatLine(gfx, x, 138, "Strength", companion.getStrength(), isSpecialist(companion, 0));
         drawStatLine(gfx, x, 148, "Dexterity", companion.getDexterity(), isSpecialist(companion, 1));
         drawStatLine(gfx, x, 158, "Intelligence", companion.getIntelligence(), isSpecialist(companion, 2));
@@ -162,7 +179,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         }
         int y = 204;
         for (FormattedCharSequence line : font.split(Component.literal(food), 106)) {
-            gfx.drawString(font, line, 247, y, TEXT_COLOR, false);
+            gfx.drawString(font, line, CONTENT_X_OFFSET + 247, y, TEXT_COLOR, false);
             y += 10;
             if (y > 224) {
                 break;
@@ -328,25 +345,21 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         }
     }
 
-    /** Safety switches use explicit colors instead of the generic on/off button sprite. */
+    /** Safety switches use the asset's green/off and dark-red/on states. */
     private class ModeButton extends Button {
-        private final Component label;
         private final BooleanSupplier enabled;
 
-        ModeButton(int x, int y, Component label, BooleanSupplier enabled, Runnable onClick) {
+        ModeButton(int x, int y, BooleanSupplier enabled, Runnable onClick) {
             super(x, y, 16, 16, Component.empty(), button -> onClick.run(), DEFAULT_NARRATION);
-            this.label = label;
             this.enabled = enabled;
         }
 
         @Override
         public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-            boolean on = enabled.getAsBoolean();
-            int color = on ? 0xFFC63C3C : 0xFF3C9C57;
-            if (isHoveredOrFocused()) color = on ? 0xFFE55353 : 0xFF54B86C;
-            gfx.fill(getX(), getY(), getX() + width, getY() + height, color);
-            gfx.renderOutline(getX(), getY(), width, height, 0xFF101010);
-            drawCenteredText(gfx, label, getX() + width / 2, getY() + 4);
+            int textureY = enabled.getAsBoolean() ? 64 : 32;
+            RenderSystem.enableBlend();
+            gfx.blit(SMALL_BUTTONS, getX(), getY(), 0, textureY, width, height, 16, 80);
+            RenderSystem.disableBlend();
         }
     }
 }

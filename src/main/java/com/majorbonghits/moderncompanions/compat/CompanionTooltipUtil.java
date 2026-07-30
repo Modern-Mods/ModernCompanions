@@ -35,4 +35,5 @@ public final class CompanionTooltipUtil {
     public static int readOrFallback(CompoundTag tag, String key, int fallback) {
         return tag.contains(key) ? tag.getInt(key) : fallback;
     }
+
 }

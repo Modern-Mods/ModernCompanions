@@ -2125,3 +2125,75 @@
 - Steps: Added the nine missing item models: Wizard=Cleric gem, Sorcerer=Fire Mage gem, Warlock=Axeguard sigil, Witch=Vanguard emerald, Hag=Berserker ruby, Cryomancer=Stormcaller sapphire, Druid=Knight rune, Illusionist=Necromancer crystal, and Battlemage=Arbalist jewel. Bumped version to 1.2.44.
 - Rationale: The new spawn eggs were registered but had no model JSON, so Minecraft rendered missing-texture squares. Reusing existing packaged assets repairs every item without adding new art or texture files.
 - Build/Test: All nine model JSON files parsed, `ModernCompanions-1.2.44.jar` contains all nine paths, and `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`.
+
+## 2026-07-29 (companion resources and custom potions)
+- Prompt/task: Implement `TASK.md`: persistent companion Stamina/Mana, six custom-vessel potions, brewing, loot, tags, and Jade display.
+- Steps: Added synced/NBT resource pools, combat-aware recovery, stamina sprint/melee gates, mana-gated successful spell casts, companion-only useful-potion consumption, reusable vessel and potion registrations, narrow NeoForge brewing recipes, animated supplied texture sheets, data-driven loot modifiers/tags, Shield effect armor modifier, Jade bars, and an assert-based resource check. Bumped version to 1.2.45.
+- Rationale: Resource state stays on the shared companion entity; native brewing and global loot formats avoid a capability or generic recipe framework. Lootr evaluates the normal generated table per player, while KubeJS can replace the shipped datapack resources.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; dev-world player/companion drinking, brewing/JEI, Lootr, KubeJS, and Jade smoke remains required.
+
+## 2026-07-29 (brewing event-bus repair)
+- Prompt/task: Fix Prism load failure: `RegisterBrewingRecipesEvent takes an argument that is not valid for this bus`.
+- Steps: Moved the existing `CompanionBrewing` listener from the mod event bus to `NeoForge.EVENT_BUS`; bumped version to 1.2.46.
+- Rationale: NeoForge posts this event on its main event bus, so registration on the mod bus fails during load before resource processing begins.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism launch smoke required.
+
+## 2026-07-29 (Mekanism-style resources and potion atlas repair)
+- Prompt/task: Make Jade Stamina/Mana bars visually match Mekanism and repair missing potion/vessel textures.
+- Steps: Replaced text bars with Jade 100x13 outlined resource elements using Mekanism's public layout pattern; moved potion sheets into Minecraft's stitched `textures/item` directory and updated every potion/vessel model path.
+- Rationale: Jade text cannot render a graphical bar, while the Prism log proved every source PNG was packaged but absent from the item atlas because `textures/potions` is not a stitched item directory.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`. Jar contains the moved `textures/item/potions` assets; Prism Jade/item reload smoke remains required.
+
+## 2026-07-29 (custom potion-effect icons)
+- Prompt/task: Use supplied Mana, Regeneration, Rejuvenation, Shield, and Stamina icon assets in the player effects area.
+- Steps: Registered five beneficial display effects and NeoForge client icon renderers. Potion mechanics remain native hidden Speed, Strength, or Regeneration effects, while the matching named display effect renders the supplied 32x32 icon in HUD and inventory.
+- Rationale: This preserves vanilla effect behavior and companion recovery logic without globally replacing vanilla effect icons or duplicating potion mechanics.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism HUD/inventory icon smoke remains required.
+
+## 2026-07-29 (expanded companion inventory equipment panel)
+- Prompt/task: Fit the companion inventory to the updated 458px-wide texture, add dedicated worn-item slots and a 3D companion preview, and move the player/villager harm switches into the new lower panel using the supplied sprites.
+- Steps: Shifted the existing slots, action controls, labels, and release button 105px right; added persistent helmet, chest, legs, feet, main-hand, and offhand menu slots; rendered the companion in the new preview pane; and wired the existing server-authoritative harm flags to the new green/off and dark-red/on sprites. Bumped version to 1.2.50.
+- Rationale: Equipment gets its own saved store so it never consumes or aliases the 63 cargo slots, while the existing toggle payload and companion flags remain the sole authority for PvP/villager safety.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; in-game layout, equipment persistence, 3D preview, and both harm-toggle states require a Prism smoke test.
+
+## 2026-07-30 (companion equipment and inventory polish)
+- Prompt/task: Remove the preview nameplate, make Hostilities buttons state-only, repair clipped potion icons, add empty equipment silhouettes, preserve equipped slots through relog, and shift-equip better player gear while respecting manual equipment.
+- Steps: Suppressed the name only for the inventory preview; rendered effect icons from their actual 16x16 source size; removed the Hostilities hover state; used Minecraft's native empty-slot sprites; restored equipment by semantic `EquipmentSlot`; and added persistent manual-slot locks plus shift-click armor/sword/shield replacement with safe cargo return of displaced gear.
+- Rationale: The existing dedicated six-slot store is retained as the single source of truth, avoiding a second inventory or custom icon assets. Manual placements remain authoritative over companion AI, while automatic shift-equips only replace strictly better armor/swords or empty compatible slots.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism smoke remains required for exact GUI alignment, relog persistence, manual-lock behavior, and shift-click swaps.
+
+## 2026-07-30 (effect-icon sizing and auto-equip transfer)
+- Prompt/task: Use supplied 18px and 32px effect assets for the HUD and inventory, remove the preview-only companion nameplate, and prevent automatically equipped cargo from remaining in both the inventory and equipment slots.
+- Steps: Rendered `*32.png` in the 32px inventory effect cell and `*18.png` centered in the 24px HUD cell; moved preview nameplate suppression into `CompanionRenderer`; and centralized cargo-to-equipment moves in `setItemSlot`, returning replaced equipment to cargo.
+- Rationale: Each supplied texture now matches its actual rendering surface. The shared equipment setter covers armor and every class's hand-selection path, preventing UI duplication without bespoke fixes per companion class.
+- Build/Test: Java 21 `gradlew.bat compileJava --console=plain --no-daemon` passed; full Gradle and Prism GUI/equipment smoke remain required.
+
+## 2026-07-30 (inventory effect icon centering)
+- Prompt/task: Correct the offset of the 32px inventory effect icons.
+- Steps: Shifted the 32px inventory texture seven pixels up-left from NeoForge's normal 18px icon origin; bumped version to 1.2.53.
+- Rationale: Both icon sizes now share the same center within the inventory effect cell.
+- Build/Test: Pending full Gradle build; visual alignment needs Prism confirmation.
+
+## 2026-07-30 (companion hand equipment rules)
+- Prompt/task: Stop companions automatically equipping arbitrary cargo; main hands allow only tools/weapons, offhands only shields, torches, or lanterns, and job tools take priority.
+- Steps: Centralized hand eligibility in the shared companion equipment path, limited the equipment menu to the same rules, selected an inventory weapon before a tool for companions without jobs, and kept the existing food animation transient rather than equipment. Bumped version to 1.2.54.
+- Rationale: Every class already routes automatic changes through the shared setter, so one guard fixes all fallback selectors while preserving direct manual equipment and existing job-tool behavior.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism smoke required for normal and job companion equipment selection.
+
+## 2026-07-30 (JEI potion and Assignment Wand recipe visibility)
+- Prompt/task: Fix JEI showing only the empty potion vessels and no Assignment Wand recipe.
+- Steps: Added an optional JEI plugin that displays the same custom-vessel brewing steps registered with NeoForge, moved the Assignment Wand recipe to the active `data/.../recipe` datapack path, and bumped the version to 1.2.57.
+- Rationale: Runtime brewing registrations are functional but invisible to JEI without its recipe API, while the plural `recipes` path is not loaded by this 1.21.1 datapack layout.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; the built JAR contains the JEI plugin and only the active Assignment Wand recipe path. Prism JEI smoke remains required.
+
+## 2026-07-30 (lumberjack tree navigation and chopping)
+- Prompt/task: Make Lumberjacks navigate to a tree stump, clear leaves that block the route, chop the full tree bottom-up, and face the tree while swinging.
+- Steps: Added a safe approach-stand lookup that does not require initial line of sight; retained the existing visible, reachable server-side break gate; clear a nearby blocking leaf after a stalled route; keep a log queued until its break succeeds; and update look control toward each target log before swinging. Bumped version to 1.2.58.
+- Rationale: Foliage previously prevented selecting a stand, which made the existing leaf recovery unreachable; an unsuccessful protected or obstructed break also incorrectly advanced the tree queue.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism tree-chopping smoke remains required.
+
+## 2026-07-30 (lumberjack full-tree queue repair)
+- Prompt/task: Fix Lumberjacks stopping after the bottom two logs; every connected wood block must be cleared bottom-up.
+- Steps: Chose one safe stand beside the stump for the whole tree, kept every scanned connected log in the priority queue, and allowed the already-validated stump-side felling action to reach tall natural trunks while retaining line-of-sight, tool, drops, durability, chunk, and mob-griefing checks. Bumped version to 1.2.59.
+- Rationale: Per-log stand selection could not find ground at the third log's height, silently discarding it and every higher log before the lumberjack could target them.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism full-tree smoke remains required.

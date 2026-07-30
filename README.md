@@ -162,6 +162,13 @@ Manual dev-world checks remain required for modded protection hooks, complex cav
 
 **Availability:** Custom-textured enchanted books live on the Modern Companions creative tab and can drop from dungeon/mineshaft/stronghold library/temple/buried treasure/shipwreck loot tables.
 
+## Companion Resources & Potions
+Every companion has 100 persistent Stamina. Successful melee hits and actual sprinting spend it; at zero, sprinting pauses and melee remains available at a slower cadence. Stamina recovers slowly in combat, normally out of combat, then quickly after five seconds safe. Magic companions also have 100 persistent Mana. Basic, utility, and heavy spells cost 10, 20, and 35 Mana only after a cast succeeds.
+
+Five reusable glass vessels craft into round, rectangle, pyramid, hexagon, and droplet shapes. In a brewing stand, combine an empty vessel with a water bottle, add nether wart, then use the shown reagent path: glistering melon for Health; ghast tear for Regeneration; sugar then rabbit's foot for Stamina; amethyst then lapis for Mana; ghast tear then amethyst for Rejuvenation; turtle scute then iron for Shield. Drinking returns its matching vessel.
+
+Health restores immediately, Regeneration heals over time, Stamina and Mana restore their matching companion pool, Rejuvenation recovers all three over time, and Shield gives temporary armor. Companions drink only a useful potion from their own inventory. Loot is conservatively added to normal chest tables; Lootr runs those same tables per player, and normal datapack recipes/tags (`companion_potions`, `companion_empty_vessels`, and family tags) stay replaceable from KubeJS. Jade shows compact Stamina and, for mages, Mana bars.
+
 ## Config & Packmaker Notes
 - Friendly fire, fall damage, spawn armor/weapon, and house spacing are configurable.
 - Companion inventory includes owner-only Villager and PvP safety controls. Both default to safe: companions cannot target or damage villagers or other players until explicitly enabled.

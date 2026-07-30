@@ -27,7 +27,7 @@ public class EatGoal extends Goal {
 
     @Override
     public void start() {
-        companion.setItemSlot(EquipmentSlot.OFFHAND, food);
+        companion.setTemporaryOffhandItem(food);
         companion.startUsingItem(InteractionHand.OFF_HAND);
         companion.setEating(true);
         useTicks = food.getUseDuration(companion);
@@ -37,7 +37,7 @@ public class EatGoal extends Goal {
 
     @Override
     public void stop() {
-        companion.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+        companion.setTemporaryOffhandItem(ItemStack.EMPTY);
         companion.setEating(false);
         useTicks = 0;
     }

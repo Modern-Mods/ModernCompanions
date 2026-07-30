@@ -153,3 +153,39 @@
 
 ## 2026-07-29 (magic gem visuals)
 - Add new gem art only when a reused role-fit gem no longer gives a new class a readable identity; the current nine model files deliberately reuse proven, packaged assets.
+
+## 2026-07-29 (resource balance)
+- Add config values only after live play shows 100-point pools, 10/20/35 spell costs, or 5-second combat grace need tuning; fixed shared values avoid per-spell config noise now.
+
+## 2026-07-29 (brewing regression)
+- Keep one launch smoke whenever moving a NeoForge listener; compile success cannot verify the event's owning bus.
+
+## 2026-07-29 (resource visuals)
+- Keep one Prism hover smoke at empty, partial, and full Stamina/Mana plus one creative-tab reload after changing Jade rendering or the item atlas; Gradle validates resources, but game UI/atlas stitching is runtime behavior.
+
+## 2026-07-29 (potion-effect icons)
+- Keep one inventory and HUD smoke for every custom potion icon after NeoForge updates; the client extension API controls both render paths and cannot be fully validated by Gradle.
+
+## 2026-07-29 (expanded companion inventory)
+- Keep one Prism smoke for equipment placement/removal, unload/reload persistence, the 3D preview, and green/off versus dark-red/on safety switches; Gradle cannot verify texture alignment or live entity rendering.
+
+## 2026-07-30 (equipment follow-up)
+- Add support for modded weapons or shields only when a concrete item family needs automatic shift-equip; vanilla armor, swords, and shield-tagged items now cover the requested flow without a generic item scoring framework.
+
+## 2026-07-30 (effect icon regression)
+- Keep one inventory and HUD smoke after replacing effect-icon art; the 32px inventory cell and centered 18px HUD icon are separate render paths.
+
+## 2026-07-30 (inventory effect alignment)
+- Recheck only if NeoForge changes the inventory-extension coordinates; 32px art is intentionally offset seven pixels from the normal 18px icon origin to share its center.
+
+## 2026-07-30 (hand equipment rules)
+- Add a modded weapon/tool tag only when a concrete item family needs automatic companion use; the current native item checks and existing sword/firearm support cover the shipped equipment paths.
+
+## 2026-07-30 (JEI brewing visibility)
+- Keep the JEI adapter limited to brewing steps defined by `CompanionBrewing`; add a custom JEI category only if the brewing stand can no longer represent a future potion workflow.
+
+## 2026-07-30 (lumberjack foliage recovery)
+- Keep a Prism smoke for oak, dark oak, and leaf-walled trees with mob griefing both enabled and disabled; pathfinding and protection outcomes need live-world validation.
+
+## 2026-07-30 (lumberjack full-tree felling)
+- Keep a Prism smoke for tall birch, spruce, and dark-oak trunks; the lumberjack now retains a single stump stand and must clear every connected log before replanting.

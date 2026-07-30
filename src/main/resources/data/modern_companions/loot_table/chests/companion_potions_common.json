@@ -1,0 +1,1 @@
+{"type":"minecraft:chest","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"modern_companions:health_potion","weight":5},{"type":"minecraft:item","name":"modern_companions:stamina_potion","weight":4},{"type":"minecraft:item","name":"modern_companions:mana_potion","weight":3},{"type":"minecraft:item","name":"modern_companions:regeneration_potion","weight":2}]}]}

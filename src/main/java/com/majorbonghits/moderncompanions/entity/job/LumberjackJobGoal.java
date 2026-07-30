@@ -38,6 +38,7 @@ public class LumberjackJobGoal extends Goal {
     private static final int SEARCH_COOLDOWN_TICKS = 40;
     private static final int MAX_LOGS_PER_TREE = 96;
     private static final int MAX_LEAF_CLEAR_TICKS = 20;
+    private static final double TREE_FELL_RANGE_SQR = 256.0D;
 
     private final AbstractHumanCompanionEntity companion;
     private final int searchRadius;
@@ -149,24 +150,22 @@ public class LumberjackJobGoal extends Goal {
             }
             return;
         }
-        if (standPos == null || !WorkerSite.isValid(companion, targetLog, standPos)) {
+        if (standPos == null || !WorkerSite.isSafeStand(companion.level(), standPos)) {
             targetLog = nextLogTarget();
             return;
         }
         double horizDist = companion.distanceToSqr(Vec3.atCenterOf(standPos));
         if (horizDist > 2.25D) {
             moveToTarget();
-            // Only consider clearing leaves when pathing failed for a while and leaves are likely blocking.
+            // Clear the leaf directly blocking a failed route before abandoning this tree.
             var nav = companion.getNavigation();
             var path = nav.getPath();
             boolean noPath = path == null || nav.isDone();
-            boolean nearStump = stumpPos != null && targetLog != null && targetLog.getY() <= stumpPos.getY() + 1;
-            boolean closeEnough = horizDist <= 36.0D; // within ~6 blocks squared
-            if (noPath && nearStump && closeEnough && hasNearbyLeaves(targetLog)) {
+            if (noPath && hasNearbyLeaves(companion.blockPosition())) {
                 stuckTicks++;
                 if (stuckTicks >= MAX_LEAF_CLEAR_TICKS * 2) { // give ~2s before breaking leaves
-                    logDebug("clear_leaves", "around", targetLog);
-                    clearLeavesNear(targetLog);
+                    logDebug("clear_leaves", "around", companion.blockPosition());
+                    clearLeavesNear(companion.blockPosition());
                     stuckTicks = 0;
                 }
             } else {
@@ -174,21 +173,28 @@ public class LumberjackJobGoal extends Goal {
             }
             return;
         }
+        if (!WorkerSite.isValid(companion, targetLog, standPos)) {
+            clearLeavesNear(targetLog);
+            breakTicksRemaining = 0;
+            return;
+        }
         if (breakTicksRemaining <= 0) {
             breakTicksRemaining = computeBreakTicks(targetLog);
             swingCooldown = 0;
             logDebug("begin_break", "pos", targetLog, "ticks", breakTicksRemaining);
         }
+        companion.getLookControl().setLookAt(Vec3.atCenterOf(targetLog));
         if (swingCooldown-- <= 0) {
             companion.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
             swingCooldown = 6;
         }
         breakTicksRemaining--;
         if (breakTicksRemaining <= 0) {
-            chopLog(targetLog);
-            enqueueAdjacentLogs(targetLog);
-            logDebug("chopped", "pos", targetLog, "queue", pendingLogs.size());
-            targetLog = nextLogTarget();
+            if (chopLog(targetLog)) {
+                enqueueAdjacentLogs(targetLog);
+                logDebug("chopped", "pos", targetLog, "queue", pendingLogs.size());
+                targetLog = nextLogTarget();
+            }
             breakTicksRemaining = 0;
         }
         if (targetLog != null && progressIdleTicks >= STALL_KICK_TICKS) {
@@ -264,6 +270,9 @@ public class LumberjackJobGoal extends Goal {
             }
         }
 
+        // Keep one ground-level stand beside the stump so upper logs are never discarded.
+        standPos = WorkerSite.findApproachStand(companion, stumpPos, 1);
+        if (standPos == null) return false;
         targetLog = nextLogTarget();
         return targetLog != null;
     }
@@ -277,8 +286,10 @@ public class LumberjackJobGoal extends Goal {
         return hasNearbyLeaves(pos);
     }
 
-    private void chopLog(BlockPos pos) {
-        if (standPos != null && WorkerBlockActions.breakBlock(companion, pos, standPos)) companion.incrementLumberLogsSession();
+    private boolean chopLog(BlockPos pos) {
+        if (standPos == null || !WorkerBlockActions.breakBlock(companion, pos, standPos, TREE_FELL_RANGE_SQR)) return false;
+        companion.incrementLumberLogsSession();
+        return true;
     }
 
     private double horizontalDistanceTo(BlockPos pos) {
@@ -304,14 +315,9 @@ public class LumberjackJobGoal extends Goal {
         BlockPos next;
         while ((next = pendingLogs.poll()) != null) {
             if (isTreeLog(next)) {
-                BlockPos site = WorkerSite.findStand(companion, next, 2);
-                if (site != null) {
-                    standPos = site;
-                    return next;
-                }
+                return next;
             }
         }
-        standPos = null;
         return null;
     }
 

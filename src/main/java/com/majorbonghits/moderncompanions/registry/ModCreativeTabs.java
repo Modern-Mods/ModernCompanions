@@ -61,6 +61,17 @@ public final class ModCreativeTabs {
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.ASSIGNMENT_WAND.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.STORED_COMPANION.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.SUMMONING_WAND.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_ROUND_VESSEL.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_RECTANGLE_VESSEL.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_PYRAMID_VESSEL.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_HEXAGON_VESSEL.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_DROPLET_VESSEL.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.HEALTH_POTION.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.REGENERATION_POTION.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.STAMINA_POTION.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.MANA_POTION.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.REJUVENATION_POTION.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.SHIELD_POTION.get());
 
                         // Attribute enchantment books (I–III)
                         addEnchantBooks(params, output, ModEnchantments.EMPOWER);

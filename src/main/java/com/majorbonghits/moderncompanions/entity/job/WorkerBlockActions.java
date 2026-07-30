@@ -14,8 +14,12 @@ public final class WorkerBlockActions {
     private WorkerBlockActions() {}
 
     public static boolean breakBlock(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand) {
+        return breakBlock(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR);
+    }
+
+    public static boolean breakBlock(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, double interactRangeSqr) {
         if (!(companion.level() instanceof ServerLevel level) || !level.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING) || !level.hasChunkAt(target)
-                || !WorkerSite.isValid(companion, target, stand)) return false;
+                || !WorkerSite.isValid(companion, target, stand, interactRangeSqr)) return false;
         ItemStack tool = companion.getMainHandItem();
         BlockState state = level.getBlockState(target);
         if (tool.isEmpty() || state.isAir()) return false;

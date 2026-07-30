@@ -69,6 +69,11 @@ public final class SophisticatedBackpackCompat {
         }
     }
 
+    /** Reports whether this companion has an equipped Sophisticated Backpack. */
+    public static boolean hasBackpack(AbstractHumanCompanionEntity companion) {
+        return handlerRegistered && !getBackpack(companion).isEmpty();
+    }
+
     private static AbstractContainerMenu newContainer(Constructor<?> constructor, int id, Player player, Object context) {
         try {
             return (AbstractContainerMenu) constructor.newInstance(id, player, context);
@@ -89,17 +94,21 @@ public final class SophisticatedBackpackCompat {
         try {
             Entity entity = player.level().getEntity(Integer.parseInt(identifier));
             if (!(entity instanceof AbstractHumanCompanionEntity companion)) return ItemStack.EMPTY;
-            return CuriosApi.getCuriosInventory(companion).flatMap(handler -> handler.getStacksHandler("back"))
-                    .map(handler -> handler.getStacks()).map(stacks -> {
-                        for (int slot = 0; slot < stacks.getSlots(); slot++) {
-                            ItemStack stack = stacks.getStackInSlot(slot);
-                            if (isBackpack(stack)) return stack;
-                        }
-                        return ItemStack.EMPTY;
-                    }).orElse(ItemStack.EMPTY);
+            return getBackpack(companion);
         } catch (NumberFormatException ignored) {
             return ItemStack.EMPTY;
         }
+    }
+
+    private static ItemStack getBackpack(AbstractHumanCompanionEntity companion) {
+        return CuriosApi.getCuriosInventory(companion).flatMap(handler -> handler.getStacksHandler("back"))
+                .map(handler -> handler.getStacks()).map(stacks -> {
+                    for (int slot = 0; slot < stacks.getSlots(); slot++) {
+                        ItemStack stack = stacks.getStackInSlot(slot);
+                        if (isBackpack(stack)) return stack;
+                    }
+                    return ItemStack.EMPTY;
+                }).orElse(ItemStack.EMPTY);
     }
 
     private static boolean isBackpack(ItemStack stack) {

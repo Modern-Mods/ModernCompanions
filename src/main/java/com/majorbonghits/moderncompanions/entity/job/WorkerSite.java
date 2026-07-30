@@ -16,7 +16,7 @@ import javax.annotation.Nullable;
 
 /** Shared, conservative work-site checks used before worker movement or actions. */
 public final class WorkerSite {
-    private static final double INTERACT_RANGE_SQR = 20.25D;
+    static final double INTERACT_RANGE_SQR = 20.25D;
 
     private WorkerSite() {}
 
@@ -28,8 +28,12 @@ public final class WorkerSite {
     }
 
     public static boolean isValid(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand) {
+        return isValid(companion, target, stand, INTERACT_RANGE_SQR);
+    }
+
+    public static boolean isValid(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, double interactRangeSqr) {
         if (!isSafeStand(companion.level(), stand) || !visible(companion, target)) return false;
-        if (Vec3.atCenterOf(stand).distanceToSqr(Vec3.atCenterOf(target)) > INTERACT_RANGE_SQR) return false;
+        if (Vec3.atCenterOf(stand).distanceToSqr(Vec3.atCenterOf(target)) > interactRangeSqr) return false;
         PathNavigation navigation = companion.getNavigation();
         var path = navigation.createPath(stand, 0);
         return path != null && path.canReach();
@@ -41,6 +45,23 @@ public final class WorkerSite {
         double bestDistance = Double.MAX_VALUE;
         for (BlockPos stand : BlockPos.betweenClosed(target.offset(-radius, -1, -radius), target.offset(radius, 1, radius))) {
             if (!isValid(companion, target, stand)) continue;
+            double distance = stand.distSqr(companion.blockPosition());
+            if (distance < bestDistance) {
+                best = stand.immutable();
+                bestDistance = distance;
+            }
+        }
+        return best;
+    }
+
+    /** Finds a safe adjacent destination before the worker has line of sight; actions still use {@link #isValid}. */
+    @Nullable
+    public static BlockPos findApproachStand(AbstractHumanCompanionEntity companion, BlockPos target, int radius) {
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (BlockPos stand : BlockPos.betweenClosed(target.offset(-radius, -1, -radius), target.offset(radius, 1, radius))) {
+            if (!isSafeStand(companion.level(), stand)
+                    || Vec3.atCenterOf(stand).distanceToSqr(Vec3.atCenterOf(target)) > INTERACT_RANGE_SQR) continue;
             double distance = stand.distSqr(companion.blockPosition());
             if (distance < bestDistance) {
                 best = stand.immutable();

@@ -5,6 +5,8 @@ import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.core.ModEntityAttributes;
 import com.majorbonghits.moderncompanions.core.ModConfig;
+import com.majorbonghits.moderncompanions.core.ModEffects;
+import com.majorbonghits.moderncompanions.item.CompanionBrewing;
 import com.majorbonghits.moderncompanions.registry.ModCreativeTabs;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -12,6 +14,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(Constants.MOD_ID)
 public final class ModernCompanions {
@@ -24,12 +27,14 @@ public final class ModernCompanions {
 
         com.majorbonghits.moderncompanions.registry.ModItems.register(modBus); // weapons
         com.majorbonghits.moderncompanions.core.ModItems.ITEMS.register(modBus); // spawn eggs
+        ModEffects.EFFECTS.register(modBus);
         com.majorbonghits.moderncompanions.core.ModRecipeSerializers.SERIALIZERS.register(modBus);
         ModCreativeTabs.register(modBus); // dedicated creative tab
         ModEntityTypes.ENTITY_TYPES.register(modBus);
         ModMenuTypes.MENU_TYPES.register(modBus);
         modBus.addListener(ModEntityAttributes::registerAttributes);
         modBus.addListener(this::onCommonSetup);
+        NeoForge.EVENT_BUS.addListener(CompanionBrewing::register);
         ModCreativeTabHandler.register(modBus);
 
         // Only load Curios hooks when the mod is present to avoid classloading crashes.

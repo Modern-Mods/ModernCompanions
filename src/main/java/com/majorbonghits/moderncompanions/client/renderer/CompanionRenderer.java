@@ -23,6 +23,12 @@ import net.minecraft.world.item.UseAnim;
  * Renderer that mimics the original Human Companions player-like visuals.
  */
 public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanionEntity, PlayerModel<AbstractHumanCompanionEntity>> {
+    private static boolean suppressPreviewNameplate;
+
+    /** Restricts nameplate suppression to the inventory preview, never the world renderer. */
+    public static void setPreviewNameplateSuppressed(boolean value) {
+        suppressPreviewNameplate = value;
+    }
 
     public CompanionRenderer(EntityRendererProvider.Context context) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
@@ -37,6 +43,11 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
                        MultiBufferSource buffer, int packedLight) {
         this.setModelProperties(entity);
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+    }
+
+    @Override
+    protected boolean shouldShowName(AbstractHumanCompanionEntity entity) {
+        return !suppressPreviewNameplate && super.shouldShowName(entity);
     }
 
     private void setModelProperties(AbstractHumanCompanionEntity companion) {

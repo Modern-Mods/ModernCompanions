@@ -7,6 +7,7 @@ import com.majorbonghits.moderncompanions.item.CompanionMoverItem;
 import com.majorbonghits.moderncompanions.item.ResurrectionScrollItem;
 import com.majorbonghits.moderncompanions.item.SummoningWandItem;
 import com.majorbonghits.moderncompanions.item.StoredCompanionItem;
+import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
@@ -35,6 +36,34 @@ public final class ModItems {
             () -> new AssignmentWandItem(new Item.Properties().rarity(Rarity.UNCOMMON)));
     public static final DeferredHolder<Item, Item> SUMMONING_WAND = ITEMS.register("summoning_wand",
             () -> new SummoningWandItem(new Item.Properties()));
+
+    // Intermediate vessels stay out of creative tabs; brewing is their only purpose.
+    public static final DeferredHolder<Item, Item> EMPTY_ROUND_VESSEL = vessel("empty_round_vessel");
+    public static final DeferredHolder<Item, Item> EMPTY_RECTANGLE_VESSEL = vessel("empty_rectangle_vessel");
+    public static final DeferredHolder<Item, Item> EMPTY_PYRAMID_VESSEL = vessel("empty_pyramid_vessel");
+    public static final DeferredHolder<Item, Item> EMPTY_HEXAGON_VESSEL = vessel("empty_hexagon_vessel");
+    public static final DeferredHolder<Item, Item> EMPTY_DROPLET_VESSEL = vessel("empty_droplet_vessel");
+    public static final DeferredHolder<Item, Item> WATER_ROUND_VESSEL = vessel("water_round_vessel");
+    public static final DeferredHolder<Item, Item> WATER_RECTANGLE_VESSEL = vessel("water_rectangle_vessel");
+    public static final DeferredHolder<Item, Item> WATER_PYRAMID_VESSEL = vessel("water_pyramid_vessel");
+    public static final DeferredHolder<Item, Item> WATER_HEXAGON_VESSEL = vessel("water_hexagon_vessel");
+    public static final DeferredHolder<Item, Item> WATER_DROPLET_VESSEL = vessel("water_droplet_vessel");
+    public static final DeferredHolder<Item, Item> AWKWARD_ROUND_VESSEL = vessel("awkward_round_vessel");
+    public static final DeferredHolder<Item, Item> AWKWARD_RECTANGLE_VESSEL = vessel("awkward_rectangle_vessel");
+    public static final DeferredHolder<Item, Item> AWKWARD_PYRAMID_VESSEL = vessel("awkward_pyramid_vessel");
+    public static final DeferredHolder<Item, Item> AWKWARD_HEXAGON_VESSEL = vessel("awkward_hexagon_vessel");
+    public static final DeferredHolder<Item, Item> AWKWARD_DROPLET_VESSEL = vessel("awkward_droplet_vessel");
+    public static final DeferredHolder<Item, Item> STAMINA_BASE = vessel("stamina_base");
+    public static final DeferredHolder<Item, Item> MANA_BASE = vessel("mana_base");
+    public static final DeferredHolder<Item, Item> REJUVENATION_BASE = vessel("rejuvenation_base");
+    public static final DeferredHolder<Item, Item> SHIELD_BASE = vessel("shield_base");
+
+    public static final DeferredHolder<Item, Item> HEALTH_POTION = potion("health_potion", CompanionPotionItem.Kind.HEALTH);
+    public static final DeferredHolder<Item, Item> REGENERATION_POTION = potion("regeneration_potion", CompanionPotionItem.Kind.REGENERATION);
+    public static final DeferredHolder<Item, Item> STAMINA_POTION = potion("stamina_potion", CompanionPotionItem.Kind.STAMINA);
+    public static final DeferredHolder<Item, Item> MANA_POTION = potion("mana_potion", CompanionPotionItem.Kind.MANA);
+    public static final DeferredHolder<Item, Item> REJUVENATION_POTION = potion("rejuvenation_potion", CompanionPotionItem.Kind.REJUVENATION);
+    public static final DeferredHolder<Item, Item> SHIELD_POTION = potion("shield_potion", CompanionPotionItem.Kind.SHIELD);
 
     public static final DeferredHolder<Item, Item> ARBALIST_SPAWN_EGG = ITEMS.register("arbalist_spawn_egg",
             () -> new DeferredSpawnEggItem(ModEntityTypes.ARBALIST, 0xE8AF5A, 0xFF0000, new Item.Properties()));
@@ -84,6 +113,14 @@ public final class ModItems {
     private static DeferredHolder<Item, Item> magicEgg(String id, DeferredHolder<EntityType<?>, ? extends EntityType<? extends Mob>> type, int primary, int secondary) {
         return MagicCastingCompat.available() ? ITEMS.register(id,
                 () -> new DeferredSpawnEggItem(type, primary, secondary, new Item.Properties())) : null;
+    }
+
+    private static DeferredHolder<Item, Item> vessel(String id) {
+        return ITEMS.register(id, () -> new Item(new Item.Properties().stacksTo(16)));
+    }
+
+    private static DeferredHolder<Item, Item> potion(String id, CompanionPotionItem.Kind kind) {
+        return ITEMS.register(id, () -> new CompanionPotionItem(kind, new Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)));
     }
 
 }

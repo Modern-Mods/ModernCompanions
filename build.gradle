@@ -21,6 +21,7 @@ repositories {
         url = "https://api.modrinth.com/maven"
         content { includeGroup("maven.modrinth") }
     }
+    maven { url = "https://maven.blamejared.com" }
     mavenCentral()
 }
 
@@ -58,6 +59,10 @@ dependencies {
     // Optional HUD integrations (Jade / WTHIT). Kept compileOnly so the mod remains optional; runtimeOnly enables local dev runs.
     compileOnly "maven.modrinth:jade:${project.findProperty("jade_version")}" 
     compileOnly "maven.modrinth:wthit:${project.findProperty("wthit_version")}" 
+
+    // JEI is optional at runtime; its plugin only supplies viewer entries for custom brewing.
+    compileOnly "mezz.jei:jei-1.21.1-common-api:${project.findProperty("jei_version")}"
+    compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${project.findProperty("jei_version")}"
 }
 
 java {
@@ -74,8 +79,15 @@ tasks.register("workerSafetyCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("companionResourcesCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.CompanionResourceRulesTest"
+    jvmArgs "-ea"
+}
+
 tasks.named("check") {
     dependsOn tasks.named("workerSafetyCheck")
+    dependsOn tasks.named("companionResourcesCheck")
 }
 
 tasks.processResources.configure {

@@ -12,6 +12,8 @@
     "modern_companions:enlightenment_iii",
     "modern_companions:vitality_i",
     "modern_companions:vitality_ii",
-    "modern_companions:vitality_iii"
+    "modern_companions:vitality_iii",
+    "modern_companions:companion_potions_common",
+    "modern_companions:companion_potions_strong"
   ]
 }

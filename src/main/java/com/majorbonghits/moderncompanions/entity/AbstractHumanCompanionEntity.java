@@ -10,6 +10,8 @@ import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.core.ModItems;
 import com.majorbonghits.moderncompanions.core.ModEnchantments;
 import com.majorbonghits.moderncompanions.item.ResurrectionScrollItem;
+import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
+import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -48,13 +50,18 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.DiggerItem;
+import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.BowItem;
-import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.TieredItem;
+import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -64,6 +71,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.LanternBlock;
+import net.minecraft.world.level.block.TorchBlock;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.block.ChestBlock;
@@ -190,6 +199,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> FISH_CAUGHT_LIFETIME = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> STAMINA = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> STAMINA_MAX = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> MANA = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> MANA_MAX = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final ResourceLocation MOD_MORALE_DAMAGE = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "morale_damage");
     private static final ResourceLocation MOD_MORALE_ARMOR = ResourceLocation.fromNamespaceAndPath(
@@ -217,9 +234,17 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final ResourceLocation MOD_TRAIT_MELANCHOLIC = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "trait_melancholic_penalty");
     private static final int FOOD_REQUEST_COOLDOWN_TICKS = 600; // ~30s between requests
+    private static final int STAMINA_MAX_DEFAULT = 100;
+    private static final int MANA_MAX_DEFAULT = 100;
+    private static final int SPRINT_RESUME_STAMINA = 15;
+    private static final int MELEE_STAMINA_COST = 8;
+    private static final int SPRINT_STAMINA_COST = 1;
 
     // Seven visible rows in the companion menu; saved inventories keep their existing slot indices.
     protected final SimpleContainer inventory = new SimpleContainer(63);
+    // Six dedicated equipment slots stay separate from the companion's 63 cargo slots.
+    private final SimpleContainer equipmentInventory = new SimpleContainer(6);
+    private final boolean[] manuallyEquipped = new boolean[6];
     protected final Map<Item, Integer> foodRequirements = new HashMap<>();
     protected final Random rand = new Random();
 
@@ -268,6 +293,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     // Client-side tracking of the last swing tick we already applied locally.
     private int lastAppliedSwingTick = -1;
+    private int combatGraceTicks;
+    private int lastExhaustedMeleeTick = -100;
 
     private static final ResourceLocation PREFERRED_WEAPON_MOD = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "preferred_weapon_bonus");
@@ -355,6 +382,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(LUMBER_LOGS_LIFETIME, 0);
         builder.define(FISH_CAUGHT_SESSION, 0);
         builder.define(FISH_CAUGHT_LIFETIME, 0);
+        builder.define(STAMINA_MAX, STAMINA_MAX_DEFAULT);
+        builder.define(STAMINA, STAMINA_MAX_DEFAULT);
+        builder.define(MANA_MAX, MANA_MAX_DEFAULT);
+        builder.define(MANA, MANA_MAX_DEFAULT);
     }
 
     @Override
@@ -1064,6 +1095,176 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public SimpleContainer getInventory() {
         return inventory;
+    }
+
+    public SimpleContainer getEquipmentInventory() {
+        return equipmentInventory;
+    }
+
+    private boolean hasDedicatedEquipment(EquipmentSlot slot) {
+        int index = dedicatedEquipmentIndex(slot);
+        return manuallyEquipped[index] && !equipmentInventory.getItem(index).isEmpty();
+    }
+
+    private int dedicatedEquipmentIndex(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> 0;
+            case CHEST -> 1;
+            case LEGS -> 2;
+            case FEET -> 3;
+            case MAINHAND -> 4;
+            case OFFHAND -> 5;
+            default -> throw new IllegalArgumentException("Unsupported companion equipment slot: " + slot);
+        };
+    }
+
+    /** Manual slots are locks; automatic equipment continues to use the same persistent store. */
+    public void setManualEquipment(EquipmentSlot slot, ItemStack stack) {
+        if (!canEquipInSlot(slot, stack)) return;
+        int index = dedicatedEquipmentIndex(slot);
+        equipmentInventory.setItem(index, stack);
+        manuallyEquipped[index] = !stack.isEmpty();
+        super.setItemSlot(slot, stack);
+    }
+
+    /** Food is held only for the existing eat animation, then the saved offhand returns. */
+    public void setTemporaryOffhandItem(ItemStack stack) {
+        super.setItemSlot(EquipmentSlot.OFFHAND,
+                stack.isEmpty() ? equipmentInventory.getItem(dedicatedEquipmentIndex(EquipmentSlot.OFFHAND)) : stack);
+    }
+
+    /** Hand slots only accept usable gear; cargo and consumables stay in the companion inventory. */
+    public boolean canEquipInSlot(EquipmentSlot slot, ItemStack stack) {
+        if (stack.isEmpty()) return true;
+        if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
+            return stack.getItem() instanceof ArmorItem armor && armor.getEquipmentSlot() == slot;
+        }
+        return switch (slot) {
+            case MAINHAND -> isMainHandEquipment(stack);
+            case OFFHAND -> isShieldItem(stack) || stack.getItem() instanceof BlockItem blockItem
+                    && (blockItem.getBlock() instanceof TorchBlock || blockItem.getBlock() instanceof LanternBlock);
+            default -> false;
+        };
+    }
+
+    @Override
+    public void setItemSlot(EquipmentSlot slot, ItemStack stack) {
+        if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot != EquipmentSlot.MAINHAND && slot != EquipmentSlot.OFFHAND) {
+            super.setItemSlot(slot, stack);
+            return;
+        }
+        if (!canEquipInSlot(slot, stack)) {
+            if (slot != EquipmentSlot.MAINHAND) return;
+            stack = ItemStack.EMPTY;
+        }
+        if (slot == EquipmentSlot.MAINHAND && getJob() != CompanionJob.NONE && getJob() != CompanionJob.HUNTER
+                && !stack.isEmpty() && !isJobTool(stack, getJob())) return;
+        if (slot == EquipmentSlot.MAINHAND && getJob() == CompanionJob.NONE && !isMainHandWeapon(stack)) {
+            ItemStack fallback = findInventoryWeaponOrTool();
+            stack = fallback.isEmpty() ? (isMainHandEquipment(stack) ? stack : ItemStack.EMPTY) : fallback;
+        }
+        int index = dedicatedEquipmentIndex(slot);
+        ItemStack manual = equipmentInventory.getItem(index);
+        if (manuallyEquipped[index] && !manual.isEmpty()) {
+            if (!ItemStack.isSameItemSameComponents(manual, stack)) return;
+        } else {
+            // Keep a player-upgraded sword when a class scans cargo and finds a weaker one.
+            if (slot == EquipmentSlot.MAINHAND && manual.getItem() instanceof SwordItem
+                    && stack.getItem() instanceof SwordItem && !isBetterEquipment(stack, manual, slot)) return;
+            manuallyEquipped[index] = false;
+            if (!setAutomaticEquipment(slot, stack)) return;
+            return;
+        }
+        super.setItemSlot(slot, stack);
+    }
+
+    private boolean isMainHandEquipment(ItemStack stack) {
+        return !stack.isEmpty() && (stack.getItem() instanceof TieredItem
+                || stack.getItem() instanceof BowItem
+                || stack.getItem() instanceof CrossbowItem
+                || stack.getItem() instanceof TridentItem
+                || stack.getItem() instanceof FishingRodItem
+                || FirearmSupport.isFirearm(stack)
+                || stack.is(TagsInit.Items.SWORDS));
+    }
+
+    private boolean isMainHandWeapon(ItemStack stack) {
+        return isMainHandEquipment(stack) && !(stack.getItem() instanceof DiggerItem)
+                && !(stack.getItem() instanceof FishingRodItem);
+    }
+
+    /** Weapons win for companions without jobs; tools remain a valid fallback. */
+    private ItemStack findInventoryWeaponOrTool() {
+        ItemStack tool = ItemStack.EMPTY;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack candidate = inventory.getItem(i);
+            if (isMainHandWeapon(candidate)) return candidate;
+            if (tool.isEmpty() && isMainHandEquipment(candidate)) tool = candidate;
+        }
+        return tool;
+    }
+
+    /** Shift-click equips one better armor piece, sword, or shield without overriding a manual slot. */
+    public boolean equipBetterFromPlayer(ItemStack stack) {
+        EquipmentSlot slot = equipmentSlotFor(stack);
+        if (slot == null || hasDedicatedEquipment(slot)) return false;
+        ItemStack current = getItemBySlot(slot);
+        if (!isBetterEquipment(stack, current, slot)) return false;
+        ItemStack equipped = stack.copyWithCount(1);
+        if (!setAutomaticEquipment(slot, equipped)) return false;
+        stack.shrink(1);
+        return true;
+    }
+
+    /** Moves auto-equipped cargo into its dedicated slot and returns replaced gear to cargo. */
+    private boolean setAutomaticEquipment(EquipmentSlot slot, ItemStack stack) {
+        ItemStack current = super.getItemBySlot(slot);
+        int sourceSlot = findInventorySlot(stack);
+        boolean unchanged = ItemStack.isSameItemSameComponents(current, stack);
+        if (!unchanged && !current.isEmpty() && sourceSlot < 0 && !canStoreInInventory(current)) return false;
+
+        ItemStack equipped = sourceSlot < 0 ? stack : inventory.removeItem(sourceSlot, 1);
+        if (equipped.isEmpty() && !stack.isEmpty()) return false;
+        if (!unchanged && !current.isEmpty() && !insertIntoContainer(inventory, current.copy()).isEmpty()) return false;
+        equipmentInventory.setItem(dedicatedEquipmentIndex(slot), equipped);
+        super.setItemSlot(slot, equipped);
+        return true;
+    }
+
+    @Nullable
+    private EquipmentSlot equipmentSlotFor(ItemStack stack) {
+        if (stack.getItem() instanceof ArmorItem armor) return armor.getEquipmentSlot();
+        if (stack.getItem() instanceof SwordItem) return EquipmentSlot.MAINHAND;
+        return isShieldItem(stack) ? EquipmentSlot.OFFHAND : null;
+    }
+
+    private boolean isBetterEquipment(ItemStack candidate, ItemStack current, EquipmentSlot slot) {
+        if (current.isEmpty()) return true;
+        if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) return CompanionData.isBetterArmor(candidate, current);
+        if (slot == EquipmentSlot.MAINHAND && candidate.getItem() instanceof SwordItem sword
+                && current.getItem() instanceof SwordItem equippedSword) return sword.getDamage(candidate) > equippedSword.getDamage(current);
+        return false;
+    }
+
+    private boolean inventoryContains(ItemStack stack) {
+        return findInventorySlot(stack) >= 0;
+    }
+
+    private int findInventorySlot(ItemStack stack) {
+        if (stack.isEmpty()) return -1;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            if (ItemStack.isSameItemSameComponents(inventory.getItem(i), stack)) return i;
+        }
+        return -1;
+    }
+
+    private boolean canStoreInInventory(ItemStack stack) {
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stored = inventory.getItem(i);
+            if (stored.isEmpty() || ItemStack.isSameItemSameComponents(stored, stack)
+                    && stored.getCount() < stored.getMaxStackSize()) return true;
+        }
+        return false;
     }
 
     /** Firearms take precedence over class weapons so per-tick selectors cannot unequip them. */
@@ -1822,6 +2023,21 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return canHarm(target) && super.wantsToAttack(target, owner);
     }
 
+    public int getStamina() { return this.entityData.get(STAMINA); }
+    public int getStaminaMax() { return this.entityData.get(STAMINA_MAX); }
+    public int getMana() { return this.entityData.get(MANA); }
+    public int getManaMax() { return this.entityData.get(MANA_MAX); }
+    public boolean hasMana() { return this instanceof AbstractMageCompanion; }
+    public boolean canSpendMana(int amount) { return hasMana() && getMana() >= amount; }
+    public void restoreStamina(int amount) { this.entityData.set(STAMINA, bounded(getStamina() + amount, getStaminaMax())); }
+    public void restoreMana(int amount) { if (hasMana()) this.entityData.set(MANA, bounded(getMana() + amount, getManaMax())); }
+    public boolean spendMana(int amount) {
+        if (!canSpendMana(amount)) return false;
+        this.entityData.set(MANA, getMana() - amount);
+        return true;
+    }
+    public static int bounded(int value, int max) { return CompanionResourceRules.bounded(value, max); }
+
     @Override
     public boolean isAlliedTo(Entity other) {
         return super.isAlliedTo(other);
@@ -1833,6 +2049,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
+        tag.put("DedicatedEquipment", this.equipmentInventory.createTag(this.registryAccess()));
+        byte[] manualSlots = new byte[manuallyEquipped.length];
+        for (int i = 0; i < manualSlots.length; i++) manualSlots[i] = (byte) (manuallyEquipped[i] ? 1 : 0);
+        tag.putByteArray("DedicatedEquipmentManual", manualSlots);
         tag.putInt("skin", this.getSkinIndex());
         tag.putString("CustomSkinUrl", this.entityData.get(CUSTOM_SKIN_URL));
         tag.putBoolean("Eating", this.isEating());
@@ -1890,6 +2110,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.put("Personality", personalityTag);
         tag.putInt("AgeYears", personality.getAgeYears());
         tag.putLong("AgeLastCheck", personality.getLastAgeCheckGameTime());
+        tag.putInt("Stamina", getStamina());
+        tag.putInt("StaminaMax", getStaminaMax());
+        tag.putInt("Mana", getMana());
+        tag.putInt("ManaMax", getManaMax());
     }
 
     @Override
@@ -2008,6 +2232,21 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (tag.contains("Inventory", 9)) {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
         }
+        if (tag.contains("DedicatedEquipment", 9)) {
+            this.equipmentInventory.fromTag(tag.getList("DedicatedEquipment", 10), this.registryAccess());
+        }
+        Arrays.fill(manuallyEquipped, false);
+        byte[] manualSlots = tag.getByteArray("DedicatedEquipmentManual");
+        if (manualSlots.length == manuallyEquipped.length) {
+            for (int i = 0; i < manuallyEquipped.length; i++) manuallyEquipped[i] = manualSlots[i] != 0;
+        } else {
+            // Equipment saved before manual-lock metadata was introduced was all player placed.
+            for (int i = 0; i < manuallyEquipped.length; i++) manuallyEquipped[i] = !equipmentInventory.getItem(i).isEmpty();
+        }
+        this.entityData.set(STAMINA_MAX, Math.max(1, tag.contains("StaminaMax") ? tag.getInt("StaminaMax") : STAMINA_MAX_DEFAULT));
+        this.entityData.set(STAMINA, bounded(tag.contains("Stamina") ? tag.getInt("Stamina") : getStaminaMax(), getStaminaMax()));
+        this.entityData.set(MANA_MAX, Math.max(1, tag.contains("ManaMax") ? tag.getInt("ManaMax") : MANA_MAX_DEFAULT));
+        this.entityData.set(MANA, bounded(tag.contains("Mana") ? tag.getInt("Mana") : getManaMax(), getManaMax()));
         syncPersonalityToData();
         // reset tracking anchors post-load
         this.lastTrackX = this.getX();
@@ -2028,11 +2267,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.goalSelector.addGoal(3, moveBackGoal);
             this.goalSelector.addGoal(3, patrolGoal);
         }
-        this.setItemSlot(EquipmentSlot.FEET, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.CHEST, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS,
+                EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
+            // Restore by semantic slot, never by serialized list position.
+            super.setItemSlot(slot, equipmentInventory.getItem(dedicatedEquipmentIndex(slot)));
+        }
         checkArmor();
         if (!this.level().isClientSide() && this.level() instanceof ServerLevel serverLevel) {
             refreshDeliveryChunkTicket(serverLevel);
@@ -2095,6 +2334,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             }
             boostWaterMovement();
             updateSprintState();
+            tickCompanionResources();
+            if (this.tickCount % 20 == 0) consumeUsefulCompanionPotion();
             tickBondAndMorale();
             if (this.tickCount % 10 == 0) {
                 checkStats();
@@ -2135,7 +2376,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         boolean wantsSprint = isSprintEnabled() && !this.isOrderedToSit();
         boolean movingOrFighting = (this.getNavigation() != null && !this.getNavigation().isDone())
                 || this.getTarget() != null;
-        if (wantsSprint && movingOrFighting) {
+        boolean staminaReady = this.isSprinting() ? getStamina() > 0 : getStamina() >= SPRINT_RESUME_STAMINA;
+        if (wantsSprint && movingOrFighting && staminaReady) {
             this.setSprinting(true);
         } else {
             this.setSprinting(false);
@@ -2346,6 +2588,34 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return super.hurt(source, adjusted);
     }
 
+    /** Server-authoritative recovery: combat slows it, then grace accelerates it. */
+    private void tickCompanionResources() {
+        LivingEntity target = getTarget();
+        boolean inCombat = target != null && target.isAlive();
+        combatGraceTicks = inCombat ? 0 : Math.min(combatGraceTicks + 1, 100);
+        if (isSprinting()) this.entityData.set(STAMINA, bounded(getStamina() - SPRINT_STAMINA_COST, getStaminaMax()));
+        int interval = CompanionResourceRules.regenInterval(inCombat, combatGraceTicks, hasEffect(MobEffects.REGENERATION));
+        if (this.tickCount % interval == 0) {
+            restoreStamina(1);
+            restoreMana(1);
+        }
+    }
+
+
+    private void consumeUsefulCompanionPotion() {
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (stack.getItem() instanceof CompanionPotionItem potion && potion.isUsefulFor(this)) {
+                ItemStack consumed = stack.copyWithCount(1);
+                stack.shrink(1);
+                playConsumptionEffects(consumed);
+                potion.applyTo(this);
+                storeOrDrop(potion.emptyVessel());
+                return;
+            }
+        }
+    }
+
     /** Shared PvE/PvP and villager safety gate for every target source. */
     public boolean canHarm(Entity entity) {
         // Owner and same-owner companions stay allies even when PvP is enabled.
@@ -2427,6 +2697,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (!canHarm(entity)) {
             return false;
         }
+        if (!this.level().isClientSide && getStamina() <= 0 && this.tickCount - lastExhaustedMeleeTick < 20) {
+            return false; // Exhaustion slows shared melee cadence without disabling defense.
+        }
         forceSwingAnimation(InteractionHand.MAIN_HAND);
         ItemStack itemstack = this.getMainHandItem();
         if (!this.level().isClientSide && !itemstack.isEmpty() && entity instanceof LivingEntity) {
@@ -2437,7 +2710,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                         .sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), broken));
             }
         }
-        return super.doHurtTarget(entity);
+        boolean hit = super.doHurtTarget(entity);
+        if (!this.level().isClientSide) {
+            if (hit) this.entityData.set(STAMINA, bounded(getStamina() - MELEE_STAMINA_COST, getStaminaMax()));
+            if (getStamina() <= 0) lastExhaustedMeleeTick = this.tickCount;
+        }
+        return hit;
     }
 
     /**
@@ -2467,19 +2745,23 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (itemstack.getItem() instanceof ArmorItem armorItem) {
                 switch (armorItem.getEquipmentSlot()) {
                     case HEAD -> {
-                        if (head.isEmpty() || CompanionData.isBetterArmor(itemstack, head))
+                        if (!hasDedicatedEquipment(EquipmentSlot.HEAD)
+                                && (head.isEmpty() || CompanionData.isBetterArmor(itemstack, head)))
                             setItemSlot(EquipmentSlot.HEAD, itemstack);
                     }
                     case CHEST -> {
-                        if (chest.isEmpty() || CompanionData.isBetterArmor(itemstack, chest))
+                        if (!hasDedicatedEquipment(EquipmentSlot.CHEST)
+                                && (chest.isEmpty() || CompanionData.isBetterArmor(itemstack, chest)))
                             setItemSlot(EquipmentSlot.CHEST, itemstack);
                     }
                     case LEGS -> {
-                        if (legs.isEmpty() || CompanionData.isBetterArmor(itemstack, legs))
+                        if (!hasDedicatedEquipment(EquipmentSlot.LEGS)
+                                && (legs.isEmpty() || CompanionData.isBetterArmor(itemstack, legs)))
                             setItemSlot(EquipmentSlot.LEGS, itemstack);
                     }
                     case FEET -> {
-                        if (feet.isEmpty() || CompanionData.isBetterArmor(itemstack, feet))
+                        if (!hasDedicatedEquipment(EquipmentSlot.FEET)
+                                && (feet.isEmpty() || CompanionData.isBetterArmor(itemstack, feet)))
                             setItemSlot(EquipmentSlot.FEET, itemstack);
                     }
                 }

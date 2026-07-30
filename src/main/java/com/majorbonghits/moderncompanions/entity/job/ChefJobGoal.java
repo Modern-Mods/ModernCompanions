@@ -7,43 +7,42 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
+import net.minecraft.tags.TagKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.item.crafting.AbstractCookingRecipe;
+import net.minecraft.world.level.block.entity.CampfireBlockEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 
 import java.util.EnumSet;
-import java.util.Map;
-import java.util.HashMap;
 
 /**
  * Chef job converts raw food in the companion inventory when standing near a
- * heat source (campfire/furnace/smoker). Simplified: items are cooked
- * instantly with a cooldown to avoid block entity mutation.
+ * heat source (campfire/furnace/smoker) through native recipe/workstation behavior.
  */
-public class ChefJobGoal extends Goal {
+public class ChefJobGoal extends ResumableJobGoal {
     private static final int COOK_COOLDOWN = 40;
 
-    private static final Map<Item, Item> RAW_TO_COOKED = new HashMap<>();
-    static {
-        RAW_TO_COOKED.put(Items.BEEF, Items.COOKED_BEEF);
-        RAW_TO_COOKED.put(Items.PORKCHOP, Items.COOKED_PORKCHOP);
-        RAW_TO_COOKED.put(Items.CHICKEN, Items.COOKED_CHICKEN);
-        RAW_TO_COOKED.put(Items.MUTTON, Items.COOKED_MUTTON);
-        RAW_TO_COOKED.put(Items.RABBIT, Items.COOKED_RABBIT);
-        RAW_TO_COOKED.put(Items.SALMON, Items.COOKED_SALMON);
-        RAW_TO_COOKED.put(Items.COD, Items.COOKED_COD);
-    }
+    private static final TagKey<Item> RAW_MEAT = TagKey.create(Registries.ITEM,
+            ResourceLocation.fromNamespaceAndPath("modern_companions", "raw_meat"));
 
     private final AbstractHumanCompanionEntity companion;
     private final int searchRadius;
     private final boolean enabled;
     private BlockPos heatSource;
     private BlockPos heatStand;
+    private BlockPos supplyChest;
+    private BlockPos supplyStand;
     private int cooldown;
+    private ItemStack pendingFurnaceOutput = ItemStack.EMPTY;
 
     public ChefJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
+        super(companion, CompanionJob.CHEF);
         this.companion = companion;
         this.searchRadius = Math.max(3, searchRadius);
         this.enabled = enabled;
@@ -53,32 +52,56 @@ public class ChefJobGoal extends Goal {
     @Override
     public boolean canUse() {
         if (!isActiveJob()) return false;
-        heatSource = findHeatSource();
+        if (findFirstRawIngredient().isEmpty()) {
+            if (prepareSupply()) {
+                phase(JobPhase.TRAVELLING, "Getting raw meat", supplyChest);
+                return true;
+            }
+            waiting("No raw meat");
+            return false;
+        }
+        if (heatSource == null) {
+            companion.getJobCheckpointTarget().filter(this::isHeatSource).ifPresent(saved -> {
+                heatSource = saved;
+                heatStand = WorkerSite.findApproachStand(companion, saved, 2);
+            });
+        }
+        if (heatSource == null || heatStand == null || !isHeatSource(heatSource)) heatSource = findHeatSource();
+        if (heatSource != null && heatStand != null && !reserve("workstation:" + heatSource.asLong())) {
+            waiting("Workstation reserved");
+            return false;
+        }
         return heatSource != null && heatStand != null;
     }
 
     @Override
     public boolean canContinueToUse() {
+        if (supplyChest != null && supplyStand != null) {
+            return isActiveJob() && WorkerSite.canPlanStand(companion, supplyChest, supplyStand, WorkerSite.INTERACT_RANGE_SQR);
+        }
         return isActiveJob() && heatSource != null && heatStand != null && isHeatSource(heatSource)
-                && WorkerSite.isValid(companion, heatSource, heatStand);
+                && WorkerSite.canPlanStand(companion, heatSource, heatStand, WorkerSite.INTERACT_RANGE_SQR);
     }
 
     @Override
     public void start() {
-        moveToHeat();
+        if (supplyChest != null) moveToSupply(); else moveToHeat();
     }
 
     @Override
     public void stop() {
-        heatSource = null;
-        heatStand = null;
+        // A workstation is a resumable checkpoint, not disposable preemption state.
         companion.getNavigation().stop();
     }
 
     @Override
     public void tick() {
+        if (supplyChest != null) {
+            serviceSupplyChest();
+            return;
+        }
         if (heatSource == null || heatStand == null) return;
-        if (!isHeatSource(heatSource) || !WorkerSite.isValid(companion, heatSource, heatStand)) {
+        if (!isHeatSource(heatSource) || !WorkerSite.canPlanStand(companion, heatSource, heatStand, WorkerSite.INTERACT_RANGE_SQR)) {
             heatSource = findHeatSource();
             if (heatSource == null) return;
             moveToHeat();
@@ -86,10 +109,16 @@ public class ChefJobGoal extends Goal {
         }
         double dist = companion.distanceToSqr(heatStand.getX() + 0.5D, heatStand.getY(), heatStand.getZ() + 0.5D);
         if (dist > 2.25D) {
-            moveToHeat();
+            phase(JobPhase.TRAVELLING, "Travelling to heat", heatSource);
+            if (companion.getNavigation().isDone()) moveToHeat();
+            return;
+        }
+        if (!WorkerSite.canActFromStand(companion, heatSource, heatStand, WorkerSite.INTERACT_RANGE_SQR)) {
+            waiting("Heat blocked");
             return;
         }
         if (cooldown-- > 0) return;
+        phase(JobPhase.WORKING, "Cooking", heatSource);
         cooldown = COOK_COOLDOWN;
         cookOneItem();
     }
@@ -101,8 +130,8 @@ public class ChefJobGoal extends Goal {
         if (be instanceof AbstractFurnaceBlockEntity furnace) {
             cooked = pullCooked(furnace) || cookInFurnace(furnace);
         }
-        if (!cooked && server.getBlockState(heatSource).is(Blocks.CAMPFIRE)) {
-            cookDirect();
+        if (!cooked && be instanceof CampfireBlockEntity campfire) {
+            cookInCampfire(server, campfire);
         }
     }
 
@@ -114,25 +143,27 @@ public class ChefJobGoal extends Goal {
 
         // Clean finished cooked items first to avoid jammed output.
         ItemStack output = furnace.getItem(outputSlot);
-        if (!output.isEmpty() && RAW_TO_COOKED.containsValue(output.getItem())) {
+        if (!output.isEmpty() && !pendingFurnaceOutput.isEmpty() && ItemStack.isSameItemSameComponents(output, pendingFurnaceOutput)) {
             ItemStack moved = output.copy();
             furnace.setItem(outputSlot, ItemStack.EMPTY);
             ItemStack leftover = companion.getInventory().addItem(moved);
             if (!leftover.isEmpty()) companion.spawnAtLocation(leftover);
             furnace.setChanged();
+            pendingFurnaceOutput = ItemStack.EMPTY;
         }
 
         ItemStack rawStack = findFirstRawIngredient();
         if (rawStack.isEmpty()) return false;
-        Item cooked = RAW_TO_COOKED.get(rawStack.getItem());
-        if (cooked == null) return false;
+        ItemStack cookedStack = furnace.getBlockState().is(Blocks.SMOKER)
+                ? recipeResult(rawStack, RecipeType.SMOKING)
+                : recipeResult(rawStack, RecipeType.SMELTING);
+        if (cookedStack.isEmpty()) return false;
 
         ItemStack input = furnace.getItem(inputSlot);
         if (!input.isEmpty() && (!ItemStack.isSameItemSameComponents(input, rawStack) || input.getCount() >= input.getMaxStackSize())) {
             return false;
         }
 
-        ItemStack cookedStack = new ItemStack(cooked);
         ItemStack existingOutput = furnace.getItem(outputSlot);
         if (!existingOutput.isEmpty() && (!ItemStack.isSameItemSameComponents(existingOutput, cookedStack) || existingOutput.getCount() >= existingOutput.getMaxStackSize())) {
             return false;
@@ -146,12 +177,13 @@ public class ChefJobGoal extends Goal {
             furnace.setItem(inputSlot, input);
         }
         furnace.setChanged();
+        pendingFurnaceOutput = cookedStack.copyWithCount(1);
         return true;
     }
 
     private boolean pullCooked(AbstractFurnaceBlockEntity furnace) {
         ItemStack output = furnace.getItem(2);
-        if (output.isEmpty() || !RAW_TO_COOKED.containsValue(output.getItem())) {
+        if (output.isEmpty() || pendingFurnaceOutput.isEmpty() || !ItemStack.isSameItemSameComponents(output, pendingFurnaceOutput)) {
             return false;
         }
         ItemStack moved = output.copy();
@@ -161,6 +193,7 @@ public class ChefJobGoal extends Goal {
             companion.spawnAtLocation(leftover);
         }
         furnace.setChanged();
+        pendingFurnaceOutput = ItemStack.EMPTY;
         return true;
     }
 
@@ -174,36 +207,76 @@ public class ChefJobGoal extends Goal {
         for (int i = 0; i < companion.getInventory().getContainerSize(); i++) {
             ItemStack stack = companion.getInventory().getItem(i);
             if (stack.isEmpty()) continue;
-            if (RAW_TO_COOKED.containsKey(stack.getItem())) {
+            if (cookable(stack)) {
                 return stack;
             }
         }
         return ItemStack.EMPTY;
     }
 
-    private void cookDirect() {
-        for (int i = 0; i < companion.getInventory().getContainerSize(); i++) {
-            ItemStack stack = companion.getInventory().getItem(i);
-            if (stack.isEmpty()) continue;
-            Item cooked = RAW_TO_COOKED.get(stack.getItem());
-            if (cooked == null) continue;
-            stack.shrink(1);
-            ItemStack cookedStack = new ItemStack(cooked);
-            ItemStack leftover = companion.getInventory().addItem(cookedStack);
-            if (!leftover.isEmpty()) {
-                companion.spawnAtLocation(leftover);
-            }
+    private boolean prepareSupply() {
+        if (!(companion.level() instanceof ServerLevel server)) return false;
+        BlockPos chest = companion.getWorkCenter().orElse(null);
+        if (chest == null || !server.isLoaded(chest)) return false;
+        BlockPos stand = WorkerSite.findApproachStand(companion, chest, 2);
+        if (stand == null || !reserve("chest:" + chest.asLong())) return false;
+        supplyChest = chest;
+        supplyStand = stand;
+        return true;
+    }
+
+    private void serviceSupplyChest() {
+        if (!(companion.level() instanceof ServerLevel server) || supplyStand == null) return;
+        if (companion.distanceToSqr(supplyStand.getX() + 0.5D, supplyStand.getY(), supplyStand.getZ() + 0.5D) > 2.25D) {
+            phase(JobPhase.TRAVELLING, "Getting raw meat", supplyChest);
+            if (companion.getNavigation().isDone()) moveToSupply();
             return;
         }
+        if (!WorkerSite.canActFromStand(companion, supplyChest, supplyStand, WorkerSite.INTERACT_RANGE_SQR)) {
+            waiting("Chest blocked");
+            return;
+        }
+        ItemStack raw = companion.withdrawOneFromChest(server, supplyChest, this::cookable);
+        supplyChest = null;
+        supplyStand = null;
+        if (raw.isEmpty()) {
+            waiting("No raw meat");
+            return;
+        }
+        companion.getInventory().addItem(raw);
+        phase(JobPhase.SEARCHING, "Cooking");
+    }
+
+    private boolean cookable(ItemStack stack) {
+        return stack.is(RAW_MEAT) && (!recipeResult(stack, RecipeType.SMOKING).isEmpty()
+                || !recipeResult(stack, RecipeType.SMELTING).isEmpty()
+                || !recipeResult(stack, RecipeType.CAMPFIRE_COOKING).isEmpty());
+    }
+
+    private void cookInCampfire(ServerLevel server, CampfireBlockEntity campfire) {
+        ItemStack raw = findFirstRawIngredient();
+        if (raw.isEmpty()) return;
+        var recipe = server.getRecipeManager().getRecipeFor(RecipeType.CAMPFIRE_COOKING, new SingleRecipeInput(raw), server);
+        if (recipe.isEmpty()) return;
+        if (campfire.placeFood(companion, raw.copyWithCount(1), recipe.get().value().getCookingTime())) raw.shrink(1);
+    }
+
+    private <T extends AbstractCookingRecipe> ItemStack recipeResult(ItemStack raw, RecipeType<T> type) {
+        if (!(companion.level() instanceof ServerLevel server)) return ItemStack.EMPTY;
+        return server.getRecipeManager().getRecipeFor(type, new SingleRecipeInput(raw), server)
+                .map(holder -> holder.value().assemble(new SingleRecipeInput(raw), server.registryAccess()))
+                .orElse(ItemStack.EMPTY);
     }
 
     private BlockPos findHeatSource() {
-        BlockPos origin = companion.blockPosition();
+        BlockPos origin = companion.getWorkCenter().orElse(companion.blockPosition());
         Level level = companion.level();
-        for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-searchRadius, -1, -searchRadius),
-                origin.offset(searchRadius, 2, searchRadius))) {
+        int radius = Math.max(3, Math.min(searchRadius, companion.getPatrolRadius()));
+        for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-radius, -1, -radius),
+                origin.offset(radius, 2, radius))) {
+            if (!isHeatSource(pos)) continue;
             BlockPos stand = WorkerSite.findStand(companion, pos, 2);
-            if (isHeatSource(pos) && stand != null) {
+            if (stand != null) {
                 heatStand = stand;
                 return pos.immutable();
             }
@@ -224,13 +297,13 @@ public class ChefJobGoal extends Goal {
     private boolean isActiveJob() {
         if (!enabled) return false;
         if (companion.getJob() != CompanionJob.CHEF) return false;
-        if (!companion.isPatrolling()) return false;
+        if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        return isWithinPatrolArea();
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        return true;
     }
 
-    private boolean isWithinPatrolArea() {
-        return companion.isPatrolling() && companion.getPatrolPos().isPresent()
-                && companion.getPatrolPos().get().distSqr(companion.blockPosition()) <= Math.pow(Math.max(8.0D, companion.getPatrolRadius() + 4), 2);
+    private void moveToSupply() {
+        if (supplyStand != null) companion.getNavigation().moveTo(supplyStand.getX() + 0.5D, supplyStand.getY(), supplyStand.getZ() + 0.5D, 1.0D);
     }
 }

@@ -30,9 +30,9 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
 
 ## Worker Jobs
 
-- Assigning Miner, Fisher, Lumberjack, Chef, or Hunter anchors the companion at its current block and equips its required held tool. Selecting `None` restores normal behavior and the prior combat weapon.
-- Workers only act from a dry, two-block-high, path-reachable standing position with line of sight and interaction range. Failed sites are abandoned instead of breaking arbitrary terrain.
-- Miners only pursue ore inside their patrol cube with planned safe steps; they stop at fluids, fire, magma, unsafe routes, or missing ore. Lumberjacks skip unreachable logs, preserve lower-log priority, and only clear safe tree foliage. Couriers report inaccessible chests and never clear a route.
+- Bind a chest with Assignment Wand, assign Miner, Fisher, Lumberjack, Chef, or Hunter, then enable `Work`. The chest is the work center and Radius is the work boundary. Selecting `None` restores normal behavior and the prior combat weapon.
+- Workers only act from a dry, two-block-high, path-reachable standing position with line of sight and interaction range. Blocked, protected, unloaded, or full-inventory work stays queued for retry instead of being discarded.
+- Lumberjacks and Miners search from their assigned chest outward through the full companion Radius, up to 128 blocks. Miner columns cover the matching vertical work volume; planned excavation opens each adjacent two-block tunnel step in visible order, retains its support floor, then walks into the opening. Routes stop at fluids, fire, magma, unsafe terrain, or missing ore. Lumberjacks preserve lower-log priority and never discard an uncut log after a path stall. Couriers report inaccessible chests and never clear a route.
 - Fishers use reachable shoreline/water pairs, cast toward valid water, and reel only after a server-side bobber bite. Chefs require a reachable heat-source stand; furnaces/smokers use their inventory contract and campfires cook only while standing at a valid site.
 
 Manual dev-world checks remain required for modded protection hooks, complex cave return paths, and multi-miner tick cost.
@@ -71,6 +71,7 @@ Manual dev-world checks remain required for modded protection hooks, complex cav
   - Morale descriptor and Bond level/XP.
   - Journey stats: kills, major kills, resurrections, distance traveled with owner, first hired day.
   - Age: rolled 18–35 at spawn; ages +1 year every ~90 in-game days (visual only).
+- The journal's top-right edit control opens Name, Age, Bio, and Skin forms. Press Enter to save; editable ages are 1–120, and skin URLs use the same HTTP(S) requirement as `/companionskin`.
 - Legacy companions (zero traits) are backfilled **once** on load with traits/backstory/age—no rerolls after the initial backfill.
 
 ## Worldgen & Spawns
@@ -177,6 +178,17 @@ Health restores immediately, Regeneration heals over time, Stamina and Mana rest
 - TacZ firearms are optional: companions equip a supplied gun, aim at a valid target, shoot, reload from their own inventory, and notify their owner after an ammo failure.
 - Data pack uses pack_format 48; loot injections use NeoForge global loot modifiers for compatibility.
 - Better Combat detected: reach modifiers are skipped to avoid stacking with that mod’s reach.
+
+## Living Jobs
+Assign a non-`NONE` job in Jobs, bind its chest with Assignment Wand, then use main inventory's `Work` button to start or pause profession. Green Work is primary: Follow, Patrol, and Guard turn off; selecting one turns Work off. Jobs search and act only inside the configured Radius around bound chest. `Currently` panel shows job and short live state without changing supplied texture.
+
+The companion inventory hides its experimental Jobs button by default. Set `jobs.showJobsButton = true` in the common config to restore it; Journal, Curios, and Pack automatically move down when the Jobs row is enabled.
+
+Jobs share safe work-site checks, temporary target reservations, persisted target/phase checkpoints, and assigned-chest delivery. Workers only edit blocks after reaching approved stand; blocked, protected, unloaded, full-inventory, or full-chest work stays queued. Assignment Wand binds job companion to vanilla or item-handler container. Workers bulk-deliver every two minutes or at dusk, whichever comes first, while retaining all edible food, potions, equipment, job tools, and Lumberjack saplings. Chefs first visit the assigned chest to collect one tagged raw ingredient when their inventory has none.
+
+Lumberjacks claim cardinally connected trees, keep a running path to a safe stump-side stand, clear leaves only after that approach stalls, keep failed logs queued, reject over-limit trees, and replant only matching log-family saplings. Fishers accept compatible fishing rods, face their farther validated surface-water cast target, and use a durable bite window. Hunters use one job target path for adult wild Animals; packs can deny entity types with `modern_companions:hunter_denied` or add animal-like entities with `modern_companions:hunter_allowed`. Chefs use `modern_companions:raw_meat` tag plus vanilla cooking recipes, furnaces, smokers, and campfires; pack makers can add tagged meats and native recipes.
+
+Manual dev-world verification still required: each job's navigation, combat/unload interruption, chest retry, two-worker reservations, campfire/furnace ownership, tree footprint/replant backlog, miner route hazards, and GUI text clipping.
 
 ## Requirements
 - Java 21 (JDK 21)

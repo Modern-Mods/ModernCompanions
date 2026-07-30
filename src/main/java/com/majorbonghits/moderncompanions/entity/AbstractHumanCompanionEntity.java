@@ -91,6 +91,8 @@ import com.majorbonghits.moderncompanions.entity.job.HunterJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.MinerJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.FisherJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.ChefJobGoal;
+import com.majorbonghits.moderncompanions.entity.job.JobReservations;
+import com.majorbonghits.moderncompanions.entity.job.JobPhase;
 
 /**
  * Port of the original AbstractHumanCompanionEntity with taming, leveling,
@@ -106,6 +108,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final EntityDataAccessor<Integer> EXP_LVL = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<String> CUSTOM_SKIN_URL = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> CUSTOM_BIO = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> STR = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
@@ -184,6 +188,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final EntityDataAccessor<Integer> AGE_YEARS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<String> JOB_ID = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> WORK_ENABLED = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<String> JOB_STATUS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> MINER_ORES_COUNTED = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
@@ -288,6 +296,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private long lastCourierMessageTick = -200L;
     private boolean forceDeliverRequest;
     private long lastDeliveryGameTime = -24000L;
+    // Only durable job facts survive saves; goals rebuild paths and scan cursors on resume.
+    private JobPhase jobCheckpointPhase = JobPhase.SEARCHING;
+    @Nullable private BlockPos jobCheckpointTarget;
+    @Nullable private BlockPos jobCheckpointReturn;
     private int committedSwimTicks;
     private net.minecraft.world.phys.Vec3 committedSwimDir = net.minecraft.world.phys.Vec3.ZERO;
 
@@ -373,8 +385,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(MAJOR_KILLS, 0);
         builder.define(AGE_YEARS, 0);
         builder.define(CUSTOM_SKIN_URL, "");
+        builder.define(CUSTOM_BIO, "");
         builder.define(LAST_SWING_TICK, 0);
         builder.define(JOB_ID, CompanionJob.NONE.id());
+        builder.define(WORK_ENABLED, false);
+        builder.define(JOB_STATUS, "Idle");
         builder.define(MINER_ORES_COUNTED, 0);
         builder.define(MINER_ORES_MINED, 0);
         builder.define(MINER_ORES_LIFETIME, 0);
@@ -492,7 +507,77 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public void setJob(CompanionJob job) {
         CompanionJob safeJob = job == null ? CompanionJob.NONE : job;
+        if (safeJob != getJob() && this.level() instanceof ServerLevel level) {
+            JobReservations.release(level, this.getUUID());
+            this.entityData.set(WORK_ENABLED, false);
+            clearJobCheckpoint();
+        }
         this.entityData.set(JOB_ID, safeJob.id());
+        if (safeJob == CompanionJob.NONE) {
+            this.entityData.set(WORK_ENABLED, false);
+            this.entityData.set(JOB_STATUS, "Idle");
+        }
+    }
+
+    /** Server-synchronized profession gate; paused work retains each goal's checkpoint. */
+    public boolean isWorkEnabled() {
+        return getJob() != CompanionJob.NONE && this.entityData.get(WORK_ENABLED);
+    }
+
+    public void setWorkEnabled(boolean enabled) {
+        boolean active = enabled && getJob() != CompanionJob.NONE;
+        this.entityData.set(WORK_ENABLED, active);
+        if (active) {
+            // Work owns movement; player Follow/Patrol orders must not compete with job goals.
+            setFollowing(false);
+            setPatrolling(false);
+            setGuarding(false);
+            setJobStatus(getWorkCenter().isPresent() ? "Searching" : "Assign chest");
+        } else if (getJob() != CompanionJob.NONE) {
+            this.getNavigation().stop();
+            if (getJob() == CompanionJob.HUNTER) setHunting(false);
+            checkpointJob(JobPhase.PAUSED, jobCheckpointTarget);
+            setJobStatus("Paused");
+        }
+    }
+
+    /** Jobs use their Assignment-Wand chest as center; patrol radius remains Work radius. */
+    public Optional<BlockPos> getWorkCenter() {
+        Optional<ResourceKey<Level>> dimension = getAssignedChestDimension();
+        if (this.level() == null || dimension.isEmpty() || !this.level().dimension().equals(dimension.get())) return Optional.empty();
+        return getAssignedChest();
+    }
+
+    public boolean isInWorkArea(BlockPos pos) {
+        return getWorkCenter().filter(center -> center.distSqr(pos) <= (long) getPatrolRadius() * getPatrolRadius()).isPresent();
+    }
+
+    public JobPhase getJobCheckpointPhase() {
+        return jobCheckpointPhase;
+    }
+
+    public Optional<BlockPos> getJobCheckpointTarget() {
+        return Optional.ofNullable(jobCheckpointTarget);
+    }
+
+    public void checkpointJob(JobPhase phase, @Nullable BlockPos target) {
+        jobCheckpointPhase = phase == null ? JobPhase.SEARCHING : phase;
+        jobCheckpointTarget = target == null ? null : target.immutable();
+        jobCheckpointReturn = this.blockPosition().immutable();
+    }
+
+    private void clearJobCheckpoint() {
+        jobCheckpointPhase = JobPhase.SEARCHING;
+        jobCheckpointTarget = null;
+        jobCheckpointReturn = null;
+    }
+
+    public String getJobStatus() {
+        return this.entityData.get(JOB_STATUS);
+    }
+
+    public void setJobStatus(String status) {
+        this.entityData.set(JOB_STATUS, status == null || status.isBlank() ? "Idle" : status.substring(0, Math.min(48, status.length())));
     }
 
     /**
@@ -509,14 +594,13 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             // NONE is an explicit return to regular companion behavior.
             setPatrolling(false);
             setGuarding(false);
+            setWorkEnabled(false);
         } else {
-            // A job always works from the exact place where its owner assigned it.
-            setPatrolPos(blockPosition());
-            setPatrolling(true);
+            // Job territory is bound later by Assignment Wand, never by an independent Patrol order.
+            setPatrolling(false);
+            setFollowing(false);
             equipJobToolIfNeeded();
-        }
-        if (job == CompanionJob.HUNTER && ModConfig.safeGet(ModConfig.JOB_HUNTER_ENABLED) && !isHunting()) {
-            setHunting(true);
+            if (!isWorkEnabled()) setJobStatus("Paused");
         }
         if (job != CompanionJob.HUNTER && isHunting()) {
             setHunting(false);
@@ -570,6 +654,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             ItemStack stack = this.inventory.getItem(i);
             if (stack.isEmpty()) continue;
             if (reserveForEquippedCopy(stack, reservedEquipment)) continue;
+            if (shouldRetainForUse(stack) || getJob() == CompanionJob.LUMBERJACK && isSaplingItem(stack)) continue;
             return true;
         }
         return false;
@@ -601,8 +686,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public DeliveryResult deliverInventoryToChest(ServerLevel level, BlockPos chestPos) {
         Container container = resolveChestContainer(level, chestPos);
-        if (container == null) {
-            clearDeliveryChest(level);
+        net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
+                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, chestPos, null);
+        if (container == null && handler == null) {
             return DeliveryResult.MISSING;
         }
 
@@ -618,8 +704,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (getJob() == CompanionJob.LUMBERJACK && isSaplingItem(stack)) continue;
 
             ItemStack toMove = stack.copy();
-            ItemStack remainder = insertIntoContainer(container, toMove);
-            if (remainder.getCount() != stack.getCount()) {
+            ItemStack remainder = handler != null
+                    ? net.neoforged.neoforge.items.ItemHandlerHelper.insertItemStacked(handler, toMove, false)
+                    : insertIntoContainer(container, toMove);
+            if (remainder.getCount() != toMove.getCount()) {
                 movedAny = true;
             }
             this.inventory.setItem(i, remainder);
@@ -636,6 +724,31 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return movedAny ? DeliveryResult.SUCCESS : DeliveryResult.FULL;
     }
 
+    /** Caller must already be at an approved chest stand; this only performs one safe inventory transfer. */
+    public ItemStack withdrawOneFromChest(ServerLevel level, BlockPos chestPos, java.util.function.Predicate<ItemStack> accepted) {
+        if (!level.isLoaded(chestPos)) return ItemStack.EMPTY;
+        net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
+                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, chestPos, null);
+        if (handler != null) {
+            for (int slot = 0; slot < handler.getSlots(); slot++) {
+                ItemStack stack = handler.getStackInSlot(slot);
+                if (!stack.isEmpty() && accepted.test(stack) && canStoreInInventory(stack)) {
+                    return handler.extractItem(slot, 1, false);
+                }
+            }
+            return ItemStack.EMPTY;
+        }
+        Container container = resolveChestContainer(level, chestPos);
+        if (container == null) return ItemStack.EMPTY;
+        for (int slot = 0; slot < container.getContainerSize(); slot++) {
+            ItemStack stack = container.getItem(slot);
+            if (!stack.isEmpty() && accepted.test(stack) && canStoreInInventory(stack)) {
+                return container.removeItem(slot, 1);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
     private Container resolveChestContainer(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
         if (state.getBlock() instanceof ChestBlock) {
@@ -650,9 +763,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private void onDeliveryFinished(DeliveryResult result) {
-        if (result == DeliveryResult.SUCCESS && lumberjackGoal != null) {
-            lumberjackGoal.forceRescanAfterDeposit();
-        }
         if (result == DeliveryResult.SUCCESS) {
             clearForceDeliverRequest();
         }
@@ -767,8 +877,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     private boolean shouldRetainForUse(ItemStack stack) {
         if (stack.isEmpty()) return true;
-        if (CompanionData.isFood(stack)) return true;
-        if (CompanionData.isHealingPotion(stack)) return true;
+        if (CompanionData.isFood(stack) || stack.has(net.minecraft.core.component.DataComponents.POTION_CONTENTS)) return true;
         if (stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem
                 || stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem) {
             return true; // keep primary weapons
@@ -1307,6 +1416,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         // Store URL as a synced string so clients can fetch/download the texture on
         // demand.
         this.entityData.set(CUSTOM_SKIN_URL, url == null ? "" : url.trim());
+    }
+
+    /** Player-authored journal text, synchronized so the journal updates for every viewer. */
+    public String getCustomBio() {
+        return this.entityData.get(CUSTOM_BIO);
+    }
+
+    public void setCustomBio(@Nullable String bio) {
+        this.entityData.set(CUSTOM_BIO, bio == null ? "" : bio.trim());
     }
 
     public int getSex() {
@@ -1948,8 +2066,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                         return InteractionResult.PASS;
                     }
                     if (held.is(ModItems.ASSIGNMENT_WAND.get())) {
-                        // Prevent the companion inventory GUI from opening when using the wand.
-                        return InteractionResult.CONSUME;
+                        // Entity interaction runs before Item#interactLivingEntity; delegate explicitly.
+                        return held.interactLivingEntity(player, this, hand);
                     }
                     if (player.isShiftKeyDown()) {
                         if (!this.level().isClientSide()) {
@@ -2055,6 +2173,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putByteArray("DedicatedEquipmentManual", manualSlots);
         tag.putInt("skin", this.getSkinIndex());
         tag.putString("CustomSkinUrl", this.entityData.get(CUSTOM_SKIN_URL));
+        tag.putString("CustomBio", this.entityData.get(CUSTOM_BIO));
         tag.putBoolean("Eating", this.isEating());
         tag.putBoolean("Alert", this.isAlert());
         tag.putBoolean("Hunting", this.isHunting());
@@ -2068,6 +2187,13 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("radius", this.getPatrolRadius());
         tag.putInt("sex", this.getSex());
         tag.putString("JobId", this.getJob().id());
+        tag.putBoolean("WorkEnabled", this.isWorkEnabled());
+        tag.putString("JobStatus", this.getJobStatus());
+        CompoundTag checkpoint = new CompoundTag();
+        checkpoint.putString("Phase", jobCheckpointPhase.name());
+        if (jobCheckpointTarget != null) checkpoint.putLong("Target", jobCheckpointTarget.asLong());
+        if (jobCheckpointReturn != null) checkpoint.putLong("Return", jobCheckpointReturn.asLong());
+        tag.put("JobCheckpoint", checkpoint);
         tag.putInt("baseHealth", this.getBaseHealth());
         tag.putFloat("XpP", this.experienceProgress);
         tag.putInt("XpLevel", this.getExpLvl());
@@ -2123,6 +2249,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (tag.contains("CustomSkinUrl")) {
             this.setCustomSkinUrl(tag.getString("CustomSkinUrl"));
         }
+        if (tag.contains("CustomBio")) {
+            this.setCustomBio(tag.getString("CustomBio"));
+        }
         this.setEating(tag.getBoolean("Eating"));
         this.setAlert(tag.getBoolean("Alert"));
         this.setHunting(tag.getBoolean("Hunting"));
@@ -2142,6 +2271,18 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.setPatrolRadius(tag.getInt("radius"));
         this.setSex(tag.getInt("sex"));
         this.setJob(CompanionJob.fromId(tag.getString("JobId")));
+        this.setWorkEnabled(tag.getBoolean("WorkEnabled"));
+        if (tag.contains("JobStatus")) this.setJobStatus(tag.getString("JobStatus"));
+        if (tag.contains("JobCheckpoint", 10)) {
+            CompoundTag checkpoint = tag.getCompound("JobCheckpoint");
+            try {
+                jobCheckpointPhase = JobPhase.valueOf(checkpoint.getString("Phase"));
+            } catch (IllegalArgumentException ignored) {
+                jobCheckpointPhase = JobPhase.SEARCHING;
+            }
+            jobCheckpointTarget = checkpoint.contains("Target") ? BlockPos.of(checkpoint.getLong("Target")) : null;
+            jobCheckpointReturn = checkpoint.contains("Return") ? BlockPos.of(checkpoint.getLong("Return")) : null;
+        }
         this.onJobChanged();
         this.experienceProgress = tag.getFloat("XpP");
         this.totalExperience = tag.getInt("XpTotal");
@@ -2777,6 +2918,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void applyFlag(String flag, boolean value) {
         switch (flag) {
             case "follow" -> {
+                if (value && getJob().isWorker()) setWorkEnabled(false);
                 setFollowing(value);
                 if (value) {
                     setPatrolling(false);
@@ -2784,6 +2926,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 }
             }
             case "patrol" -> {
+                if (value && getJob().isWorker()) setWorkEnabled(false);
                 setPatrolling(value);
                 setFollowing(!value);
                 setGuarding(false);
@@ -2791,12 +2934,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                     setPatrolPos(blockPosition());
             }
             case "guard" -> {
+                if (value && getJob().isWorker()) setWorkEnabled(false);
                 setGuarding(value);
                 setPatrolling(false);
                 setFollowing(!value);
                 if (value)
                     setPatrolPos(blockPosition());
             }
+            case "work" -> setWorkEnabled(value);
             case "hunt" -> setHunting(value);
             case "alert" -> setAlert(value);
             case "sprint" -> setSprintEnabled(value);
@@ -2813,6 +2958,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             case "follow" -> isFollowing();
             case "patrol" -> isPatrolling();
             case "guard" -> isGuarding();
+            case "work" -> isWorkEnabled();
             case "hunt" -> isHunting();
             case "alert" -> isAlert();
             case "sprint" -> isSprintEnabled();

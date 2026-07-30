@@ -27,6 +27,8 @@ public class HuntGoal extends NearestAttackableTargetGoal<LivingEntity> {
 
     @Override
     public boolean canUse() {
-        return companion.isHunting() && super.canUse();
+        // HunterJobGoal owns profession target selection; this remains manual hunting only.
+        return companion.getJob() != com.majorbonghits.moderncompanions.entity.job.CompanionJob.HUNTER
+                && companion.isHunting() && super.canUse();
     }
 }

@@ -34,6 +34,10 @@ public enum CompanionJob {
         return Component.translatable("job.modern_companions." + id + ".desc");
     }
 
+    public boolean isWorker() {
+        return this != NONE;
+    }
+
     public static CompanionJob fromId(String raw) {
         if (raw == null || raw.isBlank()) {
             return NONE;

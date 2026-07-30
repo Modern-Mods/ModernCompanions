@@ -189,3 +189,45 @@
 
 ## 2026-07-30 (lumberjack full-tree felling)
 - Keep a Prism smoke for tall birch, spruce, and dark-oak trunks; the lumberjack now retains a single stump stand and must clear every connected log before replanting.
+
+## 2026-07-30 (living jobs follow-up)
+- Add durable per-job target checkpoint serialization and bounded incremental tree/miner scans after live smoke identifies a concrete remaining unload or large-area stall; current shared Work, reservation, action, and delivery contracts are intentionally small and avoid a behavior-tree framework.
+
+## 2026-07-30 (Work radius smoke)
+- Keep a two-chest dev-world smoke: bind chest A, enable Work, verify Follow/Patrol unpress and job stays inside Radius around A; then rebind chest B and verify future searches move to B's radius without stale patrol-center work.
+
+## 2026-07-30 (job route and supply smoke)
+- Test one Miner with an exposed ore and a solid-wall ore: verify it never breaks the floor below a planned feet cell and leaves blocked/protected ore queued. Test one Chef with only tagged raw meat in its assigned chest: verify travel to chest, one-item withdrawal at chest stand, cooking, deposit, and resume. Add wider route/replant persistence only after this baseline live path is verified.
+
+## 2026-07-30 (job path regression smoke)
+- Keep a leaf-wall tree, an unobstructed chest, a one-block-wide dirt tunnel, and a pond shore in the dev test pen. Verify no chest spam, Lumberjack leaf clearing/full-log progress, Miner digs from present feet, and Fisher bobber always begins at farther surface water.
+
+## 2026-07-30 (tree and return-target smoke)
+- In the same pen, confirm a reachable trunk leaves its canopy intact while an actually blocked approach removes only enough leaves to proceed. Confirm a Fisher visibly turns toward its far-water bobber and a Miner retains a clear flat return route to the chest-side stand.
+
+## 2026-07-30 (Lumberjack navigation smoke)
+- Add one normal tree and one leaf-walled tree at several Radius distances. Confirm a Lumberjack's path advances without repeated restart, reaches normal trees without leaf damage, and clears only the minimum blocked leaf approach.
+
+## 2026-07-30 (job reliability smoke)
+- Keep one compact two-worker pen with an oak, tall spruce, acacia, solid dirt/stone ore tunnel, nearby cave ore, pond, and shared chest. Verify reservations, complete log removal, tunnel return, one-second minimum recasts, retained food/potions, two-minute bulk unload, and dusk unload before expanding the planners further.
+
+## 2026-07-30 (128-radius search smoke)
+- Bind a chest at surface level, set Radius to 128, and place known mature trees and exposed/buried ores at roughly 8, 32, 64, and 120 blocks. Confirm center-out discovery prefers nearer targets and eventually reaches the outer ring without a long server tick.
+
+## 2026-07-30 (first excavation smoke)
+- Put known ore below a grass/dirt surface and watch the first three descending steps: each must visibly remove its upper/lower tunnel blocks, preserve floor support, walk forward, and leave the same opening usable on return.
+
+## 2026-07-30 (Jobs button layout smoke)
+- Open companion inventory with `showJobsButton` false and true, both with and without Curios/Pack. Confirm the stack remains contiguous and the bottom control stays inside the supplied texture.
+
+## 2026-07-30 (job inventory panel smoke)
+- Open the inventory before and after assigning each job. Confirm `newinventory_nojob.png` shows no Currently/State panel and `newinventory.png` plus live job/status text return immediately after assignment.
+
+## 2026-07-30 (journal editing smoke)
+- In a multiplayer-capable dev world, rename a companion, set a long Bio, and paste an HTTPS skin URL through the journal. Confirm each Enter submission survives relog, the edit sprite uses all three states, non-owner requests are ignored, and the skin renderer refreshes for tracking clients.
+
+## 2026-07-30 (journal edit navigation smoke)
+- Confirm the Back button below Skin and Escape both return to the journal at every supported GUI scale.
+
+## 2026-07-30 (journal age editing smoke)
+- Set an Age at each boundary (1 and 120) and reject empty, non-numeric, zero, and 121 values; confirm valid ages update the journal and survive relog.

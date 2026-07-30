@@ -14,6 +14,9 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.minecraft.world.SimpleMenuProvider;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+
 @EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD, modid = ModernCompanions.MOD_ID)
 public final class ModNetwork {
     private ModNetwork() {}
@@ -25,6 +28,7 @@ public final class ModNetwork {
                 .playToServer(CompanionActionPayload.TYPE, CompanionActionPayload.CODEC, ModNetwork::handleAction)
                 .playToServer(SetPatrolRadiusPayload.TYPE, SetPatrolRadiusPayload.CODEC, ModNetwork::handlePatrolRadius)
                 .playToServer(SetCompanionJobPayload.TYPE, SetCompanionJobPayload.CODEC, ModNetwork::handleSetJob)
+                .playToServer(EditCompanionJournalPayload.TYPE, EditCompanionJournalPayload.CODEC, ModNetwork::handleJournalEdit)
                 .playToServer(OpenCompanionInventoryPayload.TYPE, OpenCompanionInventoryPayload.CODEC, ModNetwork::handleOpenInventory);
     }
 
@@ -48,6 +52,7 @@ public final class ModNetwork {
                         companion.setGuarding(payload.value());
                         companion.setPatrolPos(companion.blockPosition());
                     }
+                    case "work" -> companion.setWorkEnabled(payload.value());
                     case "follow" -> companion.setFollowing(payload.value());
                     case "pickup" -> companion.setPickupEnabled(payload.value());
                     default -> {}
@@ -101,6 +106,50 @@ public final class ModNetwork {
                 companion.onJobChanged();
             }
         });
+    }
+
+    private static void handleJournalEdit(EditCompanionJournalPayload payload, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer serverPlayer)) return;
+            Entity entity = serverPlayer.level().getEntity(payload.entityId());
+            if (!(entity instanceof AbstractHumanCompanionEntity companion) || !companion.isOwnedBy(serverPlayer)) return;
+
+            String value = payload.value().trim();
+            switch (payload.field()) {
+                case "name" -> {
+                    if (!value.isEmpty() && value.length() <= 64) companion.setCustomName(Component.literal(value));
+                }
+                case "age" -> setAge(companion, value);
+                case "bio" -> {
+                    if (value.length() <= 240) companion.setCustomBio(value);
+                }
+                case "skin" -> {
+                    if (isHttpUrl(value)) companion.setCustomSkinUrl(value);
+                }
+                default -> { }
+            }
+        });
+    }
+
+    /** Keep editable human companion ages sensible and prevent malformed client payloads. */
+    private static void setAge(AbstractHumanCompanionEntity companion, String value) {
+        try {
+            int age = Integer.parseInt(value);
+            if (age >= 1 && age <= 120) companion.setAgeYears(age);
+        } catch (NumberFormatException ignored) {
+            // Invalid text leaves the existing age unchanged.
+        }
+    }
+
+    // Matches /companionskin: custom textures are loaded only from explicit web URLs.
+    private static boolean isHttpUrl(String value) {
+        try {
+            URI uri = new URI(value);
+            String scheme = uri.getScheme();
+            return uri.getHost() != null && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme));
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 
     private static void handleOpenInventory(OpenCompanionInventoryPayload payload, IPayloadContext ctx) {

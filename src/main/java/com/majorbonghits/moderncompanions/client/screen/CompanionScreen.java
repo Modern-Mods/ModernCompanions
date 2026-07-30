@@ -4,6 +4,7 @@ import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.client.renderer.CompanionRenderer;
 import com.majorbonghits.moderncompanions.client.screen.job.CompanionJobScreen;
 import com.majorbonghits.moderncompanions.compat.sophisticatedbackpacks.SophisticatedBackpackCompat;
+import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.network.CompanionActionPayload;
@@ -29,8 +30,10 @@ import java.util.function.BooleanSupplier;
 
 /** Companion inventory screen using the seven-row companion layout. */
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
-    private static final ResourceLocation BG = ResourceLocation.fromNamespaceAndPath(
+    private static final ResourceLocation JOB_BG = ResourceLocation.fromNamespaceAndPath(
             ModernCompanions.MOD_ID, "textures/gui/newinventory.png");
+    private static final ResourceLocation NO_JOB_BG = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/newinventory_nojob.png");
     private static final ResourceLocation BUTTONS = ResourceLocation.fromNamespaceAndPath(
             ModernCompanions.MOD_ID, "textures/gui/newbuttons.png");
     private static final ResourceLocation SMALL_BUTTONS = ResourceLocation.fromNamespaceAndPath(
@@ -63,8 +66,17 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isPatrolling).orElse(false),
                 () -> sendOrder("patrol")));
         addRenderableWidget(new TexturedButton("Guard", buttonX, buttonY + 51,
-                () -> safeCompanion().map(AbstractHumanCompanionEntity::isGuarding).orElse(false),
-                () -> sendOrder("guard")));
+                () -> safeCompanion().map(companion -> companion.getJob().isWorker() ? companion.isWorkEnabled() : companion.isGuarding()).orElse(false),
+                () -> safeCompanion().ifPresent(companion -> {
+                    if (companion.getJob().isWorker()) sendToggle("work"); else sendOrder("guard");
+                })) {
+            @Override
+            public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+                setMessage(safeCompanion().map(companion -> companion.getJob().isWorker() ? Component.literal("Work") : Component.literal("Guard"))
+                        .orElse(Component.literal("Guard")));
+                super.renderWidget(gfx, mouseX, mouseY, partialTick);
+            }
+        });
         addRenderableWidget(new TexturedButton("Follow", buttonX, buttonY + 68,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isFollowing).orElse(false),
                 () -> sendOrder("follow")));
@@ -84,15 +96,21 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         addRenderableWidget(new RadiusButton(leftPos + CONTENT_X_OFFSET + 182, radiusY, 16, radiusTex, () -> adjustRadius(-2)));
         addRenderableWidget(new RadiusButton(leftPos + CONTENT_X_OFFSET + 205, radiusY, 0, radiusTex, () -> adjustRadius(2)));
 
-        addRenderableWidget(new TexturedButton("Jobs", buttonX, topPos + 174, () -> false, this::openJobInfo));
+        int lowerButtonY = topPos + 174;
+        if (ModConfig.safeGet(ModConfig.SHOW_JOBS_BUTTON)) {
+            addRenderableWidget(new TexturedButton("Jobs", buttonX, lowerButtonY, () -> false, this::openJobInfo));
+            lowerButtonY += 18;
+        }
         addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.journal"),
-                buttonX, topPos + 192, () -> false, this::openJournal));
+                buttonX, lowerButtonY, () -> false, this::openJournal));
+        lowerButtonY += 18;
         if (ModList.get().isLoaded("curios")) {
-            addRenderableWidget(new TexturedButton("Curios", buttonX, topPos + 210, () -> false, this::openCurios));
+            addRenderableWidget(new TexturedButton("Curios", buttonX, lowerButtonY, () -> false, this::openCurios));
+            lowerButtonY += 18;
         }
         if (ModList.get().isLoaded("sophisticatedbackpacks") && ModList.get().isLoaded("curios")
                 && safeCompanion().map(SophisticatedBackpackCompat::hasBackpack).orElse(false)) {
-            addRenderableWidget(new TexturedButton("Pack", buttonX, topPos + 228, () -> false, this::openBackpack));
+            addRenderableWidget(new TexturedButton("Pack", buttonX, lowerButtonY, () -> false, this::openBackpack));
         }
         addRenderableWidget(new ModeButton(leftPos + 82, topPos + 147,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmVillagers).orElse(false),
@@ -108,7 +126,10 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
-        gfx.blit(BG, leftPos, topPos, 0, 0, imageWidth, imageHeight, BG_WIDTH, BG_HEIGHT);
+        // The no-job asset omits the inactive Currently/State panel entirely.
+        ResourceLocation background = safeCompanion().filter(companion -> companion.getJob().isWorker()).isPresent()
+                ? JOB_BG : NO_JOB_BG;
+        gfx.blit(background, leftPos, topPos, 0, 0, imageWidth, imageHeight, BG_WIDTH, BG_HEIGHT);
         safeCompanion().ifPresent(companion -> {
             CompanionRenderer.setPreviewNameplateSuppressed(true);
             try {
@@ -128,6 +149,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             renderCompanionInfo(gfx, companion);
             renderAttributes(gfx, companion);
             renderWantedFood(gfx, companion);
+            renderCurrentJob(gfx, companion);
         });
     }
 
@@ -185,6 +207,16 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
                 break;
             }
         }
+    }
+
+    /** Texture owns `Currently`; draw only synchronized dynamic job text inside its panel. */
+    private void renderCurrentJob(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
+        if (!companion.getJob().isWorker()) return;
+        gfx.enableScissor(leftPos + 4, topPos + 205, leftPos + 100, topPos + 239);
+        // renderLabels already translates to the GUI origin; using leftPos here drew off-panel.
+        gfx.drawString(font, font.plainSubstrByWidth(companion.getJob().displayName().getString(), 90), 7, 216, TEXT_COLOR, false);
+        gfx.drawString(font, font.plainSubstrByWidth(companion.getJobStatus(), 90), 7, 227, TEXT_COLOR, false);
+        gfx.disableScissor();
     }
 
     private void drawCenteredText(GuiGraphics gfx, Component text, int centerX, int y) {

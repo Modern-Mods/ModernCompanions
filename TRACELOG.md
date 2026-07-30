@@ -2197,3 +2197,79 @@
 - Steps: Chose one safe stand beside the stump for the whole tree, kept every scanned connected log in the priority queue, and allowed the already-validated stump-side felling action to reach tall natural trunks while retaining line-of-sight, tool, drops, durability, chunk, and mob-griefing checks. Bumped version to 1.2.59.
 - Rationale: Per-log stand selection could not find ground at the third log's height, silently discarding it and every higher log before the lumberjack could target them.
 - Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism full-tree smoke remains required.
+
+## 2026-07-30 (living jobs shared safety and resumable control)
+- Prompt/task: Complete `TASK.md`'s shared job lifecycle, Work control, work-site safety, reservations, delivery, visible state, and profession reliability work.
+- Steps: Added persisted/synchronized Work and compact status state, a small resumable lifecycle bridge, expiring per-server target reservations, split destination/action checks, reasoned worker action results, safe inventory-capacity simulation, item-handler chest insertion, and pause-safe goal checkpoints. Added dynamic Current panel text; updated Fisher cast/bite behavior, Hunter data-driven Animal predicate, Chef native recipe/workstation path, and Lumberjack cardinal tree/sapling safeguards.
+- Rationale: Common ownership and safety gates prevent one goal from clearing another job's valid checkpoint, remote-LOS false negatives from rejecting destinations, and failed world actions from advancing work.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and focused worker safety check run after final source changes. Live two-worker, navigation, container capability, campfire ownership, miner hazard, 2x2 replant, and GUI-scale smoke remain required.
+
+## 2026-07-30 (Work priority, Assignment Wand, and Currently panel repair)
+- Prompt/task: Continue TASK.md; make green Work primary over Follow/Patrol, fix shift-right-click Assignment Wand selection, center jobs on assigned chest/radius, and render the missing Current state in the circled inventory panel.
+- Steps: Work now clears Follow/Patrol/Guard and other order selection pauses Work. Jobs require Assignment-Wand chest, use it as search/work center, and cap search radius to the configured companion Radius. Delegated wand interaction from companion entity to the held item, fixing the entity-first interaction path. Corrected Current text coordinates because `renderLabels` already has GUI-origin translation.
+- Rationale: Existing Work set Patrol on, the companion consumed the wand before item interaction, job goals used patrol/owner centers, and Current text applied `leftPos` twice.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed including `test`, `workerSafetyCheck`, and `companionResourcesCheck`. Dev-world smoke still required for Shift+RMB select/bind, Work order priority, chest-radius boundaries, and all GUI scales.
+
+## 2026-07-30 (job checkpoint, safe route, and Chef supply repair)
+- Prompt/task: Continue `TASK.md` Jobs reliability revamp through stable target retention, checkpoint resume, chest-radius work, and Chef supply delivery.
+- Steps: Persisted live job phases/targets while Lumberjacks, Miners, Fishers, Hunters, and delivery update their state; restored saved lumber/fishing/mining targets when still valid; stopped Lumberjack path stalls and Miner route stalls from discarding valid work; retained Miner support floors; and added one-item chest withdrawal at an approved chest stand for Chefs with no raw tagged input. Bumped version to 1.2.62.
+- Rationale: A navigation failure is not completion, a planned feet cell cannot lose its supporting floor, and Chef cannot participate in the Hunter-to-chest-to-kitchen loop without safely taking assigned chest input.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed before documentation/version bump, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`. Rebuild after the version-only resource change and live job smoke remain required.
+
+## 2026-07-30 (job path false-negative repair)
+- Prompt/task: Fix Lumberjacks stuck behind leaves/after a few logs, false chest-unreachable spam, Fisher ground casts, and Miners stopping after one tunnel block.
+- Steps: Delivery now falls back to a safe chest-side stand and reports failure only after movement stalls; Lumberjacks clear leaves from their actual safe feet; Miners mine a tunnel's next solid block from current safe feet rather than pathfinding into it; and Fishers choose validated water farther from shore, spawning their bobber at that water so terrain collision cannot delete it and trigger rapid recasts. Bumped version to 1.2.63.
+- Rationale: Native path probing cannot prove every future chest/tunnel destination, and a projectile collision before a bobber reaches its intended water is not a useful fishing cast.
+- Build/Test: Java 21 build and worker checks run after this entry; live smoke remains required for leaf-walled trees, open chests, solid tunnel ore, and shore-facing casts.
+
+## 2026-07-30 (job path target and facing correction)
+- Prompt/task: Stop Lumberjacks stripping a canopy, make Fisher casts visibly face water, and repair clear-path returns to assigned chests.
+- Steps: Restrained leaf breaks to actual failed approach movement; authorized an already-reserved tree trunk to ignore only foliage line-of-sight; set Fisher head/body rotation synchronously toward its selected water target; and changed Miner return routing from the solid chest block to a safe chest-side stand. Bumped version to 1.2.64.
+- Rationale: Foliage hiding a trunk is not a walking obstruction, and neither a cast nor a navigation request should target a location a mob cannot stand in.
+- Build/Test: Java 21 compile passed before the version/resource update; full build and live smoke remain required.
+
+## 2026-07-30 (Lumberjack path-progress repair)
+- Prompt/task: Fix Lumberjacks hanging at `Travelling` and failing to reach trees.
+- Steps: Stopped reissuing the same navigation request every AI tick, which reset active path progress; retained periodic retry only after navigation completes; and fall back to a safe stump-side stand when leaves cause the initial path probe to fail so the existing blocked-approach leaf recovery can run. Bumped version to 1.2.65.
+- Rationale: A running navigation path must be allowed to advance. A leaf wall should delay the approach, not make a mature tree invisible to the worker.
+- Build/Test: Java 21 compile passed before the version/resource update; full build and live tree smoke remain required.
+
+## 2026-07-30 (job search, tunneling, fishing, and bulk-delivery reliability)
+- Prompt/task: Repair Lumberjack tree discovery/pathing/felling, Fisher rapid casting, Miner controlled tunneling, shared chest navigation, and per-task deposit churn while never depositing food or potions.
+- Steps: Sliced Lumberjack surface-column discovery across ticks, retained validated same-family tree components through failed breaks, supported elevated/diagonal branches, and attempted replanting after the complete component was felled; imposed a one-second Fisher recast floor; changed Miner routes into explicit break/walk steps with stable floors, two-block clearance, falling-block/fluid rejection, native-cave preference, and chest return checks; changed automatic unloading to two-minute-or-dusk batches and retained every edible food and potion stack. Bumped version to 1.2.66.
+- Rationale: Repeated full-volume scans, pathing directly into solid tunnel cells, immediately replacing removed hooks, and a ten-second unload timer were the shared causes of visible stalls and task-by-task chest trips.
+- Build/Test: Java 21 focused compile/check and full build run after final changes; live one/two-worker navigation, protection, fishing presentation, nightfall deposit, and tree/miner acceptance smoke remain required.
+
+## 2026-07-30 (full-radius center-out worker searches)
+- Prompt/task: Fix Lumberjacks reporting no mature trees and Miners failing to find known ore inside a 128-block assigned Radius.
+- Steps: Removed the job-config upper cap from Lumberjack and Miner work radii, retained 128 as the companion-authoritative maximum, added a shared deterministic center-out column order, changed Miner surveying to finish each vertical column before expanding outward, expanded its vertical volume with Radius, and separated ore-destination safety from one-step route-height validation. Bumped version to 1.2.67.
+- Rationale: Searches previously began at a far bottom corner inside only the small configured radius, while Miner ore-side stands were rejected whenever their Y differed by more than one block from the worker before route planning.
+- Build/Test: Java 21 compile, pure spiral-order regression check, full Gradle build, and diff validation run after final changes; live 128-radius tree/ore discovery remains required.
+
+## 2026-07-30 (Miner first-excavation action repair)
+- Prompt/task: Fix Miners standing above ground and swinging endlessly without breaking any block.
+- Steps: Ordered descending excavation steps upper-block-first, added a narrow planned-excavation action that may ignore sight only for an adjacent prevalidated queued block, reused all existing distance/stand/tool/drop/protection/inventory gates, and prevented the swing timer from starting when no valid action stand exists. Bumped version to 1.2.68.
+- Rationale: The lower block of the first descending stair was occluded by the upper block in that same step, so ordinary line-of-sight validation rejected every completed break and restarted the animation forever.
+- Build/Test: Java 21 focused checks, full Gradle build, and diff validation run after final changes; live surface-to-underground staircase smoke remains required.
+
+## 2026-07-30 (configurable Jobs button visibility)
+- Prompt/task: Hide the companion inventory Jobs button by default behind a config toggle and move the remaining stacked buttons up into the empty row.
+- Steps: Added `jobs.showJobsButton` with a default of `false`; conditionally creates the Jobs control; and derives Journal, Curios, and Pack Y positions from the next available row. Bumped version to 1.2.69.
+- Rationale: One row cursor keeps both layouts aligned without maintaining duplicate coordinate sets.
+- Build/Test: Java 21 full Gradle build and diff validation run after final changes; both config states and optional-button combinations require an in-game visual smoke.
+
+## 2026-07-30 (companion journal editing)
+- Prompt/task: Add the supplied top-right journal edit button and Name, Bio, and Skin text-entry flows.
+- Steps: Reused `editbutton.png`'s 16px normal/hover/pressed states, added native edit-menu/text-field screens, and sent Enter submissions through an owner-checked server payload. Names and custom Bios persist and synchronize; skins retain the command's HTTP(S) restriction.
+- Rationale: The journal previously had only generated backstory text. A distinct custom Bio preserves that personality data while allowing the player to write their own description.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; dev-world click/hover, Enter submission, relog persistence, and remote skin rendering smoke remain required.
+
+## 2026-07-30 (journal edit-menu Back button)
+- Prompt/task: Add a Back button below Name, Bio, and Skin in the journal edit menu.
+- Steps: Added one native Back button beneath Skin that returns to the journal; bumped version to 1.2.72.
+- Rationale: Escape already returned to the journal, but the edit menu now has a visible mouse-accessible return path.
+
+## 2026-07-30 (journal age editing)
+- Prompt/task: Add Age to the journal edit menu alongside Name, Bio, and Skin.
+- Steps: Reused the native text-entry screen and existing synchronized age setter; accepted only whole-number ages from 1 through 120, moved Back beneath the fourth action, and bumped version to 1.2.73.
+- Rationale: Age was already persistent companion state, so one validated payload branch avoids duplicate storage or a separate editor.

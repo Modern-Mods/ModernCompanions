@@ -1,8 +1,13 @@
 package com.majorbonghits.moderncompanions.entity.job;
 
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
-import com.majorbonghits.moderncompanions.entity.CompanionData;
+import com.majorbonghits.moderncompanions.ModernCompanions;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.item.AxeItem;
@@ -18,8 +23,12 @@ import java.util.EnumSet;
  * nearby valid target and lets existing target goals handle combat. Kept light
  * to avoid double-pathing with built-in attack goals.
  */
-public class HunterJobGoal extends Goal {
+public class HunterJobGoal extends ResumableJobGoal {
     private static final int CHECK_INTERVAL = 20;
+    private static final TagKey<net.minecraft.world.entity.EntityType<?>> DENIED_ANIMALS = TagKey.create(Registries.ENTITY_TYPE,
+            ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "hunter_denied"));
+    private static final TagKey<net.minecraft.world.entity.EntityType<?>> ALLOWED_ANIMALS = TagKey.create(Registries.ENTITY_TYPE,
+            ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "hunter_allowed"));
     private final double searchRadius;
     private final boolean enabled;
 
@@ -27,6 +36,7 @@ public class HunterJobGoal extends Goal {
     private int tickDown;
 
     public HunterJobGoal(AbstractHumanCompanionEntity companion, double searchRadius, boolean enabled) {
+        super(companion, CompanionJob.HUNTER);
         this.companion = companion;
         this.searchRadius = Math.max(6.0D, searchRadius);
         this.enabled = enabled;
@@ -47,16 +57,25 @@ public class HunterJobGoal extends Goal {
     public void tick() {
         if (tickDown-- > 0) return;
         tickDown = CHECK_INTERVAL;
-        if (companion.getTarget() != null && validTarget(companion.getTarget())) return;
+        if (companion.getTarget() != null && validTarget(companion.getTarget())) {
+            phase(JobPhase.WORKING, "Hunting", companion.getTarget().blockPosition());
+            return;
+        }
         companion.setTarget(null);
         LivingEntity target = findTarget();
-        if (target != null) {
+        if (target != null && reserve("animal:" + target.getUUID())) {
             companion.setTarget(target);
+            phase(JobPhase.TRAVELLING, "Hunting", target.blockPosition());
+        } else if (target != null) {
+            waiting("Animal reserved");
+        } else {
+            phase(JobPhase.SEARCHING, "No prey");
         }
     }
 
     private LivingEntity findTarget() {
-        AABB box = companion.getBoundingBox().inflate(searchRadius);
+        net.minecraft.core.BlockPos center = companion.getWorkCenter().orElse(companion.blockPosition());
+        AABB box = new AABB(center).inflate(Math.min(searchRadius, companion.getPatrolRadius()));
         LivingEntity best = null;
         double bestDistance = Double.MAX_VALUE;
         for (LivingEntity entity : companion.level().getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
@@ -71,31 +90,24 @@ public class HunterJobGoal extends Goal {
     }
 
     private boolean validTarget(LivingEntity entity) {
-        if (!entity.isAlive() || entity.isAlliedTo(companion) || !withinPatrol(entity.blockPosition())) return false;
-        boolean huntable = false;
-        for (Class<?> c : CompanionData.huntMobs) {
-            if (c.isInstance(entity)) {
-                huntable = true;
-                break;
-            }
-        }
-        if (!huntable) return false;
+        if (!entity.isAlive() || entity.isAlliedTo(companion) || !companion.isInWorkArea(entity.blockPosition())) return false;
+        if (entity instanceof Animal animal && animal.isBaby()) return false;
+        if (!(entity instanceof Animal) && !entity.getType().is(ALLOWED_ANIMALS)) return false;
+        if (entity instanceof TamableAnimal tameable && tameable.isTame()) return false;
+        if (entity.getType().is(DENIED_ANIMALS)) return false;
+        // Default every adult wild Animal is eligible; pack tags can add animal-like mod entities.
         var path = companion.getNavigation().createPath(entity, 0);
         return path != null && path.canReach();
-    }
-
-    private boolean withinPatrol(net.minecraft.core.BlockPos pos) {
-        return companion.getPatrolPos().isPresent()
-                && companion.getPatrolPos().get().distSqr(pos) <= (long) companion.getPatrolRadius() * companion.getPatrolRadius();
     }
 
     private boolean isActiveJob() {
         if (!enabled) return false;
         if (companion.getJob() != CompanionJob.HUNTER) return false;
-        if (!companion.isPatrolling()) return false;
+        if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
         if (!hasWeapon()) return false;
-        return isWithinPatrolArea();
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        return true;
     }
 
     private boolean hasWeapon() {
@@ -114,8 +126,4 @@ public class HunterJobGoal extends Goal {
         return false;
     }
 
-    private boolean isWithinPatrolArea() {
-        return companion.isPatrolling() && companion.getPatrolPos().isPresent()
-                && companion.getPatrolPos().get().distSqr(companion.blockPosition()) <= Math.pow(Math.max(8.0D, companion.getPatrolRadius() + 4), 2);
-    }
 }

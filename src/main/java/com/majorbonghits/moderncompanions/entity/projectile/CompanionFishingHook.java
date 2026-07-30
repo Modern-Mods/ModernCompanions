@@ -25,8 +25,10 @@ public class CompanionFishingHook extends Projectile {
     private static final EntityDataAccessor<Boolean> DATA_BITING =
             SynchedEntityData.defineId(CompanionFishingHook.class, EntityDataSerializers.BOOLEAN);
     private static final int MAX_LIFETIME = 20 * 60;
+    private static final int CAST_TICKS = 12;
 
     private int lifeTicks;
+    private int biteTicks;
     private BlockPos waterSpot;
 
     public CompanionFishingHook(EntityType<? extends CompanionFishingHook> type, Level level) {
@@ -49,7 +51,6 @@ public class CompanionFishingHook extends Projectile {
     @Override
     public void tick() {
         super.tick();
-        this.setNoGravity(true);
         AbstractHumanCompanionEntity owner = getOwnerCompanion();
         if (owner == null || !owner.isAlive()) {
             discard();
@@ -59,16 +60,25 @@ public class CompanionFishingHook extends Projectile {
             discard();
             return;
         }
-        if (waterSpot != null) {
+        if (lifeTicks >= CAST_TICKS && waterSpot != null) {
             // Keep the bobber anchored at the target water surface.
             Vec3 bobberPos = Vec3.atCenterOf(waterSpot).add(0.0D, 0.1D, 0.0D);
             this.setPos(bobberPos.x, bobberPos.y, bobberPos.z);
+            this.setNoGravity(true);
+            this.setDeltaMovement(Vec3.ZERO);
         }
-        this.setDeltaMovement(Vec3.ZERO);
         if (!this.level().isClientSide) {
-            // Small server-authoritative bite state; fishing jobs must wait for it before reeling.
-            this.entityData.set(DATA_BITING, isLineInWater() && lifeTicks > 80 && random.nextInt(100) == 0);
+            // A bite lasts long enough for the server goal to react instead of flickering for one tick.
+            if (biteTicks > 0) biteTicks--;
+            if (isSettled() && isLineInWater() && biteTicks == 0 && lifeTicks > 80 && random.nextInt(100) == 0) {
+                biteTicks = 20;
+            }
+            this.entityData.set(DATA_BITING, biteTicks > 0);
         }
+    }
+
+    public boolean isSettled() {
+        return lifeTicks >= CAST_TICKS;
     }
 
     public boolean isLineInWater() {

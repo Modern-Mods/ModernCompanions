@@ -47,6 +47,7 @@ public final class ModConfig {
     public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_MINER_ALLOW_BLOCKS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_MINER_DENY_BLOCKS;
     public static ModConfigSpec.BooleanValue JOB_ASSIGNED_CHESTS_CHUNKLOAD;
+    public static ModConfigSpec.BooleanValue SHOW_JOBS_BUTTON;
 
     /**
      * Safely read a config value even during very early lifecycle (e.g., attribute construction) by
@@ -143,7 +144,7 @@ public final class ModConfig {
                 .comment("Enable the Lumberjack job behaviors.")
                 .define("lumberjackEnabled", true);
         JOB_LUMBERJACK_RADIUS = builder
-                .comment("Search radius for Lumberjack log scans.")
+                .comment("Minimum Lumberjack search radius; the companion Radius can expand work up to 128 blocks.")
                 .defineInRange("lumberjackRadius", 10, 4, 64);
         JOB_HUNTER_ENABLED = builder
                 .comment("Enable the Hunter job behaviors.")
@@ -155,7 +156,7 @@ public final class ModConfig {
                 .comment("Enable the Miner job behaviors.")
                 .define("minerEnabled", true);
         JOB_MINER_RADIUS = builder
-                .comment("Search radius for Miner exposed block scans.")
+                .comment("Minimum Miner search radius; the companion Radius can expand work up to 128 blocks.")
                 .defineInRange("minerRadius", 8, 4, 32);
         JOB_MINER_ALLOW_BLOCKS = builder
                 .comment("Optional whitelist of block ids the Miner may break (empty uses default tags).")
@@ -178,6 +179,9 @@ public final class ModConfig {
         JOB_ASSIGNED_CHESTS_CHUNKLOAD = builder
                 .comment("If true, companions keep their assigned drop-off chests chunk-loaded to prevent courier failures.")
                 .define("assignedChestsChunkload", false);
+        SHOW_JOBS_BUTTON = builder
+                .comment("Show the Jobs button in the companion inventory. Disabled by default while Jobs are experimental.")
+                .define("showJobsButton", false);
         builder.pop();
 
         ModLoadingContext.get().getActiveContainer()

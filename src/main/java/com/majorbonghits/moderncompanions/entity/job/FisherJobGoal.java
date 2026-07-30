@@ -8,6 +8,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.core.Direction;
@@ -31,8 +32,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
  * loot (cod/salmon) with a short delay. Keeps the cadence low to avoid item
  * spam.
  */
-public class FisherJobGoal extends Goal {
-    private static final int FISH_INTERVAL = 120;
+public class FisherJobGoal extends ResumableJobGoal {
     private static final int SEARCH_COOLDOWN = 10; // quicker reacquire when nearby water exists
     private static final int RESCAN_STUCK_TICKS = 80;
     private static final int MAX_RINGS_PER_SCAN = 8;
@@ -49,7 +49,6 @@ public class FisherJobGoal extends Goal {
     private final Random random = new Random();
     private BlockPos waterSpot;
     private BlockPos standPos;
-    private int fishCooldown;
     private int searchCooldown;
     private int idleNavTicks;
     private BlockPos scanOrigin;
@@ -59,6 +58,7 @@ public class FisherJobGoal extends Goal {
     private final Map<BlockPos, Integer> rejectedWater = new HashMap<>();
 
     public FisherJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
+        super(companion, CompanionJob.FISHER);
         this.companion = companion;
         this.searchRadius = Math.max(4, searchRadius);
         this.enabled = enabled;
@@ -70,12 +70,20 @@ public class FisherJobGoal extends Goal {
         if (!isActiveJob()) return false;
         if (waterSpot != null && standPos != null && isFishableWater(waterSpot) && isStandValid(standPos)
                 && !isRejected(waterSpot)) {
-            return true;
+            phase(JobPhase.TRAVELLING, "Travelling to shore", waterSpot);
+            return reserve("shore:" + waterSpot.asLong());
         }
         if (searchCooldown-- > 0) return false;
         boolean found = findWaterAndStand();
         searchCooldown = SEARCH_COOLDOWN;
-        if (found) moveToStand();
+        if (found && !reserve("shore:" + waterSpot.asLong())) {
+            waiting("Shore reserved");
+            return false;
+        }
+        if (found) {
+            phase(JobPhase.TRAVELLING, "Travelling to shore", waterSpot);
+            moveToStand();
+        }
         return found;
     }
 
@@ -92,8 +100,7 @@ public class FisherJobGoal extends Goal {
 
     @Override
     public void stop() {
-        waterSpot = null;
-        standPos = null;
+        // The shore is a resumable checkpoint; only the transient hook is discarded.
         clearLine();
         companion.getNavigation().stop();
     }
@@ -137,14 +144,18 @@ public class FisherJobGoal extends Goal {
         if (dist <= 2.25D && !hasLineCast()) {
             // Only cast once we are close enough to the shoreline stand position.
             if (recastCooldown-- <= 0) {
-                faceWater();
-                castLine(selectCastTarget());
-                recastCooldown = 0;
+                phase(JobPhase.WORKING, "Fishing", waterSpot);
+                BlockPos castTarget = selectCastTarget();
+                faceWater(castTarget);
+                castLine(castTarget);
+                // A removed/rejected hook cannot cause a cast loop faster than once per second.
+                recastCooldown = RECAST_DELAY;
             }
         } else if (recastCooldown > 0) {
             recastCooldown--;
         }
         if (!hasLineCast()) return;
+        if (!activeHook.isSettled()) return;
         if (!activeHook.isLineInWater()) {
             // Do not reel in unless the line is actually in water.
             rejectWater();
@@ -153,6 +164,7 @@ public class FisherJobGoal extends Goal {
             return;
         }
         if (!activeHook.isBiting()) return;
+        phase(JobPhase.COLLECTING, "Reeling in", waterSpot);
         faceWater();
         companion.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
         reelIn();
@@ -162,8 +174,19 @@ public class FisherJobGoal extends Goal {
     }
 
     private void faceWater() {
-        if (waterSpot == null) return;
-        Vec3 look = Vec3.atCenterOf(waterSpot);
+        faceWater(waterSpot);
+    }
+
+    private void faceWater(BlockPos target) {
+        if (target == null) return;
+        Vec3 look = Vec3.atCenterOf(target);
+        Vec3 delta = look.subtract(companion.getEyePosition());
+        double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
+        float yaw = (float) (Math.atan2(delta.z, delta.x) * 180.0D / Math.PI) - 90.0F;
+        float pitch = (float) -(Math.atan2(delta.y, horizontal) * 180.0D / Math.PI);
+        companion.setYRot(yaw);
+        companion.setYHeadRot(yaw);
+        companion.setXRot(pitch);
         companion.getLookControl().setLookAt(look.x, look.y, look.z);
     }
 
@@ -203,13 +226,22 @@ public class FisherJobGoal extends Goal {
     }
 
     private boolean findWaterAndStand() {
-        BlockPos origin = companion.blockPosition();
-        BlockPos patrolCenter = companion.isPatrolling() && companion.getPatrolPos().isPresent()
-                ? companion.getPatrolPos().get()
-                : origin;
+        BlockPos origin = companion.getWorkCenter().orElse(companion.blockPosition());
+        BlockPos patrolCenter = companion.getWorkCenter().orElse(origin);
         Level level = companion.level();
-        int radius = Math.min(48, Math.max(searchRadius, companion.getPatrolRadius()));
+        int radius = Math.max(4, Math.min(searchRadius, companion.getPatrolRadius()));
         int radiusSq = radius * radius;
+        if (waterSpot == null) {
+            BlockPos saved = companion.getJobCheckpointTarget().orElse(null);
+            if (saved != null && patrolCenter.distSqr(saved) <= radiusSq && isFishableWater(level, saved)) {
+                BlockPos stand = WorkerSite.findApproachStand(companion, saved, 2);
+                if (stand != null) {
+                    waterSpot = saved.immutable();
+                    standPos = stand;
+                    return true;
+                }
+            }
+        }
         if (scanOrigin == null || !scanOrigin.equals(origin)) {
             // Reset the progressive scan when the companion moves.
             scanOrigin = origin.immutable();
@@ -260,37 +292,38 @@ public class FisherJobGoal extends Goal {
         if (target == null) return;
         clearLine();
         companion.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
-        // Spawn a visible bobber tied to the companion so clients render the line.
+        // Spawn at rod height then let the server simulate a short visible cast arc.
         CompanionFishingHook hook = new CompanionFishingHook(server, companion, target);
-        Vec3 bobberPos = Vec3.atCenterOf(target).add(0.0D, 0.1D, 0.0D);
-        hook.setPos(bobberPos.x, bobberPos.y, bobberPos.z);
+        // Spawn at validated surface water: Projectile collision otherwise deletes shore casts before they settle.
+        Vec3 water = Vec3.atCenterOf(target).add(0.0D, 0.1D, 0.0D);
+        hook.setPos(water.x, water.y, water.z);
         hook.setDeltaMovement(Vec3.ZERO);
         hook.setNoGravity(true);
         server.addFreshEntity(hook);
         activeHook = hook;
-        fishCooldown = FISH_INTERVAL + random.nextInt(40);
         server.playSound(null, companion.blockPosition(), SoundEvents.FISHING_BOBBER_THROW,
                 SoundSource.PLAYERS, 0.6F, 1.0F);
     }
 
     private BlockPos selectCastTarget() {
         if (waterSpot == null) return null;
-        Vec3 look = companion.getLookAngle();
-        Vec3 flatLook = new Vec3(look.x, 0.0D, look.z);
+        Vec3 shore = standPos == null ? companion.position() : Vec3.atCenterOf(standPos);
+        Vec3 flatLook = Vec3.atCenterOf(waterSpot).subtract(shore);
+        flatLook = new Vec3(flatLook.x, 0.0D, flatLook.z);
         if (flatLook.lengthSqr() < 1.0E-4D) {
             flatLook = new Vec3(0.0D, 0.0D, 1.0D);
         } else {
             flatLook = flatLook.normalize();
         }
         Vec3 right = new Vec3(-flatLook.z, 0.0D, flatLook.x);
-        Vec3 origin = companion.position();
+        Vec3 origin = Vec3.atCenterOf(waterSpot);
         Level level = companion.level();
 
         for (int i = 0; i < CAST_ATTEMPTS; i++) {
             int dist = CAST_MIN_DIST + random.nextInt(CAST_MAX_DIST - CAST_MIN_DIST + 1);
             int side = random.nextInt(CAST_SIDE_SPREAD * 2 + 1) - CAST_SIDE_SPREAD;
             Vec3 target = origin.add(flatLook.scale(dist)).add(right.scale(side));
-            BlockPos base = BlockPos.containing(target.x, standPos != null ? standPos.getY() - 1 : target.y, target.z);
+            BlockPos base = BlockPos.containing(target.x, waterSpot.getY(), target.z);
             for (int dy = -2; dy <= 2; dy++) {
                 BlockPos candidate = base.offset(0, dy, 0);
                 if (isFishableWater(level, candidate)) {
@@ -298,7 +331,7 @@ public class FisherJobGoal extends Goal {
                 }
             }
         }
-        return waterSpot;
+        return isFishableWater(level, waterSpot) ? waterSpot : null;
     }
 
     private void clearLine() {
@@ -377,14 +410,15 @@ public class FisherJobGoal extends Goal {
     private boolean isActiveJob() {
         if (!enabled) return false;
         if (companion.getJob() != CompanionJob.FISHER) return false;
-        if (!companion.isPatrolling()) return false;
+        if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (!hasRod()) return false;
-        return isWithinWorkArea(Math.max(8.0D, searchRadius + 2)) || isWithinPatrolArea();
+        if (!hasRod()) { companion.setJobStatus("No rod"); return false; }
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        return true;
     }
 
     private boolean hasRod() {
-        return companion.getMainHandItem().is(Items.FISHING_ROD);
+        return companion.getMainHandItem().getItem() instanceof FishingRodItem;
     }
 
     private boolean hasTool(java.util.function.Predicate<ItemStack> matcher) {

@@ -281,3 +281,45 @@
 ## 2026-07-31 (upstream summon targeting smoke)
 - Keep the shared 200-tick combat-assist memory fixed until live play shows stale owner-hit targets or a summon needs a longer pursuit window; add a config only if that boundary proves player-visible.
 - In a dev world with Iron's Spellbooks and/or Ars Nouveau, verify Necromancer summons attack visible hostile mobs, assist the Necromancer/owner's active fight, clear targets behind walls, leave passive mobs alone, and obey the existing PvP/villager safety toggles. Repeat the clear-LOS case for Wizard summons.
+
+## 2026-07-31 (Epic Fight compatibility smoke)
+- Keep the shared humanoid patch for all companions; split class-specific Epic Fight combos only if a live balance pass shows that a role needs a distinct moveset.
+- In a dev world with Epic Fight, verify melee stances/combo hits, bow and crossbow draw/release, shield blocking, spell and firearm fallback behavior, role effects and stamina, companion safety toggles, and normal vanilla behavior with Epic Fight removed.
+
+## 2026-07-31 (Epic Fight capability maintenance)
+- Keep bundled weapon capabilities as item data rather than changing the existing weapon class hierarchy; add a new capability JSON whenever a material or weapon family is registered.
+- If a future Epic Fight release provides a renderer compatible with the companion player model and dynamic skins, evaluate it in a dev world before re-enabling animated companion meshes.
+
+## 2026-07-31 (TacZ pose integration)
+- Keep the MIT-derived mixin companion-only; add player combat-mode changes only if player-facing Epic Fight/TacZ compatibility becomes an explicit feature.
+- Recheck the reflected TacZ third-person method against the installed TacZ version whenever that mod updates its client animation API.
+
+## 2026-07-31 (Epic Fight renderer split)
+- Keep the renderer fallback tied only to a currently held TacZ gun; cargo guns must not disable Epic Fight movement or melee animations.
+
+## 2026-07-31 (stable automatic weapon selection)
+- Keep the held class-valid weapon as the selector's first choice; add explicit equipment-ranking only if a future feature needs companions to automatically replace an already valid weapon with a better one.
+- In a dev world, give each companion two compatible weapons, verify the hand stops changing after the initial selection, then confirm an intentional player equipment change still selects the newly held valid weapon exactly once.
+
+## 2026-07-31 (Epic Fight AI ownership)
+- Keep the split by held weapon: Epic Fight owns melee, native goals own bows/crossbows and TacZ guns. Add custom Epic Fight ranged AI only if the upstream ranged animation hooks stop supporting a future game version.
+- Smoke-test a melee companion with a TacZ gun only in cargo, then with that gun equipped, to ensure cargo does not change melee animation/pathing and an equipped gun still uses native TacZ behavior.
+
+## 2026-07-31 (Epic Fight weapon-swap goal repair)
+- Keep the post-swap repair conditional on a missing animated/chase pair; add a general selector rebuild only if a future Epic Fight release shows another reproducible lifecycle that loses both goals.
+- Verify a sword, axe, custom club, spear, and glaive each immediately restore chase and an animated hit after a companion was previously unarmed.
+
+## 2026-07-31 (Epic Fight authoritative hand capability)
+- Keep melee-goal reconstruction tied to the equipment event's replacement capability; only revisit the general goal lifecycle if a future Epic Fight version changes that event contract.
+- Verify each bundled weapon family after a direct player handoff and after the companion selects it from cargo.
+
+## 2026-07-31 (Epic Fight companion animator ownership)
+- Keep the companion patch on `MobPatch`; only return to `HumanoidMobPatch` if Epic Fight exposes a held-item motion hook that preserves the companion renderer's base living motions.
+- Verify melee behavior after changing a held item, after loading a saved companion, and after a tracking client joins.
+
+## 2026-07-31 (Epic Fight companion attack range)
+- Keep the companion-specific range gate unless Epic Fight exposes a target predicate that accounts for companion dimensions and stance height.
+- Validate hit reach against small, standard, and tall hostile targets before changing the per-category ranges.
+
+## 2026-07-31 (Epic Fight weapon animation timing)
+- Keep the positive companion attack-speed floor because companion base attributes are intentionally lower than player base speed while held weapon penalties are player-calibrated. Revisit it only if companion base attack speed is raised to absorb every supported weapon penalty.

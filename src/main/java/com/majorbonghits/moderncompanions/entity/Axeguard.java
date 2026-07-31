@@ -36,7 +36,7 @@ public class Axeguard extends AbstractHumanCompanionEntity {
             setPreferredWeaponBonus(true);
             return;
         }
-        ItemStack preferred = ItemStack.EMPTY;
+        ItemStack preferred = retainPreferredMainHand(this::isAxe);
         ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack itemstack = this.inventory.getItem(i);

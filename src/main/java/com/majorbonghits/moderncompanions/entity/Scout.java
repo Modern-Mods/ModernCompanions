@@ -85,7 +85,8 @@ public class Scout extends AbstractHumanCompanionEntity {
             setPreferredWeaponBonus(true);
             return;
         }
-        ItemStack preferred = ItemStack.EMPTY;
+        ItemStack preferred = retainPreferredMainHand(stack -> stack.getItem() instanceof DaggerItem
+                || stack.is(Items.STONE_SWORD) || stack.is(Items.IRON_SWORD));
         ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack stack = this.inventory.getItem(i);

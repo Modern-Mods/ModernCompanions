@@ -45,8 +45,8 @@ public class Knight extends AbstractHumanCompanionEntity {
             setPreferredWeaponBonus(true);
             return;
         }
-        ItemStack preferred = ItemStack.EMPTY;
-        ItemStack fallback = !hand.isEmpty() && inventoryContains(hand.getItem()) && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
+        ItemStack preferred = retainPreferredMainHand(this::isPreferredWeapon);
+        ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack itemstack = this.inventory.getItem(i);
             if (itemstack.isEmpty()) continue;
@@ -62,15 +62,6 @@ public class Knight extends AbstractHumanCompanionEntity {
             this.setItemSlot(EquipmentSlot.MAINHAND, desired);
         }
         setPreferredWeaponBonus(!preferred.isEmpty() && ItemStack.isSameItemSameComponents(desired, preferred));
-    }
-
-    private boolean inventoryContains(net.minecraft.world.item.Item item) {
-        for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
-            if (this.inventory.getItem(i).getItem() == item) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override

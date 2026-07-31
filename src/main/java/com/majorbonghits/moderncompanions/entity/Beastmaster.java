@@ -216,9 +216,10 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
             setPreferredWeaponBonus(true);
             return;
         }
-        ItemStack bow = ItemStack.EMPTY;
-        ItemStack meleePreferred = ItemStack.EMPTY;
-        ItemStack fallback = !hand.isEmpty() && inventoryContains(hand.getItem()) && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
+        ItemStack bow = retainPreferredMainHand(stack -> stack.getItem() instanceof BowItem);
+        ItemStack meleePreferred = bow.isEmpty() ? retainPreferredMainHand(stack -> stack.getItem() instanceof ClubItem
+                || stack.getItem() instanceof HammerItem || stack.getItem() instanceof SpearItem) : ItemStack.EMPTY;
+        ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack stack = this.inventory.getItem(i);
             if (stack.isEmpty()) continue;
@@ -247,14 +248,6 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
                 || stack.getItem() instanceof ClubItem
                 || stack.getItem() instanceof HammerItem
                 || stack.getItem() instanceof SpearItem;
-    }
-
-    private boolean inventoryContains(net.minecraft.world.item.Item item) {
-        for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
-            if (this.inventory.getItem(i).getItem() == item)
-                return true;
-        }
-        return false;
     }
 
     private boolean isBeast(LivingEntity target) {

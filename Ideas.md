@@ -19,3 +19,5 @@
 
 ## Bugs
 - Archer who shoot arrows at other entities gets the server to crash?
+- Analyze other building insertion mods, and fix any issues our building generation/insertion may be causing
+    - Sometimes, game/server completely locks up generating a chunk with a companion building in it 

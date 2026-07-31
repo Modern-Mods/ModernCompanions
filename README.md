@@ -320,11 +320,14 @@ Optional compatibility includes:
 - JEI/REI.
 - Bronze weapon materials.
 - Better Combat reach handling.
+- Epic Fight: companions use its armature renderer, movement, melee timing, hit logic, and weapon movesets while retaining their roles, stamina, equipment, and safety rules. Class-valid held weapons remain equipped instead of being swapped with cargo every tick, and equipping a melee weapon restores Epic Fight's animated attack/chase pair. A companion holding a TacZ gun temporarily uses TacZ's native pose and firearm logic, then returns to Epic Fight animations when it holds another item; a gun in cargo does not disable Epic Fight melee. Every bundled weapon family has an Epic Fight capability category for its matching moveset.
+
+TacZ companion gun poses include a companion-only adaptation of [Epic Fight x TacZ Compat](https://github.com/Ardelhite/epic-tacz) by ImperialArchitects, licensed under the MIT License. Copyright (c) 2026 ImperialArchitects. Permission is hereby granted, free of charge, to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies, subject to including that copyright notice and permission notice. The software is provided “AS IS”, without warranty of any kind.
 
 ## Requirements
 
 - Minecraft 1.21.1
-- NeoForge 21.1.1
+- NeoForge 21.1.219 or newer
 - Java 21
 
 ## Credits

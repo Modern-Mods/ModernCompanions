@@ -3,6 +3,9 @@ loaderVersion = "[4,)"
 license = "GPL-3.0-only"
 issueTrackerURL = "https://github.com/MajorBonghits/ModernCompanions/issues"
 
+[[mixins]]
+config = "modern_companions.mixins.json"
+
 [[mods]]
 modId = "${mod_id}"
 version = "${version}"
@@ -44,5 +47,12 @@ side = "BOTH"
 modId = "ars_nouveau"
 type = "optional"
 versionRange = "[1.21.1-5.13.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "epicfight"
+type = "optional"
+versionRange = "[21.17.3,)"
 ordering = "AFTER"
 side = "BOTH"

@@ -37,7 +37,7 @@ public class Archer extends AbstractHumanCompanionEntity implements RangedAttack
             setPreferredWeaponBonus(true);
             return;
         }
-        ItemStack preferred = ItemStack.EMPTY;
+        ItemStack preferred = retainPreferredMainHand(stack -> stack.getItem() instanceof BowItem);
         ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack stack = this.inventory.getItem(i);

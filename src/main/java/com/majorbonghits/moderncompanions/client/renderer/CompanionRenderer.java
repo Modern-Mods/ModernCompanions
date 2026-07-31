@@ -50,7 +50,8 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
         return !suppressPreviewNameplate && super.shouldShowName(entity);
     }
 
-    private void setModelProperties(AbstractHumanCompanionEntity companion) {
+    /** Shares the player-model visibility and held-item state with Epic Fight's patched renderer. */
+    void setModelProperties(AbstractHumanCompanionEntity companion) {
         PlayerModel<AbstractHumanCompanionEntity> model = this.getModel();
         HumanoidModel.ArmPose main = armPose(companion, InteractionHand.MAIN_HAND);
         HumanoidModel.ArmPose off = armPose(companion, InteractionHand.OFF_HAND);

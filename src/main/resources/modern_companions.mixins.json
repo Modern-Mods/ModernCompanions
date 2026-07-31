@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.majorbonghits.moderncompanions.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "TacZEpicFightCompanionModelMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -100,7 +100,7 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
             setPreferredWeaponBonus(true);
             return;
         }
-        ItemStack preferred = ItemStack.EMPTY;
+        ItemStack preferred = retainPreferredMainHand(this::isPreferredWeapon);
         ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
 
         if (!hand.isEmpty() && !isPreferredWeapon(hand)) {

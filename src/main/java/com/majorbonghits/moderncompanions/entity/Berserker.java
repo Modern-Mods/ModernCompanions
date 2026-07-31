@@ -94,7 +94,7 @@ public class Berserker extends AbstractHumanCompanionEntity {
             setPreferredWeaponBonus(true);
             return;
         }
-        ItemStack preferred = ItemStack.EMPTY;
+        ItemStack preferred = retainPreferredMainHand(this::isPreferredWeapon);
         ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
         for (int i = 0; i < this.inventory.getContainerSize(); i++) {
             ItemStack stack = this.inventory.getItem(i);

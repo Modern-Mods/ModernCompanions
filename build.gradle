@@ -63,6 +63,10 @@ dependencies {
     // JEI is optional at runtime; its plugin only supplies viewer entries for custom brewing.
     compileOnly "mezz.jei:jei-1.21.1-common-api:${project.findProperty("jei_version")}"
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${project.findProperty("jei_version")}"
+
+    // Epic Fight supplies the optional companion combat patch and renderer at runtime.
+    compileOnly "maven.modrinth:epic-fight:${project.findProperty("epicfight_version")}"
+    runtimeOnly "maven.modrinth:epic-fight:${project.findProperty("epicfight_version")}"
 }
 
 java {
@@ -89,6 +93,25 @@ tasks.register("firearmCategoryCheck", JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.majorbonghits.moderncompanions.compat.firearms.FirearmSupportTest"
     jvmArgs "-ea"
+}
+
+tasks.register("epicFightCapabilityCheck") {
+    def weaponTypes = [dagger: "dagger", hammer: "axe", club: "axe", spear: "spear", quarterstaff: "longsword", glaive: "spear"]
+    doLast {
+        ["wooden", "stone", "iron", "golden", "diamond", "netherite", "bronze"].each { material ->
+            weaponTypes.each { weapon, category ->
+                def capability = file("src/main/resources/data/modern_companions/capabilities/weapons/${material}_${weapon}.json")
+                if (!capability.isFile() || !capability.text.contains("\"type\": \"epicfight:${category}\"")) {
+                    throw new GradleException("Missing Epic Fight capability for ${material}_${weapon}")
+                }
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    // Keep all dynamically registered weapon families covered by the capability data.
+    dependsOn("epicFightCapabilityCheck")
 }
 
 tasks.named("check") {

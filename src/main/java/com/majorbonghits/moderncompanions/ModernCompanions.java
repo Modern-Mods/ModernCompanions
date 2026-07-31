@@ -41,6 +41,13 @@ public final class ModernCompanions {
         if (ModList.get().isLoaded("curios")) {
             com.majorbonghits.moderncompanions.compat.curios.CuriosCompat.register(modBus, FMLEnvironment.dist == Dist.CLIENT);
         }
+        if (ModList.get().isLoaded("epicfight")) {
+            // Keep Epic Fight combat classes out of the base-mod load path.
+            com.majorbonghits.moderncompanions.compat.epicfight.EpicFightCompat.register();
+            if (FMLEnvironment.dist == Dist.CLIENT) {
+                com.majorbonghits.moderncompanions.compat.epicfight.client.EpicFightClientCompat.register();
+            }
+        }
     }
 
     private void onCommonSetup(FMLCommonSetupEvent event) {

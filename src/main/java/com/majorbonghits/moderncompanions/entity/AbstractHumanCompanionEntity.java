@@ -85,6 +85,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 import com.majorbonghits.moderncompanions.core.TagsInit;
 import com.majorbonghits.moderncompanions.entity.job.LumberjackJobGoal;
@@ -1322,6 +1323,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private boolean isMainHandWeapon(ItemStack stack) {
         return isMainHandEquipment(stack) && !(stack.getItem() instanceof DiggerItem)
                 && !(stack.getItem() instanceof FishingRodItem);
+    }
+
+    /** Keeps a valid class weapon equipped instead of swapping it with an older cargo item every tick. */
+    protected ItemStack retainPreferredMainHand(Predicate<ItemStack> preferredWeapon) {
+        ItemStack mainHand = getMainHandItem();
+        return !mainHand.isEmpty() && preferredWeapon.test(mainHand) ? mainHand : ItemStack.EMPTY;
     }
 
     /** Weapons win for companions without jobs; tools remain a valid fallback. */

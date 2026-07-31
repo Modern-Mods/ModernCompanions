@@ -2394,3 +2394,69 @@
 - Steps: Kept the shared reflective summoner ownership chain, rejected upstream summon targets without current LOS unless they are hostile-category mobs or a recent companion/owner combat target, cleared retained invalid targets and navigation before native AI ticks, added a bounded combat-assist target handoff, and bumped version to 3.2.
 - Rationale: The upstream summon AI is intentionally external, so one server-side target event plus tick guard repairs every loaded summon without reimplementing Iron's Spellbooks or Ars Nouveau entity behavior.
 - Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `build --console=plain --no-daemon` passed; `git diff --check` passed. Live Iron's/Ars summon, clear-LOS, blocked-LOS, hostile-only, owner-assist, PvP-toggle, and player-target smoke remain required.
+
+## 2026-07-31 (Epic Fight companion compatibility)
+- Prompt/task: Add optional Epic Fight compatibility so companions use its fighting animations, style, and logic.
+- Steps: Added the optional Epic Fight compile/runtime dependency and metadata, upgraded the NeoForge baseline to Epic Fight's required 21.1.219, registered every available companion as a native humanoid Epic Fight patch, preserved existing ranged goals for Epic Fight's ranged-animation hooks, and registered the matching biped renderer on clients; bumped version to 3.3.
+- Rationale: Epic Fight's entity-patch API owns animated combat and calls the original companion hit method, so class effects, stamina, durability, targeting, equipment, and safety gates remain centralized rather than being copied into a second combat implementation.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `build --console=plain --no-daemon` are required; live Epic Fight melee, bow/crossbow, spell, firearm, shield, companion-versus-companion safety, and absent-mod smoke remain required.
+
+## 2026-07-31 (Epic Fight renderer, firearm, and weapon-category repair)
+- Prompt/task: Fix Epic Fight companion stutter-stepping, rapidly disappearing held weapons, TacZ companions fist-fighting, and add Epic Fight support for every bundled weapon type.
+- Steps: Removed the incompatible generic Epic Fight biped-renderer override so companions retain their established player-style renderer; prevented Epic Fight's priority-zero melee controller from replacing the native TacZ firearm controller; added capability data for every material variant of dagger, hammer, club, spear, quarterstaff, and glaive; and bumped version to 3.4.
+- Rationale: Epic Fight's humanoid AI ignores its ranged flag, so it could preempt `FirearmAttackGoal`; its generic mesh is not a substitute for the companion-specific renderer. Data capabilities assign existing Epic Fight movesets without changing item classes or duplicating combat code.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon`, `build --console=plain --no-daemon`, capability-resource coverage, and `git diff --check` are required. Live Epic Fight melee, each weapon family, TacZ draw/fire/reload, held-item rendering, and absent-mod startup smoke remain required.
+
+## 2026-07-31 (MIT Epic Fight x TacZ companion-pose integration)
+- Prompt/task: Integrate the supplied MIT `epic-tacz-main` compatibility implementation instead of maintaining a bespoke TacZ/Epic Fight visual workaround.
+- Steps: Reviewed the supplied MIT source as read-only; adapted its priority-1500 `HumanoidModel` tail mixin only for Modern Companions entities; invoked TacZ's established third-person pose method reflectively to retain optional-mod startup; registered the client mixin; included the required MIT attribution and notice; and bumped version to 3.5.
+- Rationale: The upstream client-tick patch changes the local player's combat mode and cannot affect companions. Its model-tail repair directly addresses the companion gun pose after Epic Fight's hook, while the existing server-side firearm-goal guard remains responsible for firing instead of fist-fighting.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `build --console=plain --no-daemon` are required. Live TacZ draw, aim, fire, reload, third-person pose, Epic Fight melee, and TacZ/Epic Fight-absent startup smoke remain required.
+
+## 2026-07-31 (Epic Fight animated companion renderer restoration)
+- Prompt/task: Restore Epic Fight walking and combat animations after the renderer fallback removed them, while preserving TacZ firearm rendering.
+- Steps: Re-enabled client patched-renderer registration; added a player-model-aware Epic Fight renderer that retains the companion model's visible layers and scale; render-falls back only while the companion actually holds a TacZ gun; and bumped version to 3.6.
+- Rationale: Epic Fight's animation state is not visible through the ordinary `CompanionRenderer`. The renderer split makes melee use Epic Fight's armature and makes the mutually exclusive TacZ gun pose use TacZ's established path instead.
+- Build/Test: Java 21 `gradlew.bat compileJava --console=plain --no-daemon` passed; full `check`/`build` and live player/companion rendering smoke remain required.
+
+## 2026-07-31 (stable automatic weapon selection)
+- Prompt/task: Stop companions from rapidly unequipping and re-equipping weapons, which jitters Epic Fight arms and held-item rendering.
+- Steps: Traced every per-tick class weapon selector through the shared automatic equipment transfer. Retained an already-held class-valid weapon before scanning cargo, including bow, crossbow, axe, melee, scout, beastmaster, and caster selections; removed cargo-presence checks that made Knight and Beastmaster discard their own held fallback; and bumped version to 3.7.
+- Rationale: Automatic transfers move the selected stack out of cargo and return the prior hand item. Without hand retention, the next tick chooses that returned item and reverses the transfer. Epic Fight correctly resets its held-item motion for each change, so preventing the needless transfers preserves its normal movement and combat animations.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and `git diff --check` are required. Live Epic Fight melee walking/attacks, intentional weapon swaps, and TacZ draw/fire/reload smoke remain required.
+
+## 2026-07-31 (Epic Fight melee AI handoff)
+- Prompt/task: Restore Epic Fight attack animations and enemy pathing after held-item stability exposed vanilla crouch-attacks.
+- Steps: Kept Epic Fight's animated infantry goal only for melee companions. Preserved the native bow/crossbow ranged goals, kept firearm specialists and actually held TacZ guns on their native firing path, and stopped an unused TacZ gun in cargo from disabling Epic Fight melee AI; bumped version to 3.8.
+- Rationale: The Epic Fight humanoid patch's default method installs melee attack/chase goals even for ranged weapons. The old cargo scan also disabled those goals too broadly. Narrow ownership ensures Epic Fight drives melee approach/timing/attack animation while native ranged and TacZ goals retain their required mechanics.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and `git diff --check` are required. Live melee chase/combo, bow/crossbow firing, and TacZ draw/fire/reload smoke remain required.
+
+## 2026-07-31 (Epic Fight weapon-swap AI restoration)
+- Prompt/task: Fix melee companions standing still after receiving a sword while unarmed companions still path and fist-fight.
+- Steps: Kept Epic Fight's normal held-item update, then server-side checked that a newly held melee weapon has both its animated-attack and target-chasing goals. When either is missing, removed the stale melee pair and reinstalled the normal Epic Fight infantry pair; bumped version to 3.9.
+- Rationale: The upstream humanoid patch can rebuild its selector during a hand update. If that update leaves the animated/chase pair absent, the original melee goal was already removed and an armed companion has no combat movement. The guard runs only after an actual main-hand melee swap and only repairs a missing pair.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and task-owned `git diff --check` are required. Live sword equip/remove, melee chase/combo, bow/crossbow firing, and TacZ draw/fire/reload smoke remain required.
+
+## 2026-07-31 (Epic Fight authoritative weapon-swap moveset)
+- Prompt/task: Fix companions that reach enemies but do nothing with a weapon while unarmed companions still use Epic Fight fist attacks.
+- Steps: Rebuilt the Epic Fight melee goal pair from the equipment-change event's supplied new capability after every non-ranged main-hand swap; bumped version to 3.10.
+- Rationale: Goal presence is insufficient when the pair was constructed against the prior observed hand. Using Epic Fight's authoritative replacement capability preserves the matching sword, axe, dagger, spear, and longsword behavior instead of retaining a stale fist/unknown moveset.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and task-owned `git diff --check` are required. Live sword, axe, club, dagger, spear, glaive, quarterstaff, and unarmed Epic Fight attack/chase smoke remain required.
+
+## 2026-07-31 (Epic Fight held-item animation freeze)
+- Prompt/task: Fix companions freezing all movement and attacks as soon as a melee weapon is equipped.
+- Steps: Replaced the companion's `HumanoidMobPatch` base with Epic Fight's lower-level `MobPatch`, preserving Epic Fight's animated attack and target-chasing goals while selecting the same upstream behavior families by weapon category; bumped version to 3.11.
+- Rationale: `HumanoidMobPatch` resets living motions on every held-item change, which is incompatible with the companion renderer/hand lifecycle. `MobPatch` keeps the normal animator alive while Epic Fight still owns the melee goal, attack timing, hit resolution, and category-specific animations.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and task-owned `git diff --check` are required. Live equipped/unarmed transitions plus sword, axe, club, dagger, spear, glaive, and quarterstaff attack/chase smoke remain required.
+
+## 2026-07-31 (Epic Fight companion melee behavior selection)
+- Prompt/task: Fix weapon-equipped companions that reach a target but never start the queued Epic Fight attack animation.
+- Steps: Replaced the upstream humanoid behavior predicates with one companion-safe squared-distance gate while retaining Epic Fight's native attack animations, collision/hit resolution, and target-chasing goal; bumped version to 3.12.
+- Rationale: The upstream behaviors require a humanoid-mob eye-height predicate that companions fail at their practical attack position. The focused range gate keeps each weapon category's Epic Fight attack animation without making movement or damage fall back to vanilla logic.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and task-owned `git diff --check` are required. Live sword, axe, club, dagger, spear, glaive, quarterstaff, and unarmed combo hit/chase smoke remain required.
+
+## 2026-07-31 (Epic Fight weapon animation timeline repair)
+- Prompt/task: Fix companions freezing all movement and attacks when any melee weapon is equipped, while unarmed Epic Fight attacks work.
+- Steps: Clamped the companion Epic Fight attack speed to the same positive minimum used by upstream mobs before attack animation timing; bumped version to 3.13.
+- Rationale: Companions have a 1.6 base attack speed, while player-calibrated weapon modifiers subtract more than that. Epic Fight uses the resulting negative value as animation speed, which starts its movement-locking attack state but can never advance it. The patch preserves Epic Fight attack selection, animation, collision, and companion-owned hit effects.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and task-owned `git diff --check` are required. Live sword, axe, club, dagger, spear, glaive, quarterstaff, and unarmed combo hit/chase smoke remain required.

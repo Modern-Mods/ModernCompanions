@@ -1,227 +1,335 @@
 # Modern Companions (NeoForge 1.21.1)
 
-![](https://i.imgur.com/V29Cq8E.jpeg)
+![Header](https://i.imgur.com/V29Cq8E.jpeg)
 
-Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions mod by justinwon777, maintained by MajorBonghits. The goal is full feature parity under the new mod id `modern_companions`, with updated APIs and attribution intact.
+Modern Companions is a NeoForge 1.21.1 port and rebrand of [Human Companions](https://www.curseforge.com/minecraft/mc-mods/human-companions), with new branding, Soul Gems, a Summoning Wand, custom weapons, optional magic companions, firearm specialists, and deeper companion progression.
 
-## Status
-- Core code now compiles/builds on NeoForge 1.21.1 after swapping over to the new registry, SynchedEntityData, and networking APIs (gameplay is still incomplete but the project builds).
-- Worldgen JSON/template/tag data and all companion structure NBTs/textures/models/lang/sounds have been migrated into the new namespace.
-- Rendering + advanced gameplay behavior remain placeholder-only until the remaining AI/entity/renderer work is finished.
+Recruit human followers, equip them, shape their personalities, and take your own growing party into the world.
 
-## Gameplay Overview
+## What You Get
 
-![Inventory/Curio](https://i.imgur.com/NRLqCWk.gif)
+![Inventory/Curio](https://i.imgur.com/WLBY5hc.gif) 
 
-- **Finding companions:** Companion houses generate across the Overworld in houses/buildings (spacing is config-driven, default ~20 chunks). Residents spawn untamed with random name, sex, skin, base health variance, and RPG stats (STR/DEX/INT/END; a rare “specialist” rolls +5 in one stat).
-- **Taming & upkeep:** Right-click an untamed companion with the exact items they request (two food/resource stacks; the resource tier is finalized on first interaction using the player’s Nether/ocean progress); once both reach zero they tame, follow, and unlock their GUI. Resource tiers are 70% common, 25% uncommon, and 5% rare. Tamed companions heal with a wide pantry — cooked foods, veggies, fruits, enchanted golden foods, honey, and beneficial potions (regen/instant health, etc.), applying the effects and returning empty bottles when possible—plus they still ping the owner for food when low.
-- **Commands & stances:** Shift + right-click toggles sit. Right-click opens the companion screen: follow/patrol/guard cycle, alert (hostile blacklist focus), hunt (farm animals), **sprint toggle** (on = sprint with you; off = normal run), auto-pickup toggle, clear target, release back to the wild, and radius +/- (2–128, saved per companion). Following companions wander within that radius around you; patrol/guard use it around your current anchor block.
-- **Staying close:** Follow AI now mirrors vanilla pet recall—companions on the same dimension teleport to the nearest safe spot around you when they drift ~35 blocks away, with navigation fallback if no space is open.
-- **Inventory & gear:** 7×9 personal inventory plus six equipment slots, item-magnet pickup when enabled, automatic best-armor selection, and class-aware weapon selection each tick. Friendly-fire and fall damage respect config toggles.
-- **Progression:** Companions earn XP from kills; an MMO-style curve gates levels. Health scales with level and END; STR boosts damage/knockback, DEX boosts move/attack speed + light KB resist, INT speeds XP gain, END adds health + physical reduction. Kill count and XP bar show in the GUI.
-- **Progression:** Companions earn XP from kills; an MMO-style curve gates levels. Health scales with level and END; STR boosts damage/knockback, DEX boosts move/attack speed + light KB resist, INT speeds XP gain, END adds health + physical reduction. Kill count and XP bar show in the GUI.
-- **Limits:** There is **no level cap** and **no hard party-size limit**—you can keep leveling companions and control as many as you can recruit; practical limits are only your hardware/server performance.
-- **Resurrection:** Tamed companions drop a Resurrection Scroll containing full NBT/gear instead of loose items. Activate it by right-clicking with a nether star in off-hand; then use on a block or fluid face to respawn the companion exactly at that spot with inventory intact (pet cleared for Beastmasters). Scrolls are ignored by the auto-loot magnet.
-- **Spawn Gems:** All companion spawn eggs are reskinned as class-colored gems. They still behave like eggs but visually match the new branding; find them on the creative tab.
-- **Custom weapons & recipes:** Modern Companions bundles a BasicWeapons-style arsenal (dagger, club, hammer, spear, quarterstaff, glaive) in every vanilla material plus optional bronze when that mod is loaded. Each weapon has a standard crafting recipe in the data pack (JEI-compatible) matching its material tier; companions auto-prefer their class weapons.
-- **Custom Skins:** You can assign specific companions any skin you want! Using the command `/companionskin "NAME" URL` you can assign skins to your companions like so; `/companionskin "Daniel George" https://i.imgur.com/FWADR65.png`
+- **Fourteen Core Roles:** Knight, Vanguard, Axeguard, Berserker, Scout, Archer, Arbalist, Beastmaster, Cleric, Alchemist, Stormcaller, Fire Mage, Lightning Mage, and Necromancer.
+- **Optional Magic Roles:** When Iron’s Spellbooks or Ars Nouveau is installed, nine additional companions become available: Wizard, Sorcerer, Warlock, Witch, Hag, Cryomancer, Druid, Illusionist, and Battlemage.
+- **TacZ Firearm Specialists:** Rare optional firearm companions specialize in Pistols, SMGs, Rifles, Shotguns, Snipers, Machine Guns, or Heavy weapons.
+- **Spawn Gems:** All companion spawn eggs use class-colored gem artwork while retaining normal spawn-egg behavior.
+- **Soul Gems:** Use the Companion Mover to preserve a companion’s identity, stats, equipment, and inventory while storing them as an item.
+- **Custom Weapons:** Craft daggers, clubs, hammers, spears, quarterstaves, and glaives in vanilla materials, with optional bronze variants when supported.
+- **RPG Stats and Leveling:** Strength, Dexterity, Intelligence, and Endurance affect combat, speed, XP gain, health, defense, and knockback resistance.
+- **No Level Cap:** Companions can continue leveling indefinitely, with no hard party-size limit beyond practical server performance.
+- **Custom Names and Skins:** Companions use expanded male and female name pools, including medieval and fantasy names. Use `/companionskin "NAME" URL` to assign an HTTP(S) skin.
+- **295 Bundled Skins:** The full bundled male and female skin collection is available for random companion appearances.
+- **Personality and Journal:** Companions have traits, backstories, Morale, Bond, age, favorite foods, and persistent journey statistics.
+- **Curios and Sophisticated Backpacks:** Optional support adds Curios slots, rendered accessories, backpack storage, and native backpack upgrades/settings.
+- **Companion Resources:** Stamina supports sprinting and melee pacing. Magic companions also use Mana.
+- **Brewing:** Craft reusable vessels and brew Health, Regeneration, Stamina, Mana, Rejuvenation, and Shield potions.
+- **Safety Controls:** Villager and PvP protection controls are available per companion and default to safe.
 
-## Curio / Backpack Support
+## Worldgen and Spawns
 
-## Worker Jobs
+![Worldgen](https://i.imgur.com/ERYQEPk.jpeg)
 
-- Bind a chest with Assignment Wand, assign Miner, Fisher, Lumberjack, Chef, or Hunter, then enable `Work`. The chest is the work center and Radius is the work boundary. Selecting `None` restores normal behavior and the prior combat weapon.
-- Workers only act from a dry, two-block-high, path-reachable standing position with line of sight and interaction range. Blocked, protected, unloaded, or full-inventory work stays queued for retry instead of being discarded.
-- Lumberjacks and Miners search from their assigned chest outward through the full companion Radius, up to 128 blocks. Miner columns cover the matching vertical work volume; planned excavation opens each adjacent two-block tunnel step in visible order, retains its support floor, then walks into the opening. Routes stop at fluids, fire, magma, unsafe terrain, or missing ore. Lumberjacks preserve lower-log priority and never discard an uncut log after a path stall. Couriers report inaccessible chests and never clear a route.
-- Fishers use reachable shoreline/water pairs, cast toward valid water, and reel only after a server-side bobber bite. Chefs require a reachable heat-source stand; furnaces/smokers use their inventory contract and campfires cook only while standing at a valid site.
-
-Manual dev-world checks remain required for modded protection hooks, complex cave return paths, and multi-miner tick cost.
-
-- **Curios (optional)**: If Curios is installed, companions expose Curio slots and a render toggle so you can hide/show equipped curios per companion. Metadata marks Curios as optional; the mod runs fine without it.
-- **Sophisticated Backpacks (optional)**: When a companion wears a sophisticated backpack in the Curios back slot, all picked-up items are inserted into the backpack before the companion’s own 6×9 inventory (uses SB’s backpack IO wrapper with capability fallback).
-
-## Morale & Bond (lightweight mood/progression)
-- **Morale:** Hidden value [-1, 1]. High morale (>0.5) grants small buffs (+0.5 dmg, +0.5 armor); low morale (<-0.5) applies equal penalties. Morale rises from feeding and bond level-ups; drops on near-death and resurrection. Traits can soften loss (Jokester, Disciplined) or add situational penalties (Melancholic when morale is low). Configurable deltas in `common` config.
-- **Bond:** Parallel XP track with a simple tier curve; gains XP while alive near owner (config interval), when fed, and on resurrection. Devoted/Glutton traits boost bond XP. Bond levels raise morale floor (harder to dip very low) and surface in the Journal.
-
-## Traits (current effects)
-- **Brave:** Small damage boost; follows slightly closer.  
-- **Cautious:** Keeps extra follow distance; slightly slower follow speed.  
-- **Guardian:** Small armor bonus; follows slightly closer.  
-- **Reckless:** Small move-speed bonus; follows closer.  
-- **Stalwart:** Knockback resistance.  
-- **Quickstep:** Move-speed bonus; faster follow speed.  
-- **Glutton:** Bonus bond XP from feeding.  
-- **Disciplined:** Bonus XP gain; softer morale loss.  
-- **Lucky:** Chance to duplicate one drop on kills (configurable).  
-- **Night Owl:** Small damage + speed buff at night.  
-- **Sun-Blessed:** Small damage + speed buff during day.  
-- **Jokester:** Softer morale loss.  
-- **Melancholic:** Minor damage penalty when morale is low.  
-- **Devoted:** Small armor bonus; bonus bond XP (including resurrection).  
-- (Legacy companions with zero traits are backfilled once; no rerolls on subsequent loads.)
-
-## Journal / Biography Page (Traits, Backstory, Age)
-
-![Bio Page](https://i.imgur.com/oo3xrUR.png)
-
-- New **Journal button** on the companion GUI opens a dedicated Bio screen showing:
-  - Traits (1–2 rolled at spawn, or backfilled once for legacy companions with no traits), each with a short effect blurb.
-  - Backstory tag (rolled at spawn or backfilled if missing).
-  - Morale descriptor and Bond level/XP.
-  - Journey stats: kills, major kills, resurrections, distance traveled with owner, first hired day.
-  - Age: rolled 18–35 at spawn; ages +1 year every ~90 in-game days (visual only).
-- The journal's top-right edit control opens Name, Age, Bio, and Skin forms. Press Enter or `Done` to save; editable ages are 1–120, and skin URLs use the same HTTP(S) requirement as `/companionskin`.
-- Legacy companions (zero traits) are backfilled **once** on load with traits/backstory/age—no rerolls after the initial backfill.
-
-## Worldgen & Spawns
-
-![](https://i.imgur.com/ERYQEPk.jpeg)
-
-- Companion buildings generate across the Overworld (random-spread set); each spawns exactly **one** resident when generated.
-- Certain structures will house certain Companions.
-- **Structure set:** All buildings are injected via `data/modern_companions/worldgen/structure_set/companion_house.json` (random_spread placement). Use `/locate structure #modern_companions:companion_houses` to find the nearest; `/place structure modern_companions:<id>` to force-generate.
-- **Biome theming (examples):** acacia→savanna, sandstone→desert/badlands, terracotta→badlands only, spruce→cold taiga, dark_oak→dark forest, windmill/tower→windswept+meadow, lumber→forest/taiga mix, watermill→temperate rivers, birch/oak_birch→birch/temperate, general houses→temperate spread. See each file in `data/modern_companions/worldgen/structure/*.json` for the exact list.
-- **Template pools:** Each structure JSON points to a simple pool (e.g., `raw_berserker`, `raw_house`) that drops in the matching NBT from `data/modern_companions/structure/`.
-
-## Companion Auto-Spawning (no entities in NBT)
-- Companions are spawned in code when their structure generates—nothing is baked into the NBT. `StructureCompanionSpawner` listens to chunk loads, detects our structures, and spawns exactly one resident with `MobSpawnType.STRUCTURE`.
-- A SavedData guard (`StructureSpawnTracker`) records each structure placement (structure id + bounding-box center) to prevent dupes on chunk reloads.
-- Structure → resident mapping:
-  - Alchemist: alchemist_house
-  - Beastmaster: beastmaster_house, watermill, spruce_house
-  - Berserker: berserker_house, largehouse3
-  - Cleric: cleric_house, church
-  - Scout: scout_house, oak_birch_house
-  - Stormcaller: stormcaller_house, windmill
-  - Vanguard: vanguard_house, smith
-  - Knight: house, oak_house, birch_house, sandstone_house
-  - Archer: largehouse, acacia_house
-  - Axeguard: largehouse2, dark_oak_house
-  - Arbalist: lumber, terracotta_house
-  - Fire Mage: tower1
-  - Lightning Mage: tower1
-  - Necromancer: tower2
+- Companion buildings generate throughout the Overworld.
+- Each generated building produces exactly one resident.
+- Structure placement is spread across the world and can be configured.
+- Use `/locate structure #modern_companions:companion_houses` to find the nearest companion structure.
+- Use `/place structure modern_companions:<id>` to place a specific structure.
 
 ## Class Details
 
-![](https://i.imgur.com/HW0Zk9y.png)
+![Classes](https://i.imgur.com/1tquTk1.png)
 
-- **Knight:** Balanced melee with swords/clubs/spears; reliable frontliner.
-- **Vanguard:** Shielded tank; **actively raises/lowers shields against ranged threats (respecting axe breaks/cooldowns)**, +HP/KB resist, 30% projectile DR, resistance aura ticks, and taunts monsters off the owner.
-- **Axeguard:** Axe bruiser; heavy hits, closes to melee.
-- **Berserker:** Ramps damage as health drops, cleaves nearby foes, high KB resist, lighter armor mitigation.
-- **Scout:** Fast skirmisher; speed+jump buffs, reduced fall damage, bonus damage on backstab or distracted targets.
-- **Archer:** Classic bow user with ranged AI; auto-equips bows/arrows.
-- **Arbalist:** 1.21 crossbow behavior (charge/cooldown/LOS); favors crossbows.
-- **Beastmaster:** Bow + scaling pet; buffs nearby tamed animals and deals bonus damage to beasts.
-- **Cleric:** Support melee; periodic heals/regen/resistance to allies under 65% HP, extra damage vs undead, carries totem/golden gear theme.
-- **Alchemist:** Potion support; throws regen/heal at allies and weakness/slow at enemies, sometimes upgraded potency; uses dagger/staff if no potions in hand.
-- **Stormcaller:** Trident brawler; calls lightning on hit (shorter cooldown in rain/thunder) and gains brief strength after striking.
-- **Fire Mage:** Caster that peppers foes with precise, non-igniting blaze fireballs and occasionally fires a heavier ghast-style blast.
-- **Lightning Mage:** Precision caster dropping single-target lightning and 4-target chain bursts that hit harder during storms.
-- **Necromancer:** Wither-skull artillery that can raise short-lived wither skeleton allies; other companions treat the summons as friendly.
+- **Knight:** Balanced melee fighter using swords, clubs, and spears.
+- **Vanguard:** Shielded tank with projectile protection, resistance support, increased health, and monster taunts.
+- **Axeguard:** Heavy axe fighter built for powerful close-range attacks.
+- **Berserker:** Gains offensive power as health drops and can cleave nearby enemies.
+- **Scout:** Fast skirmisher with improved movement, jumping, fall protection, and backstab damage.
+- **Archer:** Ranged bow specialist that automatically equips bows and arrows.
+- **Arbalist:** Crossbow specialist using 1.21 charge, cooldown, and line-of-sight behavior.
+- **Beastmaster:** Ranged fighter with a scaling animal companion.
+- **Cleric:** Support fighter that heals allies and deals extra damage to undead.
+- **Alchemist:** Uses beneficial potions on allies and harmful effects against enemies.
+- **Stormcaller:** Trident fighter who calls lightning and gains strength after striking.
+- **Fire Mage:** Uses precise, non-igniting fireballs and heavier blast attacks.
+- **Lightning Mage:** Uses single-target lightning and storm-enhanced chain attacks.
+- **Necromancer:** Fires wither skulls and summons temporary allied wither skeletons.
 
-## Items & Crafting
-**Weapons:** Vanilla-style recipes for every weapon/material combo; JEI/REI will show them. Bronze variants appear only when a bronze mod is loaded.
+### Optional Magic Companions
 
-  ![](https://i.imgur.com/vJeU7FG.png)
-  ![](https://i.imgur.com/wuyhvYn.png)
-  ![](https://i.imgur.com/yfRNaFM.png)
+Optional magic companions use the loaded mod’s actual spell systems rather than replacing them with custom fallback attacks.
 
-  ![](https://i.imgur.com/dAwVUHw.png)
-  ![](https://i.imgur.com/ebEzs9s.png)
-  ![](https://i.imgur.com/kK0xqiX.png)
+- **Wizard:** Summons magical weapons and controls their active lifetime.
+- **Sorcerer:** Elemental offensive caster.
+- **Warlock:** Dark magic specialist.
+- **Witch:** Hexes, curses, and battlefield control.
+- **Hag:** Powerful debuff and damage caster.
+- **Cryomancer:** Ice-themed control and damage magic.
+- **Druid:** Nature-themed magical support and offense.
+- **Illusionist:** Deception and ranged spell specialist.
+- **Battlemage:** Close-range fighter with magical attacks.
 
- **Companion Mover:** Owner-only tool that captures a companion into a glinting stored item (preserves full NBT/UUID/inventory) for redeployment.
+Magic companions, summon gems, structures, and related content remain unavailable when the required optional mods are not installed.
 
-  ![](https://i.imgur.com/wKsYkiP.png)
+### TacZ Specialists
 
-**Soul Gems:** A Companion's soul transferred into a Soul Gem using the **Companion Mover**.
+TacZ firearm specialists are permanently assigned to one firearm category and only equip compatible guns.
 
-  ![](https://i.imgur.com/1FrL94k.png)
+Supported specialties:
 
-**Summoning Wand:** Teleports all of your living companions (and Beastmaster pets) in the dimension to a safe spot near you on a short cooldown.
+- Pistol
+- SMG
+- Rifle
+- Shotgun
+- Sniper
+- Machine Gun
+- Heavy
 
-  ![](https://i.imgur.com/OClm2Fj.png)
+Specialists use TacZ’s native shooting, ammunition, reload, and weapon behavior. Matching summon gems are available only when TacZ is installed.
 
-**Gem Eggs:** Retextured spawn eggs available on the Modern Companions creative tab; survival acquisition is up to pack makers/datapacks.
+## How It Plays
 
-  ![](https://i.imgur.com/nHlP3mX.png)
-  ![](https://i.imgur.com/Ddy3yEk.png)
+1. **Find:** Locate a companion structure in the Overworld.
+2. **Hire:** Right-click an untamed companion with the exact requested food and resource items.
+3. **Tame:** Fulfill both requested stacks to unlock the companion and its inventory.
+4. **Command:** Use the companion screen to select Follow, Patrol, Guard, Alert, Hunting, Sprint, Pickup, Clear, Release, and Radius controls.
+5. **Equip:** Give companions armor, weapons, tools, shields, torches, or lanterns through their inventory.
+6. **Progress:** Companions gain XP from kills and improve as they level.
+7. **Recover:** Feed injured companions, use beneficial potions, or revive fallen tamed companions with Resurrection Scrolls.
+8. **Regroup:** Use the Summoning Wand to recall all living companions and Beastmaster pets in the current dimension.
 
-**Resurrection Scroll:** Drops only from *tamed* companions. Activation consumes one nether star (off-hand).
+Following companions use their saved Radius for wandering and recall. Radius values range from 2 to 128 blocks.
 
-  ![](https://i.imgur.com/NV1urK6.png)
+## Taming and Upkeep
 
-  ![](https://i.imgur.com/K8Zl7ka.png)
+Each untamed companion requests two specific stacks of food or resources.
+
+- Resource tiers are weighted as 70% common, 25% uncommon, and 5% rare.
+- Nether and ocean resources remain unavailable until the player has reached those areas.
+- The final resource requirement is resolved on the first interaction and then saved.
+- Empty-hand interactions produce companion dialogue.
+- Wrong food produces a different response from the companion.
+- Companions can eat cooked food, vegetables, fruit, honey, enchanted golden foods, and beneficial potions.
+- Companions remember their favorite food and gain improved Bond and Morale rewards when fed it.
+- Set `companion.lowHealthFoodThreshold` from `0.0` to `1.0` to control when companions eat or ask for food. The default is `0.5`.
+
+## Inventory and Equipment
+
+![Inventory](https://i.imgur.com/6iCmeTL.png)
+
+Each companion has:
+
+- A 7×9 personal inventory.
+- Dedicated helmet, chestplate, leggings, boots, main-hand, and offhand slots.
+- A 3D inventory preview.
+- Automatic armor and weapon selection.
+- Persistent equipment through relogging, capture, and redeployment.
+- Owner-only villager and PvP safety controls.
+
+Equipment rules keep companions from grabbing unsuitable items:
+
+- Main hand: tools and weapons.
+- Offhand: shields, torches, and lanterns.
+- Manually equipped items remain protected from automatic replacement.
+
+## Companion Resources and Potions
+
+Every companion has 100 Stamina by default. Sprinting and successful melee attacks consume Stamina. At zero Stamina, sprinting pauses and melee attacks use a slower cadence.
+
+Magic companions also have 100 Mana. Spell costs are applied only after a spell successfully casts.
+
+Five reusable vessel shapes support six potion types:
+
+- **Health:** Restores health immediately.
+- **Regeneration:** Heals over time.
+- **Stamina:** Restores companion Stamina.
+- **Mana:** Restores companion Mana.
+- **Rejuvenation:** Restores health, Stamina, and Mana over time.
+- **Shield:** Grants temporary armor.
+
+Brewing recipes are visible in JEI, and used potions return their matching empty vessels.
+
+### Potion Recipes
+
+Craft one of the five reusable empty vessels, fill it with a Water Bottle, and brew it with Nether Wart to create the matching Empty Vessel. Add the listed ingredients in a Brewing Stand to finish the potion.
+
+![Empty vessel crafting recipes](https://i.imgur.com/tw4koGa.gif)
+
+![Complete companion potion guide](https://i.imgur.com/5AGBSZR.gif)
+
+Each potion returns its matching empty vessel after use. Health restores immediately, Regeneration heals over time, Stamina and Mana restore their matching companion resource, Rejuvenation restores all three over time, and Shield grants temporary armor.
+
+### Stamina Configuration
+
+- `companion.staminaEnabled`: Set to `false` to disable the Stamina system completely.
+- `companion.sprintStaminaCost`: Stamina spent per sprinting tick. Default: `1`.
+- `companion.meleeStaminaCost`: Stamina spent per successful melee hit. Default: `8`.
+
+Both cost settings accept values from `0` to `100`. A value of `0` disables that individual drain.
+
+When Stamina is disabled, companions keep a full Stamina pool, continue sprinting and attacking normally, and the Jade Stamina bar is hidden. Mana remains active for magic companions.
+
+## Curios and Sophisticated Backpacks
+
+Both integrations are optional.
+
+### Curios
+
+- Companions expose Curios slots when Curios is installed.
+- Curio rendering can be toggled per companion.
+- All TacZ firearm specialists support the same Curios integration.
+
+### Sophisticated Backpacks
+
+Equip a Sophisticated Backpack in a companion’s Curios back slot.
+
+- Picked-up items are inserted into the backpack before the companion’s normal inventory.
+- The Pack button opens Sophisticated Backpacks’ native storage screen.
+- Backpack upgrades and settings remain available.
+- Backpack equipment persists when companions are captured and redeployed.
+
+## Personality, Morale, Bond, and Journal
+
+![Journal](https://i.imgur.com/F8KB9kT.png)
+
+The Journal displays:
+
+- Traits and their effects.
+- Backstory.
+- Morale descriptor.
+- Bond level and XP.
+- Kills and major kills.
+- Resurrections.
+- Distance traveled with the owner.
+- First hired day.
+- Companion age.
+- Favorite food.
+
+Companions normally begin between 18 and 35 years old and age visually over time. Legacy companions receive missing personality data once without being repeatedly rerolled.
+
+The Journal edit menu supports:
+
+- Name
+- Age
+- Bio
+- Skin URL
+
+Name, Age, and Bio updates are owner-checked and persistent. Skin editing uses HTTP(S) URLs.
+
+### Trait Effects
+
+- **Brave:** More damage and closer following.
+- **Cautious:** Greater following distance and slower movement.
+- **Guardian:** Increased armor.
+- **Reckless:** Increased movement speed and closer following.
+- **Stalwart:** Knockback resistance.
+- **Quickstep:** Increased movement and following speed.
+- **Glutton:** Increased Bond XP from feeding.
+- **Disciplined:** Increased XP gain and reduced Morale loss.
+- **Lucky:** Chance to duplicate one kill drop.
+- **Night Owl:** Damage and speed bonuses at night.
+- **Sun-Blessed:** Damage and speed bonuses during the day.
+- **Jokester:** Reduced Morale loss.
+- **Melancholic:** Minor damage penalty at low Morale.
+- **Devoted:** Increased armor and Bond XP.
+
+## Items and Crafting
+
+### Weapons
+
+Modern Companions adds vanilla-style recipes for every custom weapon and material combination. Bronze variants appear when a compatible bronze mod is installed.
+
+![Weapons](https://i.imgur.com/vJeU7FG.png)
+
+![Weapons](https://i.imgur.com/wuyhvYn.png)
+
+![Weapons](https://i.imgur.com/yfRNaFM.png)
+
+### Companion Mover
+
+The owner-only Companion Mover stores a companion as a glinting item while preserving its identity, UUID, inventory, equipment, stats, and personality.
+
+![Companion Mover](https://i.imgur.com/wKsYkiP.png)
+
+### Soul Gems
+
+Soul Gems preserve a companion’s soul through the Companion Mover and allow later redeployment.
+
+![Soul Gem](https://i.imgur.com/1FrL94k.png)
+
+### Summoning Wand
+
+The Summoning Wand recalls all living companions and Beastmaster pets in the current dimension to a safe location near the owner.
+
+![Summoning Wand](https://i.imgur.com/OClm2Fj.png)
+
+### Spawn Gems
+
+All companion spawn eggs use class-colored gem artwork and are available on the Modern Companions creative tab. Survival acquisition is left to modpack makers and datapacks.
+
+![Spawn Gems](https://i.imgur.com/nHlP3mX.png)
+
+![Spawn Gems](https://i.imgur.com/Ddy3yEk.png)
+
+### Resurrection Scroll
+
+Tamed companions drop Resurrection Scrolls containing their saved stats, equipment, inventory, and personality data.
+
+Activate a scroll with a Nether Star in the offhand, then use it on a block or fluid face to respawn the companion at that location.
+
+![Resurrection Scroll](https://i.imgur.com/NV1urK6.png)
+
+![Resurrection Scroll](https://i.imgur.com/K8Zl7ka.png)
+
+Harmful effects and optional radiation are cleared from the resurrection data so a revived companion does not immediately repeat the same fatal condition.
 
 ## Attribute Enchantments
-**Empower, Nimbility, Enlightenment, Vitality (armor-only):** Add STR/DEX/INT/END bonuses from companion armor; stats recalc live as gear changes. Levels I-III available.
 
-  ![](https://i.imgur.com/NDqdrXP.png)
+**Empower, Nimbility, Enlightenment, and Vitality** add Strength, Dexterity, Intelligence, and Endurance bonuses through companion armor.
 
-**Availability:** Custom-textured enchanted books live on the Modern Companions creative tab and can drop from dungeon/mineshaft/stronghold library/temple/buried treasure/shipwreck loot tables.
+Levels I–III are available.
 
-## Companion Resources & Potions
-Every companion has 100 persistent Stamina. Successful melee hits and actual sprinting spend it; at zero, sprinting pauses and melee remains available at a slower cadence. Stamina recovers slowly in combat, normally out of combat, then quickly after five seconds safe. Magic companions also have 100 persistent Mana. Basic, utility, and heavy spells cost 10, 20, and 35 Mana only after a cast succeeds.
+![Attribute Enchantments](https://i.imgur.com/NDqdrXP.png)
 
-Five reusable glass vessels craft into round, rectangle, pyramid, hexagon, and droplet shapes. In a brewing stand, combine an empty vessel with a water bottle, add nether wart, then use the shown reagent path: glistering melon for Health; ghast tear for Regeneration; sugar then rabbit's foot for Stamina; amethyst then lapis for Mana; ghast tear then amethyst for Rejuvenation; turtle scute then iron for Shield. Drinking returns its matching vessel.
+Books can appear in dungeon, mineshaft, stronghold library, temple, buried treasure, and shipwreck loot.
 
-Health restores immediately, Regeneration heals over time, Stamina and Mana restore their matching companion pool, Rejuvenation recovers all three over time, and Shield gives temporary armor. Companions drink only a useful potion from their own inventory. Loot is conservatively added to normal chest tables; Lootr runs those same tables per player, and normal datapack recipes/tags (`companion_potions`, `companion_empty_vessels`, and family tags) stay replaceable from KubeJS. Jade shows compact Stamina and, for mages, Mana bars.
+## Configuration and Compatibility
 
-## Config & Packmaker Notes
-- Friendly fire, fall damage, spawn armor/weapon, and house spacing are configurable.
-- Set `companion.lowHealthFoodThreshold` from `0.0` to `1.0` to control when a companion eats or asks for food; the default `0.5` means half health. `lowHealthFood` still enables or disables both behaviors.
-- Set `companion.staminaEnabled` to `false` to disable companion Stamina completely; sprinting and melee attacks no longer drain or throttle, Stamina stays full, and Jade hides the Stamina bar.
-- Set `companion.sprintStaminaCost` to control Stamina spent per sprinting tick (default `1`) and `companion.meleeStaminaCost` to control Stamina spent per successful melee hit (default `8`); both accept `0` through `100`, and `0` disables that individual drain.
-- All bundled 64x64 male and female companion textures under `textures/entities` are included in the random birth-skin pools.
-- Companion inventory includes owner-only Villager and PvP safety controls. Both default to safe: companions cannot target or damage villagers or other players until explicitly enabled.
-- With Curios and Sophisticated Backpacks installed, equip a Sophisticated Backpack in the companion's back slot. It renders on the companion and the optional Backpack button opens its storage. A companion's Bio records its randomly selected favorite food; feeding it doubles Bond XP and morale gain.
-- The Backpack button opens Sophisticated Backpacks' native storage container, so its upgrades and settings tabs work exactly as they do for a player-worn backpack.
-- TacZ firearms are optional: companions equip a supplied gun, aim at a valid target, shoot, reload from their own inventory, and notify their owner after an ammo failure.
-- All seven TacZ firearm specialist variants receive the same Curios slots and rendering support when Curios is installed.
-- When TacZ is installed, structure residents can be replaced by rare firearm specialists. Each specialist is permanently assigned to Pistol, SMG, Rifle, Shotgun, Sniper, Machine Gun, or Heavy and only equips guns in that TacZ category; Sniper and Heavy rolls are intentionally very rare.
-- TacZ supplies one matching summon gem for each specialist category; these seven gems reuse the existing gem art and are not registered or shown when TacZ is absent.
-- Their inventory class labels use the preferred firearm name (for example, Pistol Specialist, MG Specialist, or Sniper) instead of the generic Firearm Specialist label.
-- Equipped TacZ guns remain in the companion's equipment slot when captured and redeployed; ammunition remains in cargo for native TacZ reloads.
-- Data pack uses pack_format 48; loot injections use NeoForge global loot modifiers for compatibility.
-- Better Combat detected: reach modifiers are skipped to avoid stacking with that mod’s reach.
+Configurable companion behaviors include:
 
-## Living Jobs
-Assign a non-`NONE` job in Jobs, bind its chest with Assignment Wand, then use main inventory's `Work` button to start or pause profession. Green Work is primary: Follow, Patrol, and Guard turn off; selecting one turns Work off. Jobs search and act only inside the configured Radius around bound chest. `Currently` panel shows job and short live state without changing supplied texture.
+- Friendly fire.
+- Player damage.
+- Villager damage.
+- Fall damage.
+- Spawn armor.
+- Spawn weapons.
+- Low-health food behavior.
+- Low-health food threshold.
+- Stamina enablement and costs.
+- House spacing.
+- Trait, Bond, and Morale systems.
 
-The companion inventory hides its experimental Jobs button by default. Set `jobs.showJobsButton = true` in the common config to restore it; Journal, Curios, and Pack automatically move down when the Jobs row is enabled.
+Optional compatibility includes:
 
-Jobs share safe work-site checks, temporary target reservations, persisted target/phase checkpoints, and assigned-chest delivery. Workers only edit blocks after reaching approved stand; blocked, protected, unloaded, full-inventory, or full-chest work stays queued. Assignment Wand binds job companion to vanilla or item-handler container. Workers bulk-deliver every two minutes or at dusk, whichever comes first, while retaining all edible food, potions, equipment, job tools, and Lumberjack saplings. Chefs first visit the assigned chest to collect one tagged raw ingredient when their inventory has none.
-
-Lumberjacks claim cardinally connected trees, keep a running path to a safe stump-side stand, clear leaves only after that approach stalls, keep failed logs queued, reject over-limit trees, and replant only matching log-family saplings. Fishers accept compatible fishing rods, face their farther validated surface-water cast target, and use a durable bite window. Hunters use one job target path for adult wild Animals; packs can deny entity types with `modern_companions:hunter_denied` or add animal-like entities with `modern_companions:hunter_allowed`. Chefs use `modern_companions:raw_meat` tag plus vanilla cooking recipes, furnaces, smokers, and campfires; pack makers can add tagged meats and native recipes.
-
-Manual dev-world verification still required: each job's navigation, combat/unload interruption, chest retry, two-worker reservations, campfire/furnace ownership, tree footprint/replant backlog, miner route hazards, and GUI text clipping.
+- Iron’s Spellbooks.
+- Ars Nouveau.
+- TacZ.
+- Curios.
+- Sophisticated Backpacks.
+- Jade.
+- JEI/REI.
+- Bronze weapon materials.
+- Better Combat reach handling.
 
 ## Requirements
-- Java 21 (JDK 21)
+
 - Minecraft 1.21.1
-- NeoForge 21.1.1 (see `gradle.properties` for exact versions)
-
-## Build & Run
-```bash
-./gradlew build        # builds the mod jar
-./gradlew runClient    # launches the NeoForge dev client
-```
-## Development Notes
-- Source lives in `src/`; other top-level directories are read-only references.
-- Version is managed in `gradle.properties` and must be bumped with each change (per AGENTS.md).
-- Companion behavior toggles now use NeoForge's payload system (`ToggleFlagPayload` registered in `ModNetwork`, emitted by `CompanionScreen`)—follow this pattern for future GUI actions.
-- Worldgen/structure data now resides under `data/modern_companions`; ensure future resources use the same namespace.
-
-## Technical Notes
-- **Recipes & tags:** All custom weapons use vanilla-style JSON recipes and standard tool/block tags; JEI/REI will list them automatically. Spawn eggs are items with gem textures; survival acquisition is left to pack makers/datapacks.
-- **Resurrection:** Activation is purely item logic (nether star off-hand). Auto-loot blacklist prevents companions from grabbing their own scroll.
-- **XP & health scaling:** Companions gain XP when they land killing blows (server-side event). INT raises XP gain (≈ +3% per INT over 4). A superlinear curve governs level costs: XP needed ≈ 20 + 10·(level+1)^1.35. Each level raises max health by +⅓ heart (via attribute modifier), and END grants +1 HP per point above 4, plus up to 35% physical mitigation via END-based reduction. Current health is clamped to new max on level-up; the GUI shows level, XP bar, and kills.
-- **Beastmaster pets:** Pets are permanently bound, inherit STR/DEX/END scaling, and automatically respawn after a short timer if they die or unload. Respawn is suppressed while the Beastmaster is dying/dropped to a scroll to prevent dupes. Pets also avoid friendly fire from their master.
-- **Random names:** Companions roll from expanded male/female first-name and surname pools, including medieval and fantasy-flavored names, while Beastmaster pets get their own sizable pet-name list. Names are saved, shown on hover (not always-on), and carried through resurrection/pet respawn.
+- NeoForge 21.1.1
+- Java 21
 
 ## Credits
-- Original mod: Human Companions by justinwon777.
-- Port & maintenance: MajorBonghits.
+
+- [Human Companions — justinwon777](https://www.curseforge.com/minecraft/mc-mods/human-companions)
+- [Basic Weapons — Khazoda](https://www.curseforge.com/minecraft/mc-mods/basicweapons)
+
+**Take a squad with you, keep them fed, and bring your companions into every adventure.**

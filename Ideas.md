@@ -15,11 +15,7 @@
     - Trash talk enemies
     - Ask other companions for food
         - Companions will be able to share edible food between themselves
-- Companions complain about low health as soon as they lose ANY - make it so they only complain once they reach a certain threshold
-- Massively increase the pool of first and last names 
-- Massively increase the pool of available skins
 - Add button on companion inv that will toggle hiding their armor 
 
 ## Bugs
 - Archer who shoot arrows at other entities gets the server to crash?
-- Any negative effects a companion might have upon death should be cleared, not sustained until resurrected. For example, I had a companion die from radiation poisoning (Mekanism) and when resurrected, they just died from radiation poisoning again.

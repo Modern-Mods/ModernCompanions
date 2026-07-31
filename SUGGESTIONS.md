@@ -277,3 +277,7 @@
 
 ## 2026-07-31 (configurable stamina costs and toggle)
 - Keep the three values in the common companion config; add per-class or per-attack stamina tuning only if live balancing shows the shared sprint/melee costs are insufficient.
+
+## 2026-07-31 (upstream summon targeting smoke)
+- Keep the shared 200-tick combat-assist memory fixed until live play shows stale owner-hit targets or a summon needs a longer pursuit window; add a config only if that boundary proves player-visible.
+- In a dev world with Iron's Spellbooks and/or Ars Nouveau, verify Necromancer summons attack visible hostile mobs, assist the Necromancer/owner's active fight, clear targets behind walls, leave passive mobs alone, and obey the existing PvP/villager safety toggles. Repeat the clear-LOS case for Wizard summons.

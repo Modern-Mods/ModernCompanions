@@ -172,6 +172,8 @@ Health restores immediately, Regeneration heals over time, Stamina and Mana rest
 
 ## Config & Packmaker Notes
 - Friendly fire, fall damage, spawn armor/weapon, and house spacing are configurable.
+- Set `companion.lowHealthFoodThreshold` from `0.0` to `1.0` to control when a companion eats or asks for food; the default `0.5` means half health. `lowHealthFood` still enables or disables both behaviors.
+- All bundled 64x64 male and female companion textures under `textures/entities` are included in the random birth-skin pools.
 - Companion inventory includes owner-only Villager and PvP safety controls. Both default to safe: companions cannot target or damage villagers or other players until explicitly enabled.
 - With Curios and Sophisticated Backpacks installed, equip a Sophisticated Backpack in the companion's back slot. It renders on the companion and the optional Backpack button opens its storage. A companion's Bio records its randomly selected favorite food; feeding it doubles Bond XP and morale gain.
 - The Backpack button opens Sophisticated Backpacks' native storage container, so its upgrades and settings tabs work exactly as they do for a player-worn backpack.
@@ -216,7 +218,7 @@ Manual dev-world verification still required: each job's navigation, combat/unlo
 - **Resurrection:** Activation is purely item logic (nether star off-hand). Auto-loot blacklist prevents companions from grabbing their own scroll.
 - **XP & health scaling:** Companions gain XP when they land killing blows (server-side event). INT raises XP gain (≈ +3% per INT over 4). A superlinear curve governs level costs: XP needed ≈ 20 + 10·(level+1)^1.35. Each level raises max health by +⅓ heart (via attribute modifier), and END grants +1 HP per point above 4, plus up to 35% physical mitigation via END-based reduction. Current health is clamped to new max on level-up; the GUI shows level, XP bar, and kills.
 - **Beastmaster pets:** Pets are permanently bound, inherit STR/DEX/END scaling, and automatically respawn after a short timer if they die or unload. Respawn is suppressed while the Beastmaster is dying/dropped to a scroll to prevent dupes. Pets also avoid friendly fire from their master.
-- **Random names:** Companions roll from a large male/female name pool on spawn, and Beastmaster pets get their own sizable pet-name list. Names are saved, shown on hover (not always-on), and carried through resurrection/pet respawn.
+- **Random names:** Companions roll from expanded male/female first-name and surname pools, including medieval and fantasy-flavored names, while Beastmaster pets get their own sizable pet-name list. Names are saved, shown on hover (not always-on), and carried through resurrection/pet respawn.
 
 ## Credits
 - Original mod: Human Companions by justinwon777.

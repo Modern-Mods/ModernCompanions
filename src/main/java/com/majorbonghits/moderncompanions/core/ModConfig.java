@@ -20,6 +20,7 @@ public final class ModConfig {
     public static ModConfigSpec.BooleanValue SPAWN_WEAPON;
     public static ModConfigSpec.IntValue BASE_HEALTH;
     public static ModConfigSpec.BooleanValue LOW_HEALTH_FOOD;
+    public static ModConfigSpec.DoubleValue LOW_HEALTH_FOOD_THRESHOLD;
     public static ModConfigSpec.BooleanValue CREEPER_WARNING;
     public static ModConfigSpec.BooleanValue TRAITS_ENABLED;
     public static ModConfigSpec.IntValue SECONDARY_TRAIT_CHANCE;
@@ -90,8 +91,11 @@ public final class ModConfig {
                 .comment("Base health for companions; a small random variance is applied on spawn")
                 .defineInRange("baseHealth", 20, 5, Integer.MAX_VALUE);
         LOW_HEALTH_FOOD = builder
-                .comment("If true, companions ask for food when below half health")
+                .comment("If true, companions eat and ask for food when they reach the configured health threshold")
                 .define("lowHealthFood", true);
+        LOW_HEALTH_FOOD_THRESHOLD = builder
+                .comment("Health fraction at or below which companions eat or ask for food; 0.5 means half health")
+                .defineInRange("lowHealthFoodThreshold", 0.5D, 0.0D, 1.0D);
         CREEPER_WARNING = builder
                 .comment("If true, companions warn the player about nearby creepers")
                 .define("creeperWarning", true);

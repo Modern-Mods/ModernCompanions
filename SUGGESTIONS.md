@@ -253,3 +253,15 @@
 ## 2026-07-30 (death effect cleanup)
 - Keep the death/resurrection smoke test covering a vanilla harmful effect and Mekanism radiation; add other optional
   capability-specific cleanup only when a mod demonstrates death-persistent harmful state.
+
+## 2026-07-30 (health threshold and name pools)
+- Keep the default health threshold at 0.5 until gameplay smoke shows that companions request food too early or too late; add per-companion thresholds only if global tuning proves insufficient.
+
+## 2026-07-30 (medieval and fantasy name expansion)
+- Keep names as static data tables; move them to datapack-driven content only if players need server-specific naming themes or localization.
+
+## 2026-07-31 (complete bundled skin pools)
+- Keep future skin filenames lowercase with only letters, digits, hyphens, underscores, and periods so they can be registered directly as Minecraft resource paths; add a build-time asset linter if contributors continue adding large skin batches.
+
+## 2026-07-31 (female skin pool refresh)
+- Keep new skin PNGs at 64x64 before adding them; add the suggested asset-to-pool linter if future batches continue to arrive after code updates.

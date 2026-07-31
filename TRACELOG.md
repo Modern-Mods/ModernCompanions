@@ -2346,3 +2346,27 @@
 - Steps: Removed harmful MobEffects before serializing the resurrection scroll; cleared Mekanism's optional radiation entity capability through reflection; bumped version to 1.2.85.
 - Rationale: The resurrection scroll is created from the live entity before `super.die`, so death-invalid harmful state was being copied into the revived entity. Mekanism radiation is capability state rather than a MobEffect and needs its own optional cleanup.
 - Build/Test: Java 21 `gradlew.bat compileJava --no-daemon` and `gradlew.bat check --no-daemon` passed; vanilla harmful-effect and Mekanism radiation death/resurrection smoke remain required.
+
+## 2026-07-30 (health threshold and name pools)
+- Prompt/task: Stop low-health complaints after any damage by making the threshold configurable, and massively expand companion first and last names; skin changes were excluded from the final scope.
+- Steps: Added the common `companion.lowHealthFoodThreshold` fraction setting, routed both owner complaints and inventory eating through it, expanded the male/female first-name and surname tables, updated README guidance, and bumped version to 1.2.86.
+- Rationale: The complaint path used a fixed 0.5 HP loss check and ignored the existing enable toggle, while the eating goal used a separate hard-coded half-health check. One shared config threshold keeps both behaviors predictable without adding another system.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` passed; in-game threshold and name-distribution smoke remain required.
+
+## 2026-07-30 (medieval and fantasy name expansion)
+- Prompt/task: Expand the male and female first-name pools and surname pool again with medieval and fantasy names.
+- Steps: Added a second batch of medieval, mythic, and fantasy-flavored male/female first names and surnames to the existing random-name tables, updated the player-facing description, and bumped version to 1.2.87.
+- Rationale: The existing data-driven picker already supplies the correct spawn, persistence, and sex-specific behavior; expanding its tables gives more variety without adding runtime complexity.
+- Build/Test: Java 21 build and check remain required; name variety and saved-name behavior should still be smoke-tested in game.
+
+## 2026-07-31 (complete bundled skin pools)
+- Prompt/task: Add every newly supplied male and female companion skin under `textures/entities` to the random birth-skin pools.
+- Steps: Validated all 245 textures as 64x64, normalized 14 contributor-labelled filenames to lowercase ResourceLocation-safe paths, registered all 199 male and 46 female textures in `CompanionData.skins`, updated README guidance, and bumped version to 1.2.88.
+- Rationale: The existing birth logic already selects from `CompanionData.skins[sex]`; completing that table makes every bundled asset eligible without changing spawn or persistence behavior.
+- Build/Test: Java 21 build, resource dimensions, resource-name validation, and `git diff --check` remain required; manual birth distribution and renderer smoke remain required.
+
+## 2026-07-31 (female skin pool refresh)
+- Prompt/task: Include the additional female skins added after the complete bundled skin pool pass.
+- Steps: Detected 50 newly unregistered female PNGs, normalized three 128x128 files to the project-standard 64x64 layout with nearest-neighbor scaling, registered all 96 female textures, and bumped version to 1.2.89.
+- Rationale: Birth selection already consumes the female `CompanionData.skins[1]` table, so updating that table keeps the new assets in the existing random spawn path.
+- Build/Test: Java 21 build, exact asset-to-pool comparison, 64x64 dimension validation, and `git diff --check` remain required; manual female birth distribution smoke remains required.

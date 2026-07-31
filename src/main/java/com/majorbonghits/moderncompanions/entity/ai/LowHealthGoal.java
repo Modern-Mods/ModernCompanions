@@ -17,7 +17,8 @@ public class LowHealthGoal extends Goal {
     @Override
     public boolean canUse() {
         return ModConfig.safeGet(ModConfig.LOW_HEALTH_FOOD)
-                && companion.getHealth() < companion.getMaxHealth() * 0.5f
+                && companion.getHealth() <= companion.getMaxHealth()
+                        * ModConfig.safeGet(ModConfig.LOW_HEALTH_FOOD_THRESHOLD).floatValue()
                 && companion.hasFoodInInventory();
     }
 

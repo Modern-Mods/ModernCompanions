@@ -3374,8 +3374,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private boolean shouldRequestFood() {
-        return this.isTame()
-                && this.getHealth() < this.getMaxHealth() - 0.5F
+        return ModConfig.safeGet(ModConfig.LOW_HEALTH_FOOD)
+                && this.isTame()
+                && this.getHealth() <= this.getMaxHealth() * ModConfig.safeGet(ModConfig.LOW_HEALTH_FOOD_THRESHOLD).floatValue()
                 && !hasFoodInInventory()
                 && this.tickCount - lastFoodRequestTick > FOOD_REQUEST_COOLDOWN_TICKS;
     }

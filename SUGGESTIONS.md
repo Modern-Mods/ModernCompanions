@@ -265,3 +265,9 @@
 
 ## 2026-07-31 (female skin pool refresh)
 - Keep new skin PNGs at 64x64 before adding them; add the suggested asset-to-pool linter if future batches continue to arrive after code updates.
+
+## 2026-07-31 (pre-tame empty-hand dialogue)
+- Keep empty-hand dialogue in `CompanionData.notTamed`; move it to localization only if dialogue translation becomes a supported feature.
+
+## 2026-07-31 (progression-gated taming resources)
+- Keep progression flags on the player’s persistent data; move resource tiers to datapack/config content only if server-specific taming rules are requested.

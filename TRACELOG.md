@@ -2370,3 +2370,15 @@
 - Steps: Detected 50 newly unregistered female PNGs, normalized three 128x128 files to the project-standard 64x64 layout with nearest-neighbor scaling, registered all 96 female textures, and bumped version to 1.2.89.
 - Rationale: Birth selection already consumes the female `CompanionData.skins[1]` table, so updating that table keeps the new assets in the existing random spawn path.
 - Build/Test: Java 21 build, exact asset-to-pool comparison, 64x64 dimension validation, and `git diff --check` remain required; manual female birth distribution smoke remains required.
+
+## 2026-07-31 (pre-tame empty-hand dialogue)
+- Prompt/task: Use the `notTamed` dialogue pool when a player interacts with an untamed companion using an empty hand.
+- Steps: Added the empty-hand branch to the existing server-side untamed interaction flow, kept all food branches unchanged, and bumped version to 1.2.90.
+- Rationale: `notTamed` was defined but unreachable; routing only empty-hand interactions to it preserves the requested-food and wrong-food responses.
+- Build/Test: Java 21 check remains required; manually verify repeated empty-hand interactions before and after taming.
+
+## 2026-07-31 (progression-gated taming resources)
+- Prompt/task: Use 70% common, 25% uncommon, and 5% rare taming resources, while withholding Nether/ocean materials until the player reaches those areas.
+- Steps: Replaced the flat resource pool with weighted tiers, tracked Nether/ocean milestones in player persistent data from server ticks, safely generated provisional spawn requirements, resolved them once on first untamed interaction, persisted the resolution state, updated README/SUGGESTIONS, and bumped version to 1.2.91.
+- Rationale: Companions are born before they have an owner, so provisional requirements avoid inaccessible materials; first interaction supplies the player context without rerolling tamed or partially progressed companions.
+- Build/Test: Java 21 `check`/`build` and `git diff --check` passed; in-game taming/progression smoke remains required.

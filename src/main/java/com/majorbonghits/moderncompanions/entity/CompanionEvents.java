@@ -8,10 +8,18 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 @EventBusSubscriber(modid = ModernCompanions.MOD_ID)
 public final class CompanionEvents {
     private CompanionEvents() {}
+
+    @SubscribeEvent
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!event.getEntity().level().isClientSide()) {
+            CompanionData.updateResourceProgress(event.getEntity());
+        }
+    }
 
     @SubscribeEvent
     public static void giveExperience(LivingDeathEvent event) {

@@ -323,3 +323,6 @@
 
 ## 2026-07-31 (Epic Fight weapon animation timing)
 - Keep the positive companion attack-speed floor because companion base attributes are intentionally lower than player base speed while held weapon penalties are player-calibrated. Revisit it only if companion base attack speed is raised to absorb every supported weapon penalty.
+
+## 2026-07-31 (structure insertion smoke)
+- Keep structure residents on the bounded code-spawn path; only raise the one-per-tick budget if profiling shows the queue cannot clear during deliberate pregeneration. Test `/place structure` and a Chunky-style pregeneration run with timings enabled before changing it.

@@ -2460,3 +2460,9 @@
 - Steps: Clamped the companion Epic Fight attack speed to the same positive minimum used by upstream mobs before attack animation timing; bumped version to 3.13.
 - Rationale: Companions have a 1.6 base attack speed, while player-calibrated weapon modifiers subtract more than that. Epic Fight uses the resulting negative value as animation speed, which starts its movement-locking attack state but can never advance it. The patch preserves Epic Fight attack selection, animation, collision, and companion-owned hit effects.
 - Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and task-owned `git diff --check` are required. Live sword, axe, club, dagger, spear, glaive, quarterstaff, and unarmed combo hit/chase smoke remain required.
+
+## 2026-07-31 (bounded companion structure insertion)
+- Prompt/task: Analyze and fix companion-building chunk generation/server lockups.
+- Steps: Removed the legacy per-structure creature spawn overrides so the code spawner is the only resident source; replaced one executor task per chunk load with a deduplicated queue that inserts at most one companion per server tick and only when its destination chunk is already loaded; and added a no-world insertion-gate regression check. Bumped version to 3.14.
+- Rationale: The old dual spawning could create extra residents, while queued entity initialization could accumulate in one server tick or synchronously touch an adjacent unfinished chunk. The bounded queue preserves one resident without recursive chunk work.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon`; structure JSON parsing and task-owned `git diff --check` run after the edit. Live exploration/pregeneration smoke remains required.

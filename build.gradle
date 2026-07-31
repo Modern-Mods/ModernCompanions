@@ -95,6 +95,12 @@ tasks.register("firearmCategoryCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("structureSpawnCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.world.StructureCompanionSpawnerTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("epicFightCapabilityCheck") {
     def weaponTypes = [dagger: "dagger", hammer: "axe", club: "axe", spear: "spear", quarterstaff: "longsword", glaive: "spear"]
     doLast {
@@ -118,6 +124,7 @@ tasks.named("check") {
     dependsOn tasks.named("workerSafetyCheck")
     dependsOn tasks.named("companionResourcesCheck")
     dependsOn tasks.named("firearmCategoryCheck")
+    dependsOn tasks.named("structureSpawnCheck")
 }
 
 tasks.processResources.configure {

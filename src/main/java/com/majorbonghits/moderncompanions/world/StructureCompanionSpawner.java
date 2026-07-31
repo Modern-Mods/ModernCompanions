@@ -11,6 +11,7 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.PathfinderMob;
@@ -20,14 +21,17 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
 
 /**
@@ -37,6 +41,13 @@ import java.util.function.Supplier;
 @EventBusSubscriber(modid = Constants.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public final class StructureCompanionSpawner {
     private StructureCompanionSpawner() {}
+
+    // One full companion initialization per tick keeps pregeneration from blocking the server loop.
+    private static final int MAX_SPAWNS_PER_TICK = 1;
+    // Rotate a few unavailable targets so one unloaded center cannot block later structures.
+    private static final int MAX_QUEUE_SCANS_PER_TICK = 8;
+    private static final ConcurrentLinkedQueue<SpawnRequest> PENDING_SPAWNS = new ConcurrentLinkedQueue<>();
+    private static final Set<String> QUEUED_SPAWNS = ConcurrentHashMap.newKeySet();
 
     private static final float FIREARM_SPECIALIST_CHANCE = 0.08F;
     private static final Set<ResourceLocation> FIREARM_STRUCTURE_POOL = Set.of(
@@ -84,7 +95,7 @@ public final class StructureCompanionSpawner {
         if (!(event.getLevel() instanceof ServerLevel serverLevel)) return;
         ChunkAccess chunk = event.getChunk();
 
-        // Collect work then run on the main server thread (chunk load may be off-thread).
+        // Chunk load may be off-thread; only collect lightweight immutable requests here.
         List<SpawnRequest> pending = new ArrayList<>();
 
         chunk.getAllStarts().forEach((structure, start) -> {
@@ -98,19 +109,45 @@ public final class StructureCompanionSpawner {
 
             BlockPos center = start.getBoundingBox().getCenter();
             String key = id + "|" + center.getX() + "," + center.getY() + "," + center.getZ();
-            pending.add(new SpawnRequest(id, center, key, choices));
+            String queueKey = serverLevel.dimension().location() + "|" + key;
+            pending.add(new SpawnRequest(serverLevel, id, center, key, queueKey, choices));
         });
 
-        if (pending.isEmpty()) return;
+        for (SpawnRequest req : pending) {
+            // Coalesce repeated ChunkEvent.Load notifications until the request is handled.
+            if (QUEUED_SPAWNS.add(req.queueKey())) PENDING_SPAWNS.add(req);
+        }
+    }
 
-        serverLevel.getServer().execute(() -> {
-            StructureSpawnTracker tracker = StructureSpawnTracker.get(serverLevel);
-            for (SpawnRequest req : pending) {
-                if (!tracker.markIfNew(req.key())) continue;
-                EntityType<? extends PathfinderMob> type = pickEntityFor(serverLevel.random, req.structureId(), req.typeSuppliers());
-                type.spawn(serverLevel, req.center(), MobSpawnType.STRUCTURE);
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        int spawned = 0;
+        int scanned = 0;
+        while (spawned < MAX_SPAWNS_PER_TICK && scanned++ < MAX_QUEUE_SCANS_PER_TICK) {
+            SpawnRequest req = PENDING_SPAWNS.poll();
+            if (req == null) return;
+            if (req.level().getServer() != event.getServer()) {
+                PENDING_SPAWNS.add(req);
+                continue;
             }
-        });
+            // Never let entity insertion synchronously request another chunk while generation is active.
+            if (!StructureSpawnRules.canInsert(req.level().hasChunkAt(req.center()), false)) {
+                PENDING_SPAWNS.add(req);
+                continue;
+            }
+
+            try {
+                StructureSpawnTracker tracker = StructureSpawnTracker.get(req.level());
+                if (!StructureSpawnRules.canInsert(true, tracker.hasSeen(req.key()))) continue;
+                EntityType<? extends PathfinderMob> type = pickEntityFor(req.level().random, req.structureId(), req.typeSuppliers());
+                Entity entity = type.spawn(req.level(), req.center(), MobSpawnType.STRUCTURE);
+                // Do not consume the one-resident record if a spawn event cancels this insertion.
+                if (entity != null) tracker.markSpawned(req.key());
+                spawned++;
+            } finally {
+                QUEUED_SPAWNS.remove(req.queueKey());
+            }
+        }
     }
 
     private static EntityType<? extends PathfinderMob> pickEntityFor(RandomSource random, ResourceLocation structureId,
@@ -132,7 +169,7 @@ public final class StructureCompanionSpawner {
         return Arrays.stream(entries).filter(Objects::nonNull).toList();
     }
 
-    private record SpawnRequest(ResourceLocation structureId, BlockPos center, String key,
+    private record SpawnRequest(ServerLevel level, ResourceLocation structureId, BlockPos center, String key, String queueKey,
                                 List<Supplier<? extends EntityType<? extends PathfinderMob>>> typeSuppliers) {}
 
     /**
@@ -151,10 +188,12 @@ public final class StructureCompanionSpawner {
             );
         }
 
-        boolean markIfNew(String key) {
-            boolean added = seenKeys.add(key);
-            if (added) setDirty();
-            return added;
+        boolean hasSeen(String key) {
+            return seenKeys.contains(key);
+        }
+
+        void markSpawned(String key) {
+            if (seenKeys.add(key)) setDirty();
         }
 
         @Override

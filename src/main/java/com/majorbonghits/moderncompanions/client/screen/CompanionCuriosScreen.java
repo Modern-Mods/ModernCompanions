@@ -61,7 +61,7 @@ public class CompanionCuriosScreen extends AbstractContainerScreen<CompanionCuri
         this.topPos += 1; // align shadow like main screen
         int btnX = this.leftPos + 174 + 2;
         int btnY = this.topPos + 200;
-        backButton = addRenderableWidget(Button.builder(Component.literal("Back"), b -> openMainInventory())
+        backButton = addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> openMainInventory())
                 .pos(btnX, btnY)
                 .size(38, 16)
                 .build());
@@ -95,20 +95,20 @@ public class CompanionCuriosScreen extends AbstractContainerScreen<CompanionCuri
             int statsWidth = (TOP_STATS_RIGHT - TOP_STATS_LEFT) - 8;
             int y = TOP_STATS_TOP + 2;
 
-            gfx.drawString(this.font, Component.literal("Class").withStyle(ChatFormatting.UNDERLINE), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, Component.translatable("gui.modern_companions.class_label").withStyle(ChatFormatting.UNDERLINE), statsX, y, 0x000000, false);
             y += 10;
-            gfx.drawString(this.font, Component.literal(companion.getClassDisplayName()), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, companion.getClassDisplayName(), statsX, y, 0x000000, false);
             y += 12;
 
-            gfx.drawString(this.font, Component.literal("Health").withStyle(ChatFormatting.UNDERLINE), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, Component.translatable("gui.modern_companions.health_label").withStyle(ChatFormatting.UNDERLINE), statsX, y, 0x000000, false);
             y += 10;
-            gfx.drawString(this.font, Component.literal(String.format("%.1f / %d", companion.getHealth(), (int) companion.getMaxHealth())), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, Component.translatable("gui.modern_companions.health_value", companion.getHealth(), (int) companion.getMaxHealth()), statsX, y, 0x000000, false);
             y += 12;
 
             float xpFrac = companion.getExperienceProgress();
             int xpNeeded = companion.getXpNeededForNextLevel();
             int xpHave = Math.round(xpFrac * xpNeeded);
-            gfx.drawString(this.font, Component.literal("Level " + companion.getExpLvl()), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, Component.translatable("gui.modern_companions.level", companion.getExpLvl()), statsX, y, 0x000000, false);
             y += 10;
             int barW = Math.max(60, Math.min(90, statsWidth));
             int barH = 6;
@@ -116,13 +116,13 @@ public class CompanionCuriosScreen extends AbstractContainerScreen<CompanionCuri
             gfx.fill(statsX, y, statsX + barW, y + barH, 0xFF777777);
             gfx.fill(statsX + 1, y + 1, statsX + 1 + filledW, y + barH - 1, 0xFF55AA55);
             y += 10;
-            gfx.drawString(this.font, Component.literal(xpHave + "/" + xpNeeded), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, Component.translatable("gui.modern_companions.xp_progress", xpHave, xpNeeded), statsX, y, 0x000000, false);
             y += 12;
 
-            gfx.drawString(this.font, Component.literal("Kills: " + companion.getKillCount()), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, Component.translatable("gui.modern_companions.kills", companion.getKillCount()), statsX, y, 0x000000, false);
             y += 12;
 
-            gfx.drawString(this.font, Component.literal("Patrol Radius: " + companion.getPatrolRadius()), statsX, y, 0x000000, false);
+            gfx.drawString(this.font, Component.translatable("gui.modern_companions.patrol_radius", companion.getPatrolRadius()), statsX, y, 0x000000, false);
             renderAttributes(gfx, companion);
             renderWantedFood(gfx, companion);
         });
@@ -149,19 +149,19 @@ public class CompanionCuriosScreen extends AbstractContainerScreen<CompanionCuri
         int x = ATTR_LEFT + 3;
         int y = ATTR_TOP + 3;
         int width = (ATTR_RIGHT - ATTR_LEFT) - 6;
-        drawStatLine(gfx, x, y, width, "Strength", companion.getStrength(), companion.getSpecialistAttributeIndex() == 0);
+        drawStatLine(gfx, x, y, width, Component.translatable("gui.modern_companions.attribute.strength"), companion.getStrength(), companion.getSpecialistAttributeIndex() == 0);
         y += 10;
-        drawStatLine(gfx, x, y, width, "Dexterity", companion.getDexterity(), companion.getSpecialistAttributeIndex() == 1);
+        drawStatLine(gfx, x, y, width, Component.translatable("gui.modern_companions.attribute.dexterity"), companion.getDexterity(), companion.getSpecialistAttributeIndex() == 1);
         y += 10;
-        drawStatLine(gfx, x, y, width, "Intelligence", companion.getIntelligence(), companion.getSpecialistAttributeIndex() == 2);
+        drawStatLine(gfx, x, y, width, Component.translatable("gui.modern_companions.attribute.intelligence"), companion.getIntelligence(), companion.getSpecialistAttributeIndex() == 2);
         y += 10;
-        drawStatLine(gfx, x, y, width, "Endurance", companion.getEndurance(), companion.getSpecialistAttributeIndex() == 3);
+        drawStatLine(gfx, x, y, width, Component.translatable("gui.modern_companions.attribute.endurance"), companion.getEndurance(), companion.getSpecialistAttributeIndex() == 3);
     }
 
-    private void drawStatLine(GuiGraphics gfx, int x, int y, int width, String name, int value, boolean highlight) {
-        String line = name + ": " + value + (highlight ? " ★" : "");
+    private void drawStatLine(GuiGraphics gfx, int x, int y, int width, Component name, int value, boolean highlight) {
+        Component line = Component.translatable("gui.modern_companions.attribute.value", name, value, highlight ? " ★" : "");
         int color = highlight ? 0xFFD54F : 0x000000;
-        for (FormattedCharSequence seq : this.font.split(Component.literal(line), width)) {
+        for (FormattedCharSequence seq : this.font.split(line, width)) {
             gfx.drawString(this.font, seq, x, y, color, false);
             y += 10;
             if (y > ATTR_BOTTOM) break;
@@ -172,11 +172,11 @@ public class CompanionCuriosScreen extends AbstractContainerScreen<CompanionCuri
         int foodX = FOOD_LEFT + 2;
         int foodY = FOOD_TOP + 2;
         int foodWidth = (FOOD_RIGHT - FOOD_LEFT) - 4;
-        String food = companion.getFoodStatusForGui();
-        if (food.isEmpty()) {
-            food = "Not Hungry";
+        Component food = companion.getFoodStatusForGui();
+        if (food.getString().isEmpty()) {
+            food = Component.translatable("gui.modern_companions.food.not_hungry");
         }
-        for (FormattedCharSequence line : this.font.split(Component.literal(food), foodWidth)) {
+        for (FormattedCharSequence line : this.font.split(food, foodWidth)) {
             gfx.drawString(this.font, line, foodX, foodY, 0x000000, false);
             foodY += 10;
             if (foodY > FOOD_BOTTOM) break;

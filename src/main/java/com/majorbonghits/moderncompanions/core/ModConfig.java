@@ -3,6 +3,8 @@ package com.majorbonghits.moderncompanions.core;
 import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
+import java.util.List;
+
 /**
  * Port of the original Human Companions common configuration.
  * TODO: reconnect the values to gameplay once entity logic is fully ported.
@@ -18,6 +20,10 @@ public final class ModConfig {
     public static ModConfigSpec.BooleanValue SPAWN_WEAPON;
     public static ModConfigSpec.IntValue BASE_HEALTH;
     public static ModConfigSpec.BooleanValue LOW_HEALTH_FOOD;
+    public static ModConfigSpec.DoubleValue LOW_HEALTH_FOOD_THRESHOLD;
+    public static ModConfigSpec.BooleanValue STAMINA_ENABLED;
+    public static ModConfigSpec.IntValue STAMINA_SPRINT_COST;
+    public static ModConfigSpec.IntValue STAMINA_MELEE_COST;
     public static ModConfigSpec.BooleanValue CREEPER_WARNING;
     public static ModConfigSpec.BooleanValue TRAITS_ENABLED;
     public static ModConfigSpec.IntValue SECONDARY_TRAIT_CHANCE;
@@ -32,6 +38,20 @@ public final class ModConfig {
     public static ModConfigSpec.DoubleValue MORALE_RESURRECT_DELTA;
     public static ModConfigSpec.DoubleValue MORALE_BOND_LEVEL_DELTA;
     public static ModConfigSpec.DoubleValue LUCKY_EXTRA_DROP_CHANCE;
+    public static ModConfigSpec.BooleanValue JOB_LUMBERJACK_ENABLED;
+    public static ModConfigSpec.IntValue JOB_LUMBERJACK_RADIUS;
+    public static ModConfigSpec.BooleanValue JOB_HUNTER_ENABLED;
+    public static ModConfigSpec.IntValue JOB_HUNTER_RADIUS;
+    public static ModConfigSpec.BooleanValue JOB_MINER_ENABLED;
+    public static ModConfigSpec.IntValue JOB_MINER_RADIUS;
+    public static ModConfigSpec.BooleanValue JOB_FISHER_ENABLED;
+    public static ModConfigSpec.IntValue JOB_FISHER_RADIUS;
+    public static ModConfigSpec.BooleanValue JOB_CHEF_ENABLED;
+    public static ModConfigSpec.IntValue JOB_CHEF_RADIUS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_MINER_ALLOW_BLOCKS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_MINER_DENY_BLOCKS;
+    public static ModConfigSpec.BooleanValue JOB_ASSIGNED_CHESTS_CHUNKLOAD;
+    public static ModConfigSpec.BooleanValue SHOW_JOBS_BUTTON;
 
     /**
      * Safely read a config value even during very early lifecycle (e.g., attribute construction) by
@@ -74,8 +94,20 @@ public final class ModConfig {
                 .comment("Base health for companions; a small random variance is applied on spawn")
                 .defineInRange("baseHealth", 20, 5, Integer.MAX_VALUE);
         LOW_HEALTH_FOOD = builder
-                .comment("If true, companions ask for food when below half health")
+                .comment("If true, companions eat and ask for food when they reach the configured health threshold")
                 .define("lowHealthFood", true);
+        LOW_HEALTH_FOOD_THRESHOLD = builder
+                .comment("Health fraction at or below which companions eat or ask for food; 0.5 means half health")
+                .defineInRange("lowHealthFoodThreshold", 0.5D, 0.0D, 1.0D);
+        STAMINA_ENABLED = builder
+                .comment("Enable the companion Stamina system")
+                .define("staminaEnabled", true);
+        STAMINA_SPRINT_COST = builder
+                .comment("Stamina spent per game tick while sprinting; 0 disables sprint drain")
+                .defineInRange("sprintStaminaCost", 1, 0, 100);
+        STAMINA_MELEE_COST = builder
+                .comment("Stamina spent after a successful melee attack; 0 disables melee drain")
+                .defineInRange("meleeStaminaCost", 8, 0, 100);
         CREEPER_WARNING = builder
                 .comment("If true, companions warn the player about nearby creepers")
                 .define("creeperWarning", true);
@@ -121,6 +153,51 @@ public final class ModConfig {
         LUCKY_EXTRA_DROP_CHANCE = builder
                 .comment("Chance for Lucky trait companions to duplicate one dropped item on a kill (0.0-1.0).")
                 .defineInRange("luckyExtraDropChance", 0.05D, 0.0D, 1.0D);
+        builder.pop();
+
+        builder.push("jobs");
+        JOB_LUMBERJACK_ENABLED = builder
+                .comment("Enable the Lumberjack job behaviors.")
+                .define("lumberjackEnabled", true);
+        JOB_LUMBERJACK_RADIUS = builder
+                .comment("Minimum Lumberjack search radius; the companion Radius can expand work up to 128 blocks.")
+                .defineInRange("lumberjackRadius", 10, 4, 64);
+        JOB_HUNTER_ENABLED = builder
+                .comment("Enable the Hunter job behaviors.")
+                .define("hunterEnabled", true);
+        JOB_HUNTER_RADIUS = builder
+                .comment("Search radius for Hunter target scans.")
+                .defineInRange("hunterRadius", 20, 6, 64);
+        JOB_MINER_ENABLED = builder
+                .comment("Enable the Miner job behaviors.")
+                .define("minerEnabled", true);
+        JOB_MINER_RADIUS = builder
+                .comment("Minimum Miner search radius; the companion Radius can expand work up to 128 blocks.")
+                .defineInRange("minerRadius", 8, 4, 32);
+        JOB_MINER_ALLOW_BLOCKS = builder
+                .comment("Optional whitelist of block ids the Miner may break (empty uses default tags).")
+                .defineList("minerAllowBlocks", List::of, o -> o instanceof String);
+        JOB_MINER_DENY_BLOCKS = builder
+                .comment("Blacklist of block ids the Miner should never break.")
+                .defineList("minerDenyBlocks", () -> List.of("minecraft:chest", "minecraft:spawner"), o -> o instanceof String);
+        JOB_FISHER_ENABLED = builder
+                .comment("Enable the Fisher job behaviors.")
+                .define("fisherEnabled", true);
+        JOB_FISHER_RADIUS = builder
+                .comment("Search radius for Fisher water spot scans.")
+                .defineInRange("fisherRadius", 10, 4, 32);
+        JOB_CHEF_ENABLED = builder
+                .comment("Enable the Chef job behaviors.")
+                .define("chefEnabled", true);
+        JOB_CHEF_RADIUS = builder
+                .comment("Search radius for Chef heat source scans.")
+                .defineInRange("chefRadius", 8, 3, 24);
+        JOB_ASSIGNED_CHESTS_CHUNKLOAD = builder
+                .comment("If true, companions keep their assigned drop-off chests chunk-loaded to prevent courier failures.")
+                .define("assignedChestsChunkload", false);
+        SHOW_JOBS_BUTTON = builder
+                .comment("Show the Jobs button in the companion inventory. Disabled by default while Jobs are experimental.")
+                .define("showJobsButton", false);
         builder.pop();
 
         ModLoadingContext.get().getActiveContainer()

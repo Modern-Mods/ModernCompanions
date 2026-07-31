@@ -1,3 +1,22 @@
+## 2026-07-30 (firearm specialist Curios registration)
+- Prompt/task: Ensure all new firearm specialists receive Curios slots when Curios is present.
+- Steps:
+  - Compared the optional `firearm_specialist` entity registration and client Curios layer hook with the Curios entity allowlist.
+  - Added `modern_companions:firearm_specialist` to the Curios entity data; all seven specialist gems share this entity type.
+  - Bumped the project version to 1.2.80 and documented the optional integration.
+- Rationale: Curios grants slots by entity type, so one allowlist entry enables slots for Pistol, SMG, Rifle, Shotgun, Sniper, Machine Gun, and Heavy specialists without duplicating data.
+- Build: Java 21 build/check validation pending.
+
+## 2026-07-30 (equipment duplication fix)
+- Prompt/task: "Big bug with companions; inventory/equipment converting to items and back" — stop shift-click and stored-companion equipment duplication, including pistols appearing in armor slots.
+- Steps:
+  - Traced `CompanionMenu`, `AbstractHumanCompanionEntity`, and `StoredCompanionItem` through shift-click, live equipment updates, save/load, and gem redeployment.
+  - Removed the second mutable equipment container; menu equipment slots now read, remove, and write the entity's vanilla equipment slots directly.
+  - Kept manual equipment lock flags, added a temporary offhand backup for eating, and retained a typed migration reader for the previous `DedicatedEquipment` tag without writing that duplicate store again.
+  - Bumped the project version to 1.2.79 and updated player-facing equipment documentation.
+- Rationale: One live equipment source prevents cargo, rendered equipment, and stored NBT from diverging or exposing the same stack through two slots. Invalid legacy stacks are ignored by slot validation, preventing guns from being restored as armor.
+- Build: `compileJava` passed; full Java 21 build and in-game shift-click/capture/redeploy smoke tests remain part of final validation.
+
 ## 2025-11-18
 - Prompt/task: "Continue with the logical next steps."
 - Steps:
@@ -1745,3 +1764,627 @@
   - Bumped version to 1.1.20 and rebuilt.
 - Rationale: Provide clear, technical docs for the personality systems so users and pack makers understand the exact effects and optional integrations.
 - Build/Test: `./gradlew build -x test` ✔️
+
+## 2025-12-03 (1.2.10 Miner shift planning/persistence)
+- Prompt/task: "We need to redesign how the miners locate, path to, and retrieve ores within their patrol radius." Add shift-long planning, persistence across reloads, 3D patrol cube, and no-idle behavior.
+- Steps:
+  - Added persisted miner survey metadata (ore list/index, counted/mined totals, planned work cube) to the companion entity with NBT + data parameters.
+  - Reworked `MinerJobGoal` to survey the full cube at shift start, merge new ore discoveries, tunnel with the existing staircase rules, and continuously advance until every ore is cleared or none remain—plus owner chat when the area is empty.
+  - Surfaced live miner stats (mapped/mined/remaining ores) in the Job screen and updated localization; bumped version to 1.2.10.
+- Rationale: Miners now pre-plan their quarry, remember progress through reloads, and avoid stalling while ore remains inside their 3D patrol volume, matching the requested quarry-like behavior and player feedback hooks.
+- Build/Test: `./gradlew build -x test` ✔️
+
+## 2025-12-03 (Miner debug logging & stall tracing)
+- Prompt/task: "The miner is still pausing... add a bunch of debug logging for these miners so we can diagnose what is going on."
+- Steps:
+  - Added tagged SLF4J debug/info logging throughout `MinerJobGoal` (survey, path planning, pruning, mining, stall recovery, force-move) to trace why plans abort or miners pause.
+  - Count missing-but-queued ores as mined during prune so remaining totals advance; kept fallback tunneling when no path is found.
+- Rationale: Provide granular diagnostics in logs to pinpoint stall causes and confirm ore counters progress even when blocks disappear externally.
+- Build/Test: `./gradlew build -x test` ✔️
+
+## 2025-12-03 (Courier chest assignments)
+- Prompt/task: "Let's get to work on a courier system... Assignment Wand ... chests for companions with jobs; chunk-load option and alerts for unloaded chests."
+- Steps:
+  - Added `AssignmentWandItem` that selects a companion then shift-right-click binds a container as its drop-off chest; registered the item/model/recipe/creative tab entry and localization.
+  - Added persistent chest assignment fields to companions (synced + NBT), optional chunk-forcing config, and owner notifications when chunks are unloaded, chests go missing, or target chests are full.
+  - Introduced `DeliverToChestGoal` so job companions courier all inventory except equipped gear to the assigned chest, skipping combat/idle states; refreshed job goal priorities accordingly and bumped version to 1.2.12.
+- Rationale: Implements the requested courier loop with an explicit assignment tool, persistence, and safeguards against unloaded or missing chests to avoid misdelivery.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Assignment wand GUI guard)
+- Prompt/task: "We need to change the interaction of the assignment wand... block the inventory from opening when using the assignment wand."
+- Steps:
+  - Updated `mobInteract` to return PASS when the player holds the Assignment Wand so the wand’s selection logic handles the click instead of opening the companion GUI.
+  - Bumped version to 1.2.13 and rebuilt.
+- Rationale: Prevents accidental GUI opens and ensures the wand can always capture the intended selection chest-binding flow.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Assignment wand selection persistence)
+- Prompt/task: "Using the assignment wand ... after selecting companion, chest click says 'select a companion first'."
+- Steps:
+  - Store the current selection both on the wand (custom data component) and on the player’s persistent data so cross-hand/stack swaps retain the chosen companion until a chest is bound.
+  - Clear both stores after success or invalid ownership/missing companion cases; bumped version to 1.2.14 and rebuilt.
+- Rationale: Ensures the selected companion survives interaction order quirks so chest binding works reliably on the next shift-right-click.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Job GUI deposit button)
+- Prompt/task: "Add a Deposit button to force companions to path to their assigned chest and dump inventory."
+- Steps:
+  - Added a bottom-left "Deposit" button to the Job screen that sends a `deliver_now` companion action.
+  - Wired server handling to set a forced delivery request; companions halt current tasks and immediately path to their assigned chest (even if not currently patrolling) and deposit all non-equipped items; added owner message when no chest is assigned.
+  - Added translations and bumped version to 1.2.15; rebuilt.
+- Rationale: Provides an explicit player-triggered courier run to quickly offload a working companion’s inventory.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Courier cadence guard)
+- Prompt/task: "Only deposit once per MC day or when inventory is full, plus on Deposit button press."
+- Steps:
+  - Added per-companion `lastDeliveryGameTime` tracking and a full-inventory check; courier goal now runs only if inventory is full or 24,000 ticks passed since last drop-off, unless forced by the Deposit button.
+  - Persisted the timestamp to NBT, kept forced delivery path intact, and bumped version to 1.2.16; rebuilt.
+- Rationale: Prevents ping-pong courier loops while keeping predictable daily offloads and a manual override.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Double chest support)
+- Prompt/task: "Double chests reported full when half had space."
+- Steps:
+  - Resolved chest containers via `ChestBlock.getContainer` so both halves of double chests are treated as a single inventory before insertion; bumped version to 1.2.18 and rebuilt.
+- Rationale: Prevents false 'full' reports by writing into either half of a double chest.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Water traversal boost)
+- Prompt/task: "Companions crawl through water—speed them up."
+- Steps:
+  - Added a water-movement helper that toggles swimming, applies brief Dolphin's Grace, and nudges movement when idle in water to keep them crossing rivers faster.
+  - Kept other movement unchanged; bumped version to 1.2.19 and rebuilt.
+- Rationale: Dramatically improves water crossing speed without altering land pathing.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Fisher facing water, lumberjack resume, single chest)
+- Prompt/task: "Fishers should face water, lumberjacks hang after deposit, only one assigned chest."
+- Steps:
+  - Fisher: look at the chosen water block when fishing.
+  - Lumberjack: keep a goal reference and force a rescan after a delivery completes so work resumes immediately.
+  - Chest assignment: releasing old chunk ticket when reassigning ensures only one active drop-off chest.
+- Rationale: Improves job feedback and prevents stale patrol states or multiple chest binds.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Pathing + inventory rules update)
+- Prompt/task: "Water slow; stuck courier; weapon/food/sapling retention; double chests." (combined follow-ups)
+- Steps:
+  - Added Dolphin's Grace water boost and idle swim nudge.
+  - Courier: treats double chests as unified inventory via `ChestBlock.getContainer`; lumberjack rescan hook on deposit.
+  - Retention: companions keep food/healables/primary weapons; lumberjacks keep saplings.
+  - Version bumped to 1.2.20; rebuilt.
+- Rationale: Faster water crossing, reliable double-chest deposits, smarter item retention, and resumed work after deliveries.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Committed swim + delivery persistence)
+- Prompt/task: "Still waffling mid-river; keep deposit command alive."
+- Steps:
+  - Extended committed swim to ~10s, using navigation target direction for push; Dolphin’s Grace refresh less spammy.
+  - Deposit flag now persists until a successful drop-off; lumberjacks idle-nav watchdog repaths to targets after crossings.
+- Rationale: Reduce mid-river turnbacks and ensure forced deposits complete.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Lumberjack post-cross idle fix)
+- Prompt/task: "Lumberjack reaches tree after river, then idles."
+- Steps:
+  - Added a short idle navigation watchdog in LumberjackGoal that reissues a path to the current target if navigation finished unexpectedly (e.g., after a swim).
+  - Version bumped to 1.2.25; rebuilt.
+- Rationale: Keeps lumberjacks chopping immediately after reaching the far bank instead of standing idle.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-03 (Lumberjack debug logging)
+- Prompt/task: "Add miner-level debug logging to lumberjacks; they pause in the same spot."
+- Steps:
+  - Added SLF4J debug logs throughout `LumberjackJobGoal` (scan start, repaths, leaf-clears, breaks, chops, post-deposit rescan, idle repath) to trace pauses.
+  - Version bumped to 1.2.26; rebuilt.
+- Rationale: Provides detailed traces to diagnose pausing/hanging during lumberjack runs.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Assignment wand GUI block + visible lumberjack logs)
+- Prompt/task: "Stop the Assignment Wand from opening companion inventory; surface lumberjack debug logs."
+- Steps:
+  - Companion interaction now consumes the click when holding the Assignment Wand so the inventory GUI never opens during selection.
+  - Lumberjack trace helper logs at INFO to appear in normal logs (already wired in earlier pass).
+  - Bumped version to 1.2.27.
+- Rationale: Ensures chest assignment flow isn’t interrupted by the companion GUI and makes lumberjack diagnostics visible without debug log level.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Lumberjack leaf clearing guard)
+- Prompt/task: "Lumberjacks pause/break leaves unnecessarily—only clear when blocked from the target log."
+- Steps:
+  - Leaf clearing now triggers only after repeated path failures with no path and nearby leaves, within close range of the stump, giving a ~2s grace before breaking.
+  - Reduced false-positive clearing that was happening even while the path was valid.
+  - Bumped version to 1.2.28.
+- Rationale: Prevents needless leaf breaking/pausing while still unblocking genuinely leaf-blocked paths.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Lumberjack stall kickstart)
+- Prompt/task: "Lumberjacks are still pausing while they work; add a kickstart system like miners."
+- Steps:
+  - Added a stall watchdog that counts idle ticks; after ~6 seconds without pathing or chopping it reissues navigation, and if no path exists it skips the stuck log and forces an immediate rescan.
+  - Kept leaf-clearing guard intact while resetting internal timers to avoid repeated idle loops.
+  - Bumped version to 1.2.29.
+- Rationale: Automatically recovers lumberjacks that sit idle at a waypoint by repathing or skipping the blocked log instead of stalling indefinitely.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Lumberjack ground-level chopping)
+- Prompt/task: "Lumberjacks are attempting to harvest trees by standing on top; keep them at stump level."
+- Steps:
+  - Navigation now searches for a solid ground stand spot near the stump and clamps path height to stump Y, preventing climbs onto canopy/log tops.
+  - Retains leaf-clearing/stall guards while anchoring stance for consistent base-level chopping.
+  - Bumped version to 1.2.30.
+- Rationale: Ensures lumberjacks fell trees from the base instead of perching on crowns, improving reliability and animation realism.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Lumberjack distance bugfix)
+- Prompt/task: "After ground-stance change, lumberjacks reach trees but don't break logs."
+- Steps:
+  - Fixed distance check to use squared distance correctly (allow ~4 blocks, dist^2 <= 16) so chopping resumes once in range instead of looping navigation.
+  - Version bumped to 1.2.31; no other logic changes.
+- Rationale: Prevents companions from hovering near trunks without swinging after the stance tweak.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Job stats per session + lifetime)
+- Prompt/task: "Miner mapped/remaining is additive across sessions; make stats per work session and add lifetime totals (apply to other jobs)."
+- Steps:
+  - Miner session stats reset whenever a survey plan loads; mined increments also raise a new lifetime counter. UI now shows session mapped/mined/remaining plus lifetime total.
+  - Added session/lifetime counters for Lumberjack (logs chopped) and Fisher (fish caught) and surfaced them on the job screen.
+  - Synced new stats through entity data + NBT; bumped version to 1.2.32.
+- Rationale: Job panel numbers now describe the current work session while still tracking lifetime productivity separately.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Fisher lag throttle)
+- Prompt/task: "Fishers seem to be causing massive server lag."
+- Steps:
+  - Throttled water/stand scans to every 3s, capped candidate checks to 64, and reduced search radius to 48 with ring-perimeter probing to avoid whole-cube scans.
+  - Added stuck-path watchdog to re-path or rescan only after ~4s idle, reducing repeated expensive navigation/path builds.
+  - Kept fishing cadence unchanged; version bumped to 1.2.33.
+- Rationale: Greatly cuts per-tick pathfinding/load from fishers while keeping their behavior intact.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-04 (Fisher pathing vertical bands)
+- Prompt/task: "Fishers do not seem to be pathing to water at all now."
+- Steps:
+  - Expanded candidate scan to include a small vertical band (-2..2 Y) while keeping perimeter + capped evaluations, restoring pathable water spots on uneven terrain.
+  - Left throttling/stuck guard in place to keep load low.
+  - Version unchanged (still 1.2.33); rebuilt.
+- Rationale: Restores reliable water acquisition after throttling changes while preserving lag reduction.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-06 (Fisher stand pathing)
+- Prompt/task: "Fishers are not pathing to the nearest water to initiate fishing."
+- Steps:
+  - Pathfinding now targets the air block above the chosen stand tile so navigation can reach valid fishing spots instead of aiming at the solid floor.
+  - Stand validation requires two blocks of headroom above the floor to prevent paths from being rejected by blocked airspace.
+  - Bumped version to 1.2.34 and rebuilt.
+- Rationale: Ensures the nearest valid water/stand pair produces a reachable path and the fisher walks over to start fishing reliably.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-06 (Fisher stand clearance)
+- Prompt/task: "Fishers are just idling when set to patrol and not sitting. They are not navigating to the water to fish"
+- Steps:
+  - Relaxed stand validation to only require a collision-free space directly above the floor (no longer two air blocks), preventing false negatives under leaves or overhangs.
+  - Kept path target at the feet position above the stand so navigation still reaches the shoreline.
+  - Version bumped to 1.2.35 and rebuilt.
+- Rationale: Avoids over-strict headroom checks that blocked all candidate stands, allowing fishers to acquire nearby water spots and start fishing again.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-06 (Fisher floor target)
+- Prompt/task: "Fisher still is not pathing to any water. They are near it, set to patrol and not sitting yet they remain stationary."
+- Steps:
+  - Navigation now builds paths to the solid stand block itself (floor) instead of the air above it, matching vanilla walk targets and preventing null paths on valid shoreline tiles.
+  - Version bumped to 1.2.36 and rebuilt.
+- Rationale: Pathfinding was failing because targets were set to non-walkable air blocks; directing paths to the ground restores reachable water stands so fishers step to shore and begin fishing.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-06 (Fisher scan breadth)
+- Prompt/task: "Fishers are still just standing idle when they should be pathing to nearby water to fish."
+- Steps:
+  - Raised per-scan candidate cap from 64 to 256 so expanding perimeter rings keep searching outward instead of aborting before reaching water a few blocks away.
+  - Version bumped to 1.2.37 and rebuilt.
+- Rationale: The prior throttle stopped scanning after ~4 rings, missing shoreline water slightly farther out and leaving fishers idle; the higher cap keeps scans lightweight but wide enough to find nearby water reliably.
+- Build/Test: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=./.gradle ./gradlew build -x test` ✔️
+
+## 2025-12-30 (Fisher water clustering)
+- Prompt/task: "Fisherman when set to patrol and have a fishing rod equipped are not pathing to the nearest water block to fish from. They should be looking for a water block that is surrounded by other water blocks, they should not be fishing in single block 'puddles'."
+- Steps:
+  - Added a fishable-water check that requires a small surface cluster (3x3) so isolated puddles are ignored.
+  - Applied the clustered-water check when acquiring and validating fishing spots.
+  - Bumped version to 1.2.6.
+- Rationale: Ensures fishers choose shoreline spots next to real bodies of water instead of single-block puddles.
+- Build/Test: Not run (not requested).
+
+## 2025-12-30 (Fisher stand targeting)
+- Prompt/task: "Fishers are still just standing still, never actually pathing to the nearest water target. When they do arrive to the water, they should continue with their fishing job."
+- Steps:
+  - Targeted the pathfinder at the actual stand air block while keeping the stand floor for shoreline adjacency checks.
+  - Updated stand validation to use the stand air block with a solid floor below, aligning with navigation.
+  - Reduced the water-neighbor requirement to allow rivers while still rejecting single-block puddles.
+  - Bumped version to 1.2.7.
+- Rationale: Aligns pathfinding with valid stand positions and keeps water selection practical so fishers can reach water and keep fishing.
+- Build/Test: Not run (build failed earlier due to CRLF in `gradlew`).
+
+## 2025-12-30 (Fisher progressive scan)
+- Prompt/task: "Fisher is still standing still and not pathing to the nearest water. When set to Patrol, the Fisher Companion should initiate pathing logic to the nearest water - and when arriving should initiate fishing job logic."
+- Steps:
+  - Centered the water scan on the companion position while constraining results to the patrol radius.
+  - Added a progressive ring scan so the search continues outward over multiple attempts instead of stalling on the first few rings.
+  - Bumped version to 1.2.8.
+- Rationale: Ensures the search reaches nearby water even when it is several blocks away, while keeping patrol bounds and load in check.
+- Build/Test: Not run (build failed earlier due to CRLF in `gradlew`).
+
+## 2025-12-30 (Fisher faster scans)
+- Prompt/task: "tHE FISHER IS STILL JUST STANDING IN PLACE WHEN SET TO PATROL... The fisher eventually did start fishing, but it took a long time for the scan to work and him to find water, and he was within 10 blocks of some."
+- Steps:
+  - Shortened the scan cooldown to try more frequently when no target is found.
+  - Increased the number of scan rings per attempt so nearby water is picked up quickly.
+  - Bumped version to 1.2.9.
+- Rationale: Reduces time-to-first-water for nearby shorelines without removing patrol bounds.
+- Build/Test: Not run (build failed earlier due to CRLF in `gradlew`).
+
+## 2025-12-30 (Fisher visual casting)
+- Prompt/task: "The fisher are just swinging their hand when 'catching' a fish with no other fishing animations happening... The fishers should be visibly casting their lines into the water just as the players do when fishing."
+- Steps:
+  - Added a companion fishing hook entity and renderer so clients see a bobber + line tied to the companion.
+  - Updated fisher logic to cast a line near the stand spot, only reel in if the bobber is in water, then recast after a short delay.
+  - Bumped version to 1.2.10.
+- Rationale: Makes fishing visually match player behavior and keeps the swing tied to an active line in water.
+- Build/Test: Not run (build failed earlier due to CRLF in `gradlew`).
+
+## 2025-12-30 (Fisher cast swing + varied target)
+- Prompt/task: "They fisher should also be 'swinging' when casting their lines... They should be targeting random water blocks within 5-7 blocks in front of themselves when casting."
+- Steps:
+  - Triggered a swing animation when casting so the line appears with a casting motion.
+  - Added a forward-constrained random target selection (5-7 blocks ahead with slight lateral variance) for each cast.
+  - Bumped version to 1.2.11.
+- Rationale: Aligns visuals with player-like casting and avoids a static bobber target.
+- Build/Test: Not run (build failed earlier due to CRLF in `gradlew`).
+
+## 2025-12-30 (Fisher surface water)
+- Prompt/task: "We need to make sure the bobber is always on the surface level water block. Only target water blocks with air above them."
+- Steps:
+  - Required fishable water to have clear air above so the bobber always sits on the surface.
+  - Bumped version to 1.2.12.
+- Rationale: Prevents targeting submerged water blocks and keeps the bobber visible at the surface.
+- Build/Test: Not run (build failed earlier due to CRLF in `gradlew`).
+## 2026-07-27 (Safe worker jobs)
+- Prompt/task: Implement `TASK.md` Jobs AI safety batch.
+- Steps: Added shared reachable work-site and server block-action gates; anchored job assignments and main-hand tool checks; removed miner/courier forced terrain recovery; made fish bites server-authoritative; validated lumber, chef, hunter, and chest sites.
+- Rationale: A worker either reaches and visibly interacts with an approved site, or abandons it. This prevents destructive recovery paths and keeps player Alert independent from creeper avoidance.
+- Build/Test: `gradlew.bat build` passed with JDK 21; includes `workerSafetyCheck` assertions.
+## 2026-07-27 (Visible job controls)
+- Prompt/task: Reported missing Jobs button and black Release button in companion inventory.
+- Steps: Replaced the icon-only Release control with a text button and moved explicit Jobs into the visible sidebar stack ahead of radius, Curios, and Bio.
+- Rationale: The old sidebar placement could be covered by the legacy layout; text controls are visible without a texture-atlas state.
+- Build/Test: `gradlew.bat build` passed with JDK 21.
+## 2026-07-29 (follow radius)
+- Prompt/task: "Companions seem to walk to a point, then immediately path back to the player... loosen it so they wander around the player within their assigned radius."
+- Steps:
+  - Made the saved companion radius the follow leash and changed return paths to end inside that radius rather than on the owner.
+  - Limited idle follow wandering to destinations inside the same owner-centered radius, then bumped the version to 1.2.24 and documented the behavior.
+- Rationale: A single shared radius now governs both casual wandering and recall, removing the competing unbounded stroll/direct-to-owner loop.
+- Build: `gradlew.bat build --console=plain --no-daemon` succeeded with Java 21.
+## 2026-07-29 (optional backpacks and combat safety)
+- Prompt/task: Add Sophisticated Backpacks support, explicit villager/PvP safety, favorite foods, and optional TacZ/PointBlank firearm support.
+- Steps: Reused the existing Curios back slot and render layer; added an owner-only backpack storage screen and button gated by Sophisticated Backpacks. Added persisted PvE/villager flags enforced in the shared target and living-damage paths, plus visible red/green controls. Added a persisted random favorite food to Bio and doubled feed Bond/morale rewards. Added reflection-based TacZ firearm equip/aim/shoot/reload behavior without a hard dependency.
+- Rationale: Optional integrations must not classload when absent, and damage safety must be centralized so projectiles, fire, explosions, and class splash cannot bypass a UI toggle. PointBlank's public firing/reload methods require a Player, so only its safe equipment recognition is enabled.
+- Build/Test: `gradlew.bat compileJava --console=plain --no-daemon` passed with Java 21; full dev-world testing remains required for rendered backpacks, Curios synchronization, damage sources, and mod firearm behavior.
+## 2026-07-29 (native backpack screen and firearm retention)
+- Prompt/task: Replace the broken companion backpack screen with Sophisticated Backpacks' authentic UI, make handed TacZ/PointBlank guns remain equipped, and compact Villager/PvP controls to `V`/`P` beside Release.
+- Steps: Removed the duplicate backpack menu/screen and registered the companion Curios back slot as an optional Sophisticated Backpacks item context, then opened its upstream `BackpackContainer` so upgrades and settings retain their native tabs. Centralized firearm priority before every class weapon selector. Moved the red/green safety controls to adjacent 16px buttons.
+- Rationale: Reusing the upstream container preserves Sophisticated Backpacks features; a shared firearm priority prevents per-tick class selectors from replacing a handed gun.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21. Native Backpack GUI and firearm-equipment behavior still require the listed mod runtime smoke test.
+## 2026-07-29 (TacZ draw state and PointBlank identification)
+- Prompt/task: TacZ companions aim and track targets but never fire despite carrying ammunition; PointBlank guns do not equip.
+- Steps: Traced TacZ's `ShootResult.NOT_DRAW` path and now draw/aim the gun through its `IGunOperator` before firing, honoring the returned shot result instead of treating every call as a shot. Added a class-name fallback for PointBlank's `GunItem` detection.
+- Rationale: TacZ refuses to fire until its living-entity operator owns the drawn gun state. PointBlank's current public fire/reload API still requires a `Player`, but that restriction does not apply to equipment recognition.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21; verify TacZ firing/reload and PointBlank equipping in a modded dev world.
+## 2026-07-29 (PointBlank companion firing bridge)
+- Prompt/task: Allow companions to use PointBlank guns despite its Player-only public methods.
+- Steps: Added a server-side compatibility player positioned and aimed from the companion. It temporarily receives the companion's gun and inventory references, then invokes PointBlank's own server projectile/hitscan/reload handlers. PointBlank-origin damage resolves back to the companion for PvE/PvP and villager safety.
+- Rationale: This preserves PointBlank's projectile, ammo, reload, and hit-scan code instead of duplicating firearm logic, while keeping the companion as the visible actor and safety authority.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21; PointBlank projectile, hitscan, reload, and multiplayer smoke tests remain required.
+## 2026-07-29 (PointBlank inventory-path investigation)
+- Prompt/task: PointBlank firearms still do not equip from the latest compatibility jar, while TacZ firearms work.
+- Steps: Reproduced the issue with Douglas's equipped-in-inventory M4A1 MOD I. Removed the incorrect direct hand-off experiment and replaced PointBlank's fragile class-name probe with its public fire-mode resolver, which returns a value only for a genuine PointBlank gun stack.
+- Rationale: The existing companion inventory flow must remain the sole equipment path, and the compatibility check should use PointBlank's own gun classification rather than making an assumption about its runtime item class.
+- Build/Test: Pending full build and the focused PointBlank companion-inventory smoke test.
+## 2026-07-29 (TacZ-only firearms and companion reloads)
+- Prompt/task: Remove all PointBlank support and ensure TacZ companions reload from compatible ammunition in their own inventory.
+- Steps: Deleted the PointBlank compatibility bridge and removed its firearm detection, attack routing, safety mapping, and current documentation. Registered every companion entity's existing `SimpleContainer` as NeoForge's entity item-handler capability, which TacZ queries for reload checks and subsequently consumes during its native reload.
+- Rationale: Exposing the real inventory fixes the shared root cause without copying stacks or emulating a player; TacZ keeps ownership of compatible-ammo selection, reload timing, and consumption.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21 (1.2.33). A TacZ dev-world reload smoke test remains required.
+
+## 2026-07-29 (conditional magic companions)
+- Prompt/task: Implement `TASK.md` conditional Iron's Spellbooks and Ars Nouveau companion roster.
+- Steps: Replaced custom caster attacks with an optional reflection bridge to each loaded upstream API; added the nine requested classes, gated all magic entities/gems/rendering/attributes/Curios/capabilities, and extended structure pools without marking an ineligible magic structure as serviced. Removed now-unused custom magic projectiles and minion entity. Added optional mod metadata, names, and version 1.2.34.
+- Rationale: A vanilla fallback would violate the upstream-spell requirement. Registration-time gating keeps absent magic companions out of registries and discovery while shared companion inheritance preserves inventory, taming, UI, safety, traits, jobs, and gear behavior.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21; includes `test` and `workerSafetyCheck`.
+
+## 2026-07-29 (conditional magic world-load repair)
+- Prompt/task: Prism world would not load after installing Modern Companions 1.2.34.
+- Steps: Read the supplied Prism log. Removed the four static structure spawn entries that named Cleric, Fire Mage, Lightning Mage, and Necromancer after those entities had been gated out of a no-magic-mod registry. Restored required empty `spawn_overrides` maps after Prism's v1.2.35 log showed that Minecraft's structure codec requires the key. The existing `StructureCompanionSpawner` remains the only discovery route and already filters unavailable choices. Bumped version to 1.2.36.
+- Rationale: Minecraft parses structure JSON before a world opens, so a missing optional entity type is fatal even when runtime spawning would skip it. Empty required fields must remain present.
+- Build/Test: All worldgen structure JSON parsed through PowerShell `ConvertFrom-Json`; `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Local `runServer` could not reach registry loading because the workspace NeoForge 21.1.1 is below Curios' required 21.1.60; Prism uses NeoForge 21.1.243.
+
+## 2026-07-29 (conditional magic inventory repair)
+- Prompt/task: Prism world loaded with 1.2.36, then crashed when inventory/JEI built spawn-egg contents; 1.2.38 then blocked world load.
+- Steps: Guarded vanilla Spawn Eggs tab's optional Cleric gem. Removed all gated magic IDs from Curios' static entity list and its unsupported entity-tag syntax. Bumped version to 1.2.39.
+- Rationale: Installed Curios 9.5.1 parses its entity list only as direct resource IDs, so both absent optional IDs and `#` tag syntax are fatal. Static data now names only always-registered companions.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism no-magic inventory/JEI smoke remains required.
+
+## 2026-07-29 (magic dependency version metadata repair)
+- Prompt/task: Prism rejected installed Iron's Spellbooks 1.21.1-3.16.2 as unsupported.
+- Steps: Matched optional Iron's and Ars Nouveau dependency floors to their full 1.21.1 version strings; bumped version to 1.2.40.
+- Rationale: NeoForge compares the mod's full declared version, not only its trailing library version, so the old floors excluded the exact installed builds.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism dependency-resolution smoke remains required.
+
+## 2026-07-29 (magic target discipline)
+- Prompt/task: New magic companions spun while tracking and fired pink projectiles away from enemies.
+- Steps: Fixed shared sight-counter ordering, required five continuous visible ticks before any cast, removed competing per-tick yaw forcing, and aligned caster yaw/pitch to the target only immediately before each offensive spell. Bumped version to 1.2.41.
+- Rationale: The old sight counter reset after incrementing, so it never established stable sight; competing rotation systems also let upstream projectile spells read a stale look vector.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Installed Iron's/Ars direct-target smoke remains required.
+
+## 2026-07-29 (magic ally safety and Intelligence damage)
+- Prompt/task: Stop new-class spells and summons from harming owners, same-owner companions, or allied summons; retain PvP/villager toggles; make Intelligence increase spell damage.
+- Steps: Centralized attacker resolution through projectile, tame-owner, and optional upstream `getSummoner()` ownership; used it for both incoming-damage cancellation and target clearing. Made own-owner and same-owner companions permanent allies, while player/villager and other-player companion harm follows the existing per-companion toggles. Scaled mage-caused final spell damage by the existing Intelligence multiplier. Bumped version to 1.2.42.
+- Rationale: Iron's summoned swords are upstream living entities, so direct-caster-only checks missed their target acquisition and damage. One owner-chain guard covers swords, other upstream summons, projectiles, and future compatible summon APIs without linking the optional mod.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism smoke remains required for swords, both toggle states, and Intelligence damage comparison.
+
+## 2026-07-29 (Wizard sword-batch cap)
+- Prompt/task: Wizard must not summon another sword batch while any sword from its first batch remains alive.
+- Steps: Added an exact loaded-entity check for Iron's `summoned_sword`, `summoned_claymore`, and `summoned_rapier` whose upstream summoner is that Wizard. The heavy cast falls back to the basic spell until none remain. Bumped version to 1.2.43.
+- Rationale: Iron's intentionally returns no-op recast data for mob casters, so its player-only recast lifecycle cannot cap autonomous Wizards. Checking live owned weapons gives one active batch without a timer, stale saved flag, or cross-Wizard interference.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`. Prism smoke must confirm exactly three weapons at once and a new batch only after all three die/despawn.
+
+## 2026-07-29 (new magic summon-gem textures)
+- Prompt/task: Fix broken new-class summon-gem textures by reusing fitting existing gem assets.
+- Steps: Added the nine missing item models: Wizard=Cleric gem, Sorcerer=Fire Mage gem, Warlock=Axeguard sigil, Witch=Vanguard emerald, Hag=Berserker ruby, Cryomancer=Stormcaller sapphire, Druid=Knight rune, Illusionist=Necromancer crystal, and Battlemage=Arbalist jewel. Bumped version to 1.2.44.
+- Rationale: The new spawn eggs were registered but had no model JSON, so Minecraft rendered missing-texture squares. Reusing existing packaged assets repairs every item without adding new art or texture files.
+- Build/Test: All nine model JSON files parsed, `ModernCompanions-1.2.44.jar` contains all nine paths, and `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `test` and `workerSafetyCheck`.
+
+## 2026-07-29 (companion resources and custom potions)
+- Prompt/task: Implement `TASK.md`: persistent companion Stamina/Mana, six custom-vessel potions, brewing, loot, tags, and Jade display.
+- Steps: Added synced/NBT resource pools, combat-aware recovery, stamina sprint/melee gates, mana-gated successful spell casts, companion-only useful-potion consumption, reusable vessel and potion registrations, narrow NeoForge brewing recipes, animated supplied texture sheets, data-driven loot modifiers/tags, Shield effect armor modifier, Jade bars, and an assert-based resource check. Bumped version to 1.2.45.
+- Rationale: Resource state stays on the shared companion entity; native brewing and global loot formats avoid a capability or generic recipe framework. Lootr evaluates the normal generated table per player, while KubeJS can replace the shipped datapack resources.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; dev-world player/companion drinking, brewing/JEI, Lootr, KubeJS, and Jade smoke remains required.
+
+## 2026-07-29 (brewing event-bus repair)
+- Prompt/task: Fix Prism load failure: `RegisterBrewingRecipesEvent takes an argument that is not valid for this bus`.
+- Steps: Moved the existing `CompanionBrewing` listener from the mod event bus to `NeoForge.EVENT_BUS`; bumped version to 1.2.46.
+- Rationale: NeoForge posts this event on its main event bus, so registration on the mod bus fails during load before resource processing begins.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism launch smoke required.
+
+## 2026-07-29 (Mekanism-style resources and potion atlas repair)
+- Prompt/task: Make Jade Stamina/Mana bars visually match Mekanism and repair missing potion/vessel textures.
+- Steps: Replaced text bars with Jade 100x13 outlined resource elements using Mekanism's public layout pattern; moved potion sheets into Minecraft's stitched `textures/item` directory and updated every potion/vessel model path.
+- Rationale: Jade text cannot render a graphical bar, while the Prism log proved every source PNG was packaged but absent from the item atlas because `textures/potions` is not a stitched item directory.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`. Jar contains the moved `textures/item/potions` assets; Prism Jade/item reload smoke remains required.
+
+## 2026-07-29 (custom potion-effect icons)
+- Prompt/task: Use supplied Mana, Regeneration, Rejuvenation, Shield, and Stamina icon assets in the player effects area.
+- Steps: Registered five beneficial display effects and NeoForge client icon renderers. Potion mechanics remain native hidden Speed, Strength, or Regeneration effects, while the matching named display effect renders the supplied 32x32 icon in HUD and inventory.
+- Rationale: This preserves vanilla effect behavior and companion recovery logic without globally replacing vanilla effect icons or duplicating potion mechanics.
+- Build/Test: `gradlew.bat build --console=plain --no-daemon` passed with Java 21, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism HUD/inventory icon smoke remains required.
+
+## 2026-07-29 (expanded companion inventory equipment panel)
+- Prompt/task: Fit the companion inventory to the updated 458px-wide texture, add dedicated worn-item slots and a 3D companion preview, and move the player/villager harm switches into the new lower panel using the supplied sprites.
+- Steps: Shifted the existing slots, action controls, labels, and release button 105px right; added persistent helmet, chest, legs, feet, main-hand, and offhand menu slots; rendered the companion in the new preview pane; and wired the existing server-authoritative harm flags to the new green/off and dark-red/on sprites. Bumped version to 1.2.50.
+- Rationale: Equipment gets its own saved store so it never consumes or aliases the 63 cargo slots, while the existing toggle payload and companion flags remain the sole authority for PvP/villager safety.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; in-game layout, equipment persistence, 3D preview, and both harm-toggle states require a Prism smoke test.
+
+## 2026-07-30 (companion equipment and inventory polish)
+- Prompt/task: Remove the preview nameplate, make Hostilities buttons state-only, repair clipped potion icons, add empty equipment silhouettes, preserve equipped slots through relog, and shift-equip better player gear while respecting manual equipment.
+- Steps: Suppressed the name only for the inventory preview; rendered effect icons from their actual 16x16 source size; removed the Hostilities hover state; used Minecraft's native empty-slot sprites; restored equipment by semantic `EquipmentSlot`; and added persistent manual-slot locks plus shift-click armor/sword/shield replacement with safe cargo return of displaced gear.
+- Rationale: The existing dedicated six-slot store is retained as the single source of truth, avoiding a second inventory or custom icon assets. Manual placements remain authoritative over companion AI, while automatic shift-equips only replace strictly better armor/swords or empty compatible slots.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism smoke remains required for exact GUI alignment, relog persistence, manual-lock behavior, and shift-click swaps.
+
+## 2026-07-30 (effect-icon sizing and auto-equip transfer)
+- Prompt/task: Use supplied 18px and 32px effect assets for the HUD and inventory, remove the preview-only companion nameplate, and prevent automatically equipped cargo from remaining in both the inventory and equipment slots.
+- Steps: Rendered `*32.png` in the 32px inventory effect cell and `*18.png` centered in the 24px HUD cell; moved preview nameplate suppression into `CompanionRenderer`; and centralized cargo-to-equipment moves in `setItemSlot`, returning replaced equipment to cargo.
+- Rationale: Each supplied texture now matches its actual rendering surface. The shared equipment setter covers armor and every class's hand-selection path, preventing UI duplication without bespoke fixes per companion class.
+- Build/Test: Java 21 `gradlew.bat compileJava --console=plain --no-daemon` passed; full Gradle and Prism GUI/equipment smoke remain required.
+
+## 2026-07-30 (inventory effect icon centering)
+- Prompt/task: Correct the offset of the 32px inventory effect icons.
+- Steps: Shifted the 32px inventory texture seven pixels up-left from NeoForge's normal 18px icon origin; bumped version to 1.2.53.
+- Rationale: Both icon sizes now share the same center within the inventory effect cell.
+- Build/Test: Pending full Gradle build; visual alignment needs Prism confirmation.
+
+## 2026-07-30 (companion hand equipment rules)
+- Prompt/task: Stop companions automatically equipping arbitrary cargo; main hands allow only tools/weapons, offhands only shields, torches, or lanterns, and job tools take priority.
+- Steps: Centralized hand eligibility in the shared companion equipment path, limited the equipment menu to the same rules, selected an inventory weapon before a tool for companions without jobs, and kept the existing food animation transient rather than equipment. Bumped version to 1.2.54.
+- Rationale: Every class already routes automatic changes through the shared setter, so one guard fixes all fallback selectors while preserving direct manual equipment and existing job-tool behavior.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism smoke required for normal and job companion equipment selection.
+
+## 2026-07-30 (JEI potion and Assignment Wand recipe visibility)
+- Prompt/task: Fix JEI showing only the empty potion vessels and no Assignment Wand recipe.
+- Steps: Added an optional JEI plugin that displays the same custom-vessel brewing steps registered with NeoForge, moved the Assignment Wand recipe to the active `data/.../recipe` datapack path, and bumped the version to 1.2.57.
+- Rationale: Runtime brewing registrations are functional but invisible to JEI without its recipe API, while the plural `recipes` path is not loaded by this 1.21.1 datapack layout.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; the built JAR contains the JEI plugin and only the active Assignment Wand recipe path. Prism JEI smoke remains required.
+
+## 2026-07-30 (lumberjack tree navigation and chopping)
+- Prompt/task: Make Lumberjacks navigate to a tree stump, clear leaves that block the route, chop the full tree bottom-up, and face the tree while swinging.
+- Steps: Added a safe approach-stand lookup that does not require initial line of sight; retained the existing visible, reachable server-side break gate; clear a nearby blocking leaf after a stalled route; keep a log queued until its break succeeds; and update look control toward each target log before swinging. Bumped version to 1.2.58.
+- Rationale: Foliage previously prevented selecting a stand, which made the existing leaf recovery unreachable; an unsuccessful protected or obstructed break also incorrectly advanced the tree queue.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism tree-chopping smoke remains required.
+
+## 2026-07-30 (lumberjack full-tree queue repair)
+- Prompt/task: Fix Lumberjacks stopping after the bottom two logs; every connected wood block must be cleared bottom-up.
+- Steps: Chose one safe stand beside the stump for the whole tree, kept every scanned connected log in the priority queue, and allowed the already-validated stump-side felling action to reach tall natural trunks while retaining line-of-sight, tool, drops, durability, chunk, and mob-griefing checks. Bumped version to 1.2.59.
+- Rationale: Per-log stand selection could not find ground at the third log's height, silently discarding it and every higher log before the lumberjack could target them.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; Prism full-tree smoke remains required.
+
+## 2026-07-30 (living jobs shared safety and resumable control)
+- Prompt/task: Complete `TASK.md`'s shared job lifecycle, Work control, work-site safety, reservations, delivery, visible state, and profession reliability work.
+- Steps: Added persisted/synchronized Work and compact status state, a small resumable lifecycle bridge, expiring per-server target reservations, split destination/action checks, reasoned worker action results, safe inventory-capacity simulation, item-handler chest insertion, and pause-safe goal checkpoints. Added dynamic Current panel text; updated Fisher cast/bite behavior, Hunter data-driven Animal predicate, Chef native recipe/workstation path, and Lumberjack cardinal tree/sapling safeguards.
+- Rationale: Common ownership and safety gates prevent one goal from clearing another job's valid checkpoint, remote-LOS false negatives from rejecting destinations, and failed world actions from advancing work.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` and focused worker safety check run after final source changes. Live two-worker, navigation, container capability, campfire ownership, miner hazard, 2x2 replant, and GUI-scale smoke remain required.
+
+## 2026-07-30 (Work priority, Assignment Wand, and Currently panel repair)
+- Prompt/task: Continue TASK.md; make green Work primary over Follow/Patrol, fix shift-right-click Assignment Wand selection, center jobs on assigned chest/radius, and render the missing Current state in the circled inventory panel.
+- Steps: Work now clears Follow/Patrol/Guard and other order selection pauses Work. Jobs require Assignment-Wand chest, use it as search/work center, and cap search radius to the configured companion Radius. Delegated wand interaction from companion entity to the held item, fixing the entity-first interaction path. Corrected Current text coordinates because `renderLabels` already has GUI-origin translation.
+- Rationale: Existing Work set Patrol on, the companion consumed the wand before item interaction, job goals used patrol/owner centers, and Current text applied `leftPos` twice.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed including `test`, `workerSafetyCheck`, and `companionResourcesCheck`. Dev-world smoke still required for Shift+RMB select/bind, Work order priority, chest-radius boundaries, and all GUI scales.
+
+## 2026-07-30 (job checkpoint, safe route, and Chef supply repair)
+- Prompt/task: Continue `TASK.md` Jobs reliability revamp through stable target retention, checkpoint resume, chest-radius work, and Chef supply delivery.
+- Steps: Persisted live job phases/targets while Lumberjacks, Miners, Fishers, Hunters, and delivery update their state; restored saved lumber/fishing/mining targets when still valid; stopped Lumberjack path stalls and Miner route stalls from discarding valid work; retained Miner support floors; and added one-item chest withdrawal at an approved chest stand for Chefs with no raw tagged input. Bumped version to 1.2.62.
+- Rationale: A navigation failure is not completion, a planned feet cell cannot lose its supporting floor, and Chef cannot participate in the Hunter-to-chest-to-kitchen loop without safely taking assigned chest input.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed before documentation/version bump, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`. Rebuild after the version-only resource change and live job smoke remain required.
+
+## 2026-07-30 (job path false-negative repair)
+- Prompt/task: Fix Lumberjacks stuck behind leaves/after a few logs, false chest-unreachable spam, Fisher ground casts, and Miners stopping after one tunnel block.
+- Steps: Delivery now falls back to a safe chest-side stand and reports failure only after movement stalls; Lumberjacks clear leaves from their actual safe feet; Miners mine a tunnel's next solid block from current safe feet rather than pathfinding into it; and Fishers choose validated water farther from shore, spawning their bobber at that water so terrain collision cannot delete it and trigger rapid recasts. Bumped version to 1.2.63.
+- Rationale: Native path probing cannot prove every future chest/tunnel destination, and a projectile collision before a bobber reaches its intended water is not a useful fishing cast.
+- Build/Test: Java 21 build and worker checks run after this entry; live smoke remains required for leaf-walled trees, open chests, solid tunnel ore, and shore-facing casts.
+
+## 2026-07-30 (job path target and facing correction)
+- Prompt/task: Stop Lumberjacks stripping a canopy, make Fisher casts visibly face water, and repair clear-path returns to assigned chests.
+- Steps: Restrained leaf breaks to actual failed approach movement; authorized an already-reserved tree trunk to ignore only foliage line-of-sight; set Fisher head/body rotation synchronously toward its selected water target; and changed Miner return routing from the solid chest block to a safe chest-side stand. Bumped version to 1.2.64.
+- Rationale: Foliage hiding a trunk is not a walking obstruction, and neither a cast nor a navigation request should target a location a mob cannot stand in.
+- Build/Test: Java 21 compile passed before the version/resource update; full build and live smoke remain required.
+
+## 2026-07-30 (Lumberjack path-progress repair)
+- Prompt/task: Fix Lumberjacks hanging at `Travelling` and failing to reach trees.
+- Steps: Stopped reissuing the same navigation request every AI tick, which reset active path progress; retained periodic retry only after navigation completes; and fall back to a safe stump-side stand when leaves cause the initial path probe to fail so the existing blocked-approach leaf recovery can run. Bumped version to 1.2.65.
+- Rationale: A running navigation path must be allowed to advance. A leaf wall should delay the approach, not make a mature tree invisible to the worker.
+- Build/Test: Java 21 compile passed before the version/resource update; full build and live tree smoke remain required.
+
+## 2026-07-30 (job search, tunneling, fishing, and bulk-delivery reliability)
+- Prompt/task: Repair Lumberjack tree discovery/pathing/felling, Fisher rapid casting, Miner controlled tunneling, shared chest navigation, and per-task deposit churn while never depositing food or potions.
+- Steps: Sliced Lumberjack surface-column discovery across ticks, retained validated same-family tree components through failed breaks, supported elevated/diagonal branches, and attempted replanting after the complete component was felled; imposed a one-second Fisher recast floor; changed Miner routes into explicit break/walk steps with stable floors, two-block clearance, falling-block/fluid rejection, native-cave preference, and chest return checks; changed automatic unloading to two-minute-or-dusk batches and retained every edible food and potion stack. Bumped version to 1.2.66.
+- Rationale: Repeated full-volume scans, pathing directly into solid tunnel cells, immediately replacing removed hooks, and a ten-second unload timer were the shared causes of visible stalls and task-by-task chest trips.
+- Build/Test: Java 21 focused compile/check and full build run after final changes; live one/two-worker navigation, protection, fishing presentation, nightfall deposit, and tree/miner acceptance smoke remain required.
+
+## 2026-07-30 (full-radius center-out worker searches)
+- Prompt/task: Fix Lumberjacks reporting no mature trees and Miners failing to find known ore inside a 128-block assigned Radius.
+- Steps: Removed the job-config upper cap from Lumberjack and Miner work radii, retained 128 as the companion-authoritative maximum, added a shared deterministic center-out column order, changed Miner surveying to finish each vertical column before expanding outward, expanded its vertical volume with Radius, and separated ore-destination safety from one-step route-height validation. Bumped version to 1.2.67.
+- Rationale: Searches previously began at a far bottom corner inside only the small configured radius, while Miner ore-side stands were rejected whenever their Y differed by more than one block from the worker before route planning.
+- Build/Test: Java 21 compile, pure spiral-order regression check, full Gradle build, and diff validation run after final changes; live 128-radius tree/ore discovery remains required.
+
+## 2026-07-30 (Miner first-excavation action repair)
+- Prompt/task: Fix Miners standing above ground and swinging endlessly without breaking any block.
+- Steps: Ordered descending excavation steps upper-block-first, added a narrow planned-excavation action that may ignore sight only for an adjacent prevalidated queued block, reused all existing distance/stand/tool/drop/protection/inventory gates, and prevented the swing timer from starting when no valid action stand exists. Bumped version to 1.2.68.
+- Rationale: The lower block of the first descending stair was occluded by the upper block in that same step, so ordinary line-of-sight validation rejected every completed break and restarted the animation forever.
+- Build/Test: Java 21 focused checks, full Gradle build, and diff validation run after final changes; live surface-to-underground staircase smoke remains required.
+
+## 2026-07-30 (configurable Jobs button visibility)
+- Prompt/task: Hide the companion inventory Jobs button by default behind a config toggle and move the remaining stacked buttons up into the empty row.
+- Steps: Added `jobs.showJobsButton` with a default of `false`; conditionally creates the Jobs control; and derives Journal, Curios, and Pack Y positions from the next available row. Bumped version to 1.2.69.
+- Rationale: One row cursor keeps both layouts aligned without maintaining duplicate coordinate sets.
+- Build/Test: Java 21 full Gradle build and diff validation run after final changes; both config states and optional-button combinations require an in-game visual smoke.
+
+## 2026-07-30 (companion journal editing)
+- Prompt/task: Add the supplied top-right journal edit button and Name, Bio, and Skin text-entry flows.
+- Steps: Reused `editbutton.png`'s 16px normal/hover/pressed states, added native edit-menu/text-field screens, and sent Enter submissions through an owner-checked server payload. Names and custom Bios persist and synchronize; skins retain the command's HTTP(S) restriction.
+- Rationale: The journal previously had only generated backstory text. A distinct custom Bio preserves that personality data while allowing the player to write their own description.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `companionResourcesCheck`, `test`, and `workerSafetyCheck`; dev-world click/hover, Enter submission, relog persistence, and remote skin rendering smoke remain required.
+
+## 2026-07-30 (journal edit-menu Back button)
+- Prompt/task: Add a Back button below Name, Bio, and Skin in the journal edit menu.
+- Steps: Added one native Back button beneath Skin that returns to the journal; bumped version to 1.2.72.
+- Rationale: Escape already returned to the journal, but the edit menu now has a visible mouse-accessible return path.
+
+## 2026-07-30 (journal age editing)
+- Prompt/task: Add Age to the journal edit menu alongside Name, Bio, and Skin.
+- Steps: Reused the native text-entry screen and existing synchronized age setter; accepted only whole-number ages from 1 through 120, moved Back beneath the fourth action, and bumped version to 1.2.73.
+- Rationale: Age was already persistent companion state, so one validated payload branch avoids duplicate storage or a separate editor.
+
+## 2026-07-30 (TacZ firearm specialists)
+- Prompt/task: Add rare TacZ firearm-specific companions that only use their assigned firearm category, with especially rare Sniper and Heavy specialists.
+- Steps: Added one optional persisted Firearm Specialist entity; classify TacZ guns through its native gun index; enforce specialty-only main-hand selection through shared equipment paths; expose the existing companion inventory as TacZ's entity item-handler; create native TacZ gun/ammo spawn loadouts; and replace selected structure residents at an 8% rate with weighted specialty rolls (Pistol 30, SMG 20, Rifle 25, Shotgun 15, Sniper 4, Machine Gun 5, Heavy 1). Bumped version to 1.2.74.
+- Rationale: A single entity with persistent specialty data avoids seven duplicated companions while keeping the category source aligned with TacZ's active gun definitions and preserving optional-mod startup safety.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; TacZ dev-world specialist spawn, category enforcement, native firing/reload, ammo consumption, and TacZ-absent startup smoke remain required.
+
+## 2026-07-30 (TacZ specialist summon gems)
+- Prompt/task: Give each TacZ firearm-specialist class its own summon gem and keep all TacZ-specific content absent without TacZ.
+- Steps: Replaced the generic specialist gem with seven TacZ-gated gems for Pistol, SMG, Rifle, Shotgun, Sniper, Machine Gun, and Heavy; reused `gem_9` for every model; and made each gem assign its fixed specialty and rebuild the matching native TacZ loadout after spawning. Bumped version to 1.2.75.
+- Rationale: The existing entity can remain a single persisted implementation while each player-facing gem still produces the requested fixed class, and registration gating keeps the entire specialist item surface optional.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; manual TacZ gem-use, specialty, and TacZ-absent startup smoke remain required.
+
+## 2026-07-30 (TacZ specialist display names)
+- Prompt/task: Show each firearm specialist's preferred firearm in the companion inventory class field instead of `Firearm Specialist`.
+- Steps: Added specialty display labels and overrode the shared class-name hook for firearm specialists; Pistol, SMG, Rifle, Shotgun, and Heavy use the `Specialist` suffix, Machine Gun displays as `MG Specialist`, and Sniper displays as `Sniper`. Bumped version to 1.2.76.
+- Rationale: Both the main inventory and Curios inventory already consume the shared class-name hook, so one entity-level override keeps the UI consistent without duplicating screen logic.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` remain required after the final version/documentation update; manual inventory and Curios label smoke remains required.
+
+## 2026-07-30 (TacZ firearm capture restore)
+- Prompt/task: Restore TacZ firearms when a tamed firearm specialist is captured with Companion Mover and redeployed from its stored gem.
+- Steps: Kept the existing dedicated-equipment serialization boundary, but changed specialist normalization to preserve a serialized TacZ gun while TacZ's resource index is temporarily unavailable during entity load; the next server tick retries normal classification, while known incompatible categories and non-firearm hand contents remain rejected. Bumped version to 1.2.77.
+- Rationale: Equipped firearms are stored separately from cargo ammo, so deleting an unresolved hand stack during load loses the gun even though the ammunition survives in the normal inventory.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` remain required after the final version/documentation update; manual capture/redeploy, gun firing, and ammo reload smoke remain required.
+
+## 2026-07-30 (journal Done buttons and local skin picker)
+- Prompt/task: Use `newbuttons.png` for journal edit controls, add `Done` to each field screen, and add a `Local` system file picker beside `Done` on Skin.
+- Steps: Reused the inventory button sprite for the edit menu and native field actions; added a client-only native PNG picker with 64×32/64×64 validation and dynamic texture registration keyed by companion UUID; bumped version to 1.2.81.
+- Rationale: The shared sprite keeps the journal aligned with the inventory UI, while a client-local texture avoids sending filesystem paths to the server or claiming multiplayer persistence that was not implemented.
+- Build/Test: Java 21 build and in-game checks for Done, cancel, local 64×32/64×64 skins, invalid PNG rejection, and session-only behavior remain required.
+
+## 2026-07-30 (journal button text and picker fix)
+- Prompt/task: Correct the journal button text appearance and make the Local skin control open the system picker reliably.
+- Steps: Matched the inventory button renderer's no-shadow text path and created the native AWT file dialog on the AWT event queue; bumped version to 1.2.82.
+- Rationale: The inventory's plain text draw avoids doubled/shadowed glyphs, and AWT owns native dialog creation on its event thread.
+- Build/Test: Java 21 build and interactive menu/picker smoke remain required.
+
+## 2026-07-30 (journal Local no-op follow-up)
+- Prompt/task: Make Local respond when the companion is temporarily not found and provide a visible file-picker fallback.
+- Steps: Open the picker independently of the initial companion lookup, resolve the companion again after selection, and fall back from native AWT to `JFileChooser` on picker creation failure; bumped version to 1.2.83.
+- Rationale: A missing client entity must not turn the button into a silent no-op, while both chooser paths remain client-only and feed the same validated PNG loader.
+- Build/Test: Java 21 build and interactive Local-picker smoke remain required.
+
+## 2026-07-30 (remove local skin picker)
+- Prompt/task: Remove the Local skin button and its functionality.
+- Steps: Removed the Local journal control, AWT/Swing picker code, client-local dynamic texture cache, renderer override, localization key, and current README references; retained HTTP(S) skin URLs and bumped version to 1.2.84.
+- Rationale: Skin editing now has one supported path, the existing owner-checked HTTP(S) journal update.
+- Build/Test: Java 21 build and journal HTTP(S) skin editing smoke remain required.
+
+## 2026-07-30 (death effect cleanup)
+- Prompt/task: Clear negative companion effects on death so resurrection does not immediately repeat the same fatal effect, including Mekanism radiation poisoning.
+- Steps: Removed harmful MobEffects before serializing the resurrection scroll; cleared Mekanism's optional radiation entity capability through reflection; bumped version to 1.2.85.
+- Rationale: The resurrection scroll is created from the live entity before `super.die`, so death-invalid harmful state was being copied into the revived entity. Mekanism radiation is capability state rather than a MobEffect and needs its own optional cleanup.
+- Build/Test: Java 21 `gradlew.bat compileJava --no-daemon` and `gradlew.bat check --no-daemon` passed; vanilla harmful-effect and Mekanism radiation death/resurrection smoke remain required.
+
+## 2026-07-30 (health threshold and name pools)
+- Prompt/task: Stop low-health complaints after any damage by making the threshold configurable, and massively expand companion first and last names; skin changes were excluded from the final scope.
+- Steps: Added the common `companion.lowHealthFoodThreshold` fraction setting, routed both owner complaints and inventory eating through it, expanded the male/female first-name and surname tables, updated README guidance, and bumped version to 1.2.86.
+- Rationale: The complaint path used a fixed 0.5 HP loss check and ignored the existing enable toggle, while the eating goal used a separate hard-coded half-health check. One shared config threshold keeps both behaviors predictable without adding another system.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` passed; in-game threshold and name-distribution smoke remain required.
+
+## 2026-07-30 (medieval and fantasy name expansion)
+- Prompt/task: Expand the male and female first-name pools and surname pool again with medieval and fantasy names.
+- Steps: Added a second batch of medieval, mythic, and fantasy-flavored male/female first names and surnames to the existing random-name tables, updated the player-facing description, and bumped version to 1.2.87.
+- Rationale: The existing data-driven picker already supplies the correct spawn, persistence, and sex-specific behavior; expanding its tables gives more variety without adding runtime complexity.
+- Build/Test: Java 21 build and check remain required; name variety and saved-name behavior should still be smoke-tested in game.
+
+## 2026-07-31 (complete bundled skin pools)
+- Prompt/task: Add every newly supplied male and female companion skin under `textures/entities` to the random birth-skin pools.
+- Steps: Validated all 245 textures as 64x64, normalized 14 contributor-labelled filenames to lowercase ResourceLocation-safe paths, registered all 199 male and 46 female textures in `CompanionData.skins`, updated README guidance, and bumped version to 1.2.88.
+- Rationale: The existing birth logic already selects from `CompanionData.skins[sex]`; completing that table makes every bundled asset eligible without changing spawn or persistence behavior.
+- Build/Test: Java 21 build, resource dimensions, resource-name validation, and `git diff --check` remain required; manual birth distribution and renderer smoke remain required.
+
+## 2026-07-31 (female skin pool refresh)
+- Prompt/task: Include the additional female skins added after the complete bundled skin pool pass.
+- Steps: Detected 50 newly unregistered female PNGs, normalized three 128x128 files to the project-standard 64x64 layout with nearest-neighbor scaling, registered all 96 female textures, and bumped version to 1.2.89.
+- Rationale: Birth selection already consumes the female `CompanionData.skins[1]` table, so updating that table keeps the new assets in the existing random spawn path.
+- Build/Test: Java 21 build, exact asset-to-pool comparison, 64x64 dimension validation, and `git diff --check` remain required; manual female birth distribution smoke remains required.
+
+## 2026-07-31 (pre-tame empty-hand dialogue)
+- Prompt/task: Use the `notTamed` dialogue pool when a player interacts with an untamed companion using an empty hand.
+- Steps: Added the empty-hand branch to the existing server-side untamed interaction flow, kept all food branches unchanged, and bumped version to 1.2.90.
+- Rationale: `notTamed` was defined but unreachable; routing only empty-hand interactions to it preserves the requested-food and wrong-food responses.
+- Build/Test: Java 21 check remains required; manually verify repeated empty-hand interactions before and after taming.
+
+## 2026-07-31 (progression-gated taming resources)
+- Prompt/task: Use 70% common, 25% uncommon, and 5% rare taming resources, while withholding Nether/ocean materials until the player reaches those areas.
+- Steps: Replaced the flat resource pool with weighted tiers, tracked Nether/ocean milestones in player persistent data from server ticks, safely generated provisional spawn requirements, resolved them once on first untamed interaction, persisted the resolution state, updated README/SUGGESTIONS, and bumped version to 1.2.91.
+- Rationale: Companions are born before they have an owner, so provisional requirements avoid inaccessible materials; first interaction supplies the player context without rerolling tamed or partially progressed companions.
+- Build/Test: Java 21 `check`/`build` and `git diff --check` passed; in-game taming/progression smoke remains required.
+
+## 2026-07-31 (configurable Stamina costs and system toggle)
+- Prompt/task: Make Stamina spent by sprinting and successful melee attacks configurable, with a toggle to disable the Stamina system.
+- Steps: Added common `companion.staminaEnabled`, `companion.sprintStaminaCost`, and `companion.meleeStaminaCost` settings; routed both drains through the shared resource helper; bypassed sprint exhaustion and melee throttling when disabled; kept disabled companions at full Stamina; suppressed autonomous Stamina-potion use and the Jade Stamina bar when disabled; updated README/SUGGESTIONS; and bumped version to 3.1.
+- Rationale: The existing shared entity path owns every Stamina drain and exhaustion decision, so one config boundary keeps sprinting, melee, recovery, potion use, and presentation consistent without affecting Mana.
+- Build/Test: Java 21 `companionResourcesCheck` and `build --console=plain --no-daemon` passed, including `test`, `workerSafetyCheck`, and `firearmCategoryCheck`; `git diff --check` passed. Live config reload and sprint/melee runtime smoke remain required.

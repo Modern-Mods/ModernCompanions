@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.client.screen;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -10,6 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.Optional;
 
@@ -18,6 +20,7 @@ import java.util.Optional;
  */
 public class CompanionJournalScreen extends Screen {
     private static final ResourceLocation BG = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/journal.png");
+    private static final ResourceLocation EDIT_BUTTON = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/gui/editbutton.png");
     private static final int BG_W = 256;
     private static final int BG_H = 240;
 
@@ -37,6 +40,8 @@ public class CompanionJournalScreen extends Screen {
         super.init();
         this.leftPos = (this.width - BG_W) / 2;
         this.topPos = (this.height - BG_H) / 2;
+        addRenderableWidget(new EditButton(leftPos + BG_W - 24, topPos + 8, () ->
+                Minecraft.getInstance().setScreen(new CompanionJournalEditScreen(this, companionId))));
         addRenderableWidget(Button.builder(Component.translatable("gui.back"), b -> closeToParent())
                 .pos(leftPos + BG_W - 60, topPos + BG_H - 24)
                 .size(50, 16)
@@ -62,7 +67,11 @@ public class CompanionJournalScreen extends Screen {
 
             y = drawLine(gfx, Component.literal(companion.getName().getString()).withStyle(style -> style.withUnderlined(true)), x, y, width);
             y = drawLine(gfx, Component.translatable("gui.modern_companions.age", companion.getAgeYears()), x, y, width);
-            y = drawLine(gfx, Component.translatable("gui.modern_companions.backstory", backstoryName(companion.getBackstoryId())), x, y, width);
+            Component bio = companion.getCustomBio().isBlank()
+                    ? Component.translatable("gui.modern_companions.backstory", backstoryName(companion.getBackstoryId()))
+                    : Component.translatable("gui.modern_companions.custom_bio", companion.getCustomBio());
+            y = drawLine(gfx, bio, x, y, width);
+            y = drawLine(gfx, Component.translatable("gui.modern_companions.favorite_food", companion.getFavoriteFoodName()), x, y, width);
             y += 4;
 
             y = drawLine(gfx, Component.translatable("gui.modern_companions.traits").withStyle(style -> style.withUnderlined(true)), x, y, width);
@@ -144,5 +153,22 @@ public class CompanionJournalScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    /** Renders the supplied 16px edit-sheet states without introducing another button texture. */
+    private static class EditButton extends Button {
+        EditButton(int x, int y, Runnable onClick) {
+            super(x, y, 16, 16, Component.empty(), button -> onClick.run(), DEFAULT_NARRATION);
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            boolean pressed = isMouseOver(mouseX, mouseY)
+                    && GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+            int spriteY = pressed ? 32 : isHoveredOrFocused() ? 16 : 0;
+            RenderSystem.enableBlend();
+            gfx.blit(EDIT_BUTTON, getX(), getY(), 0, spriteY, width, height, 16, 48);
+            RenderSystem.disableBlend();
+        }
     }
 }

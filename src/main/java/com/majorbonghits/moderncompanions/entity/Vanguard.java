@@ -115,6 +115,7 @@ public class Vanguard extends Knight {
     }
 
     private void checkShield() {
+        if (isEating()) return;
         ItemStack offhand = this.getItemBySlot(EquipmentSlot.OFFHAND);
         if (!isShield(offhand)) {
             offhand = ItemStack.EMPTY;

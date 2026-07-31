@@ -31,6 +31,12 @@ public class Archer extends AbstractHumanCompanionEntity implements RangedAttack
 
     public void checkBow() {
         ItemStack hand = this.getItemBySlot(EquipmentSlot.MAINHAND);
+        ItemStack firearm = getEquippedOrInventoryFirearm();
+        if (!firearm.isEmpty()) {
+            if (!ItemStack.isSameItemSameComponents(hand, firearm)) this.setItemSlot(EquipmentSlot.MAINHAND, firearm);
+            setPreferredWeaponBonus(true);
+            return;
+        }
         ItemStack preferred = ItemStack.EMPTY;
         ItemStack fallback = !hand.isEmpty() && !isShieldItem(hand) ? hand : ItemStack.EMPTY;
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
@@ -73,7 +79,7 @@ public class Archer extends AbstractHumanCompanionEntity implements RangedAttack
         if (!this.level().isClientSide) {
             this.getMainHandItem().hurtAndBreak(1, this, EquipmentSlot.MAINHAND);
             if (this.getMainHandItem().isEmpty() && this.isTame() && this.getOwner() != null) {
-                MutableComponent broken = Component.literal("My bow broke!");
+                MutableComponent broken = Component.translatable("message.modern_companions.bow_broke");
                 this.getOwner().sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), broken));
             }
         }

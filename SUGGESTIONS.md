@@ -1,3 +1,5 @@
+- 2026-07-30: Add a Curios dev-world smoke check for each firearm specialist gem to confirm the shared specialist type opens slots and renders equipped curios.
+- 2026-07-30: Add a small dev-world regression checklist for equipment: replace worn armor with shift-click, extract it from both cargo/equipment views, capture/redeploy a pistol-only companion, and verify no pistol enters an armor slot.
 - 2025-11-18: Next, port original Human Companions content into the new NeoForge 1.21.1 scaffolding—migrate registries (entities/items/structures), networking, configs, and assets under `modern_companions`, then add README and run a full Gradle build once the code is in place.
 - 2025-11-18 (later): Finish porting gameplay logic (entities/AI, networking, GUIs, structure placement) onto the new registries; add data-driven assets under the new namespace once binary inclusion is allowed, then verify with a Gradle build.
 - 2025-11-18 (further): Next still to-do—port GUI toggle controls and networking for patrol/alert/hunt/stationary flags, migrate companion house worldgen data/logic, and run a full Gradle build/validation once core behaviors are complete.
@@ -106,3 +108,172 @@
 - 2025-11-30 (follow-up): Implement trait-specific stat/AI nudges and morale floors from Bond levels, and expand the Memory Journal with major kills/distance traveled once those metrics are tracked.
 - 2025-12-01: Refine trait hooks (Guardian target weighting, Reckless chase radius, Lucky loot bumps) and add configurable thresholds; surface major kills separately and show distance traveled in more readable units (km) with formatting.
 - 2025-12-01 (next): Tune Lucky drop bonus to roll an extra loot-table pass instead of duplicating an existing drop; add target weighting for Guardian (prefer mobs targeting owner) and a modest chase radius bump for Reckless, all behind config toggles.
+- 2025-12-03: Add a lightweight debug overlay/toggle for miners that renders their current surveyed cube and ore waypoints, plus a config to throttle rescan frequency for large patrol radii to keep server load predictable.
+- 2025-12-03 (courier follow-up): Surface the assigned drop-off chest in the companion GUI (coords + dimension) with a "deliver now" button, and add a tiny status icon showing when a delivery run is active or blocked by chunk loading.
+- 2025-12-03 (wand UX): Add a subtle actionbar hint when the Assignment Wand is held explaining the two-step flow (select companion, then shift-right-click chest), and show the currently stored companion name in the wand tooltip.
+- 2025-12-03 (selection persistence): Optionally mirror the wand’s stored companion in the tooltip/actionbar by reading the player-persistent cache so players know the selection survived hand swaps/logouts.
+- 2025-12-04 (wand + logging toggle): Add a small client config to suppress the companion GUI when the Assignment Wand is held (for players who prefer the old behavior) and a server config/logging toggle to keep lumberjack trace logs at INFO or drop back to DEBUG once the issue is solved, avoiding noisy production logs.
+- 2025-12-04 (lumberjack UX): Expose a config knob for the new stall watchdog (idle seconds before repath/skip) and surface a brief actionbar/WTHIT hint when a lumberjack recovers from a stall so players know why it jumped targets.
+- 2025-12-04 (lumberjack stance): Add a config for ground-stand search radius/offset and an optional client hint that shows the chosen stand tile, so players can adjust behavior on uneven terrain without changing code.
+- 2025-12-06: For Fishers, consider caching the last successful stand/water pair and probing outward from it (with a cap) before doing a full scan; this keeps "nearest water" pathing snappy without lifting the scan throttle.
+## 2026-07-27
+- Add an integration test world with a protection mod and manually validate that worker block changes respect its cancellation hooks; companion actions do not have a player-break context.
+## 2026-07-27
+- Add a small screenshot-based GUI smoke test if future sidebar layout changes become frequent.
+## 2026-07-29
+- Add visible on/off state or tooltips to the text sidebar buttons only if players need feedback beyond their resulting companion behavior.
+## 2026-07-29
+- Add a dedicated selected-button sprite only if the standard Minecraft focused appearance is not distinct enough during in-game playtesting.
+## 2026-07-29
+- Add configurable companion spacing only if playtesting shows parties still overlap; the saved radius already controls the follow leash and idle area.
+## 2026-07-29
+- Add a small Sophisticated Backpacks runtime smoke world only if future upstream GUI/context changes require a repeatable compatibility check.
+## 2026-07-29
+- Add a focused TacZ dev-world smoke check only if a future TacZ release changes its entity item-handler API; the standard companion inventory capability now covers native reload and ammo consumption.
+
+## 2026-07-29 (magic companion runtime smoke)
+- Add a small two-mod dev-world smoke only when Iron's Spellbooks or Ars Nouveau changes its public casting API; reflection keeps both integrations optional, so live casts, summon lifetime, and ally-safe AoE need verification against installed versions.
+
+## 2026-07-29 (conditional worldgen regression)
+- Keep one resource-load smoke with neither magic mod installed whenever adding a gated entity; static structure JSON cannot refer to an entity omitted from the registry.
+- Keep required empty codec fields such as `spawn_overrides: {}` when removing static entries; valid JSON alone does not prove Minecraft's structure codec accepts it.
+
+## 2026-07-29 (conditional registry regression)
+- Keep a no-magic-mod creative-tab/JEI and Curios data-load smoke whenever adding gated companion content; Curios 9.5.1 accepts only direct registered entity IDs here, not entity tags.
+
+## 2026-07-29 (magic metadata regression)
+- Keep an installed-Iron's/Ars launch smoke when changing optional dependency metadata; NeoForge compares full mod version strings such as `1.21.1-3.16.2`.
+
+## 2026-07-29 (magic targeting smoke)
+- Keep a live clear-LOS and blocked-LOS cast smoke for every upstream spell API update; direct projectiles use the caster's look vector while entity resolvers target directly.
+
+## 2026-07-29 (magic ally-safety smoke)
+- Keep a compact Prism test pen: caster owner, same-owner companion, same-owner summon, villager, enemy player, and enemy-player companion. Verify summoned swords never target friendly entries, then verify PvP/villager toggles only unlock their intended enemy categories and Intelligence produces a measurable spell-damage increase.
+
+## 2026-07-29 (Wizard batch-cap smoke)
+- Recheck the three-weapon entity IDs only when upgrading Iron's Spellbooks; they are the narrow live-batch contract that lets Wizards resummon after every prior weapon has actually gone.
+
+## 2026-07-29 (magic gem visuals)
+- Add new gem art only when a reused role-fit gem no longer gives a new class a readable identity; the current nine model files deliberately reuse proven, packaged assets.
+
+## 2026-07-29 (resource balance)
+- Add config values only after live play shows 100-point pools, 10/20/35 spell costs, or 5-second combat grace need tuning; fixed shared values avoid per-spell config noise now.
+
+## 2026-07-29 (brewing regression)
+- Keep one launch smoke whenever moving a NeoForge listener; compile success cannot verify the event's owning bus.
+
+## 2026-07-29 (resource visuals)
+- Keep one Prism hover smoke at empty, partial, and full Stamina/Mana plus one creative-tab reload after changing Jade rendering or the item atlas; Gradle validates resources, but game UI/atlas stitching is runtime behavior.
+
+## 2026-07-29 (potion-effect icons)
+- Keep one inventory and HUD smoke for every custom potion icon after NeoForge updates; the client extension API controls both render paths and cannot be fully validated by Gradle.
+
+## 2026-07-29 (expanded companion inventory)
+- Keep one Prism smoke for equipment placement/removal, unload/reload persistence, the 3D preview, and green/off versus dark-red/on safety switches; Gradle cannot verify texture alignment or live entity rendering.
+
+## 2026-07-30 (equipment follow-up)
+- Add support for modded weapons or shields only when a concrete item family needs automatic shift-equip; vanilla armor, swords, and shield-tagged items now cover the requested flow without a generic item scoring framework.
+
+## 2026-07-30 (effect icon regression)
+- Keep one inventory and HUD smoke after replacing effect-icon art; the 32px inventory cell and centered 18px HUD icon are separate render paths.
+
+## 2026-07-30 (inventory effect alignment)
+- Recheck only if NeoForge changes the inventory-extension coordinates; 32px art is intentionally offset seven pixels from the normal 18px icon origin to share its center.
+
+## 2026-07-30 (hand equipment rules)
+- Add a modded weapon/tool tag only when a concrete item family needs automatic companion use; the current native item checks and existing sword/firearm support cover the shipped equipment paths.
+
+## 2026-07-30 (JEI brewing visibility)
+- Keep the JEI adapter limited to brewing steps defined by `CompanionBrewing`; add a custom JEI category only if the brewing stand can no longer represent a future potion workflow.
+
+## 2026-07-30 (lumberjack foliage recovery)
+- Keep a Prism smoke for oak, dark oak, and leaf-walled trees with mob griefing both enabled and disabled; pathfinding and protection outcomes need live-world validation.
+
+## 2026-07-30 (lumberjack full-tree felling)
+- Keep a Prism smoke for tall birch, spruce, and dark-oak trunks; the lumberjack now retains a single stump stand and must clear every connected log before replanting.
+
+## 2026-07-30 (living jobs follow-up)
+- Add durable per-job target checkpoint serialization and bounded incremental tree/miner scans after live smoke identifies a concrete remaining unload or large-area stall; current shared Work, reservation, action, and delivery contracts are intentionally small and avoid a behavior-tree framework.
+
+## 2026-07-30 (Work radius smoke)
+- Keep a two-chest dev-world smoke: bind chest A, enable Work, verify Follow/Patrol unpress and job stays inside Radius around A; then rebind chest B and verify future searches move to B's radius without stale patrol-center work.
+
+## 2026-07-30 (job route and supply smoke)
+- Test one Miner with an exposed ore and a solid-wall ore: verify it never breaks the floor below a planned feet cell and leaves blocked/protected ore queued. Test one Chef with only tagged raw meat in its assigned chest: verify travel to chest, one-item withdrawal at chest stand, cooking, deposit, and resume. Add wider route/replant persistence only after this baseline live path is verified.
+
+## 2026-07-30 (job path regression smoke)
+- Keep a leaf-wall tree, an unobstructed chest, a one-block-wide dirt tunnel, and a pond shore in the dev test pen. Verify no chest spam, Lumberjack leaf clearing/full-log progress, Miner digs from present feet, and Fisher bobber always begins at farther surface water.
+
+## 2026-07-30 (tree and return-target smoke)
+- In the same pen, confirm a reachable trunk leaves its canopy intact while an actually blocked approach removes only enough leaves to proceed. Confirm a Fisher visibly turns toward its far-water bobber and a Miner retains a clear flat return route to the chest-side stand.
+
+## 2026-07-30 (Lumberjack navigation smoke)
+- Add one normal tree and one leaf-walled tree at several Radius distances. Confirm a Lumberjack's path advances without repeated restart, reaches normal trees without leaf damage, and clears only the minimum blocked leaf approach.
+
+## 2026-07-30 (job reliability smoke)
+- Keep one compact two-worker pen with an oak, tall spruce, acacia, solid dirt/stone ore tunnel, nearby cave ore, pond, and shared chest. Verify reservations, complete log removal, tunnel return, one-second minimum recasts, retained food/potions, two-minute bulk unload, and dusk unload before expanding the planners further.
+
+## 2026-07-30 (128-radius search smoke)
+- Bind a chest at surface level, set Radius to 128, and place known mature trees and exposed/buried ores at roughly 8, 32, 64, and 120 blocks. Confirm center-out discovery prefers nearer targets and eventually reaches the outer ring without a long server tick.
+
+## 2026-07-30 (first excavation smoke)
+- Put known ore below a grass/dirt surface and watch the first three descending steps: each must visibly remove its upper/lower tunnel blocks, preserve floor support, walk forward, and leave the same opening usable on return.
+
+## 2026-07-30 (Jobs button layout smoke)
+- Open companion inventory with `showJobsButton` false and true, both with and without Curios/Pack. Confirm the stack remains contiguous and the bottom control stays inside the supplied texture.
+
+## 2026-07-30 (job inventory panel smoke)
+- Open the inventory before and after assigning each job. Confirm `newinventory_nojob.png` shows no Currently/State panel and `newinventory.png` plus live job/status text return immediately after assignment.
+
+## 2026-07-30 (journal editing smoke)
+- In a multiplayer-capable dev world, rename a companion, set a long Bio, and paste an HTTPS skin URL through the journal. Confirm each Enter submission survives relog, the edit sprite uses all three states, non-owner requests are ignored, and the skin renderer refreshes for tracking clients.
+
+## 2026-07-30 (journal edit navigation smoke)
+- Confirm the Back button below Skin and Escape both return to the journal at every supported GUI scale.
+
+## 2026-07-30 (journal age editing smoke)
+- Set an Age at each boundary (1 and 120) and reject empty, non-numeric, zero, and 121 values; confirm valid ages update the journal and survive relog.
+
+## 2026-07-30 (TacZ firearm specialists)
+- Keep the TacZ category mapping tied to `CommonGunIndex.getType()`; add a data/config override only if a future TacZ pack exposes a category that does not identify itself through that index.
+- Keep specialist loadout diversity and spawn weights fixed until a live-world pass shows a balance problem; the current Heavy 1% and Sniper 4% specialty weights satisfy the requested rarity without adding config noise.
+
+## 2026-07-30 (TacZ specialist summon gems)
+- Keep the seven specialist gems on the shared `gem_9` art until a player-facing visual pass shows that category-specific art materially improves recognition; separate texture assets are unnecessary for the current request.
+
+## 2026-07-30 (TacZ specialist display names)
+- Keep the labels tied to the specialty enum until localization is requested; add translated display keys only when the project standardizes these class labels across languages.
+
+## 2026-07-30 (TacZ firearm capture restore)
+- Keep the load-time preservation guard tied to TacZ classification availability; add explicit serialized firearm migration only if a future TacZ version changes its item-stack schema rather than merely delaying its resource index.
+
+## 2026-07-30 (journal local skin removal)
+- Keep skin editing HTTP(S)-only; revisit local skins only with an explicit upload and synchronization design.
+
+## 2026-07-30 (death effect cleanup)
+- Keep the death/resurrection smoke test covering a vanilla harmful effect and Mekanism radiation; add other optional
+  capability-specific cleanup only when a mod demonstrates death-persistent harmful state.
+
+## 2026-07-30 (health threshold and name pools)
+- Keep the default health threshold at 0.5 until gameplay smoke shows that companions request food too early or too late; add per-companion thresholds only if global tuning proves insufficient.
+
+## 2026-07-30 (medieval and fantasy name expansion)
+- Keep names as static data tables; move them to datapack-driven content only if players need server-specific naming themes or localization.
+
+## 2026-07-31 (complete bundled skin pools)
+- Keep future skin filenames lowercase with only letters, digits, hyphens, underscores, and periods so they can be registered directly as Minecraft resource paths; add a build-time asset linter if contributors continue adding large skin batches.
+
+## 2026-07-31 (female skin pool refresh)
+- Keep new skin PNGs at 64x64 before adding them; add the suggested asset-to-pool linter if future batches continue to arrive after code updates.
+
+## 2026-07-31 (pre-tame empty-hand dialogue)
+- Keep empty-hand dialogue in `CompanionData.notTamed`; move it to localization only if dialogue translation becomes a supported feature.
+
+## 2026-07-31 (progression-gated taming resources)
+- Keep progression flags on the player’s persistent data; move resource tiers to datapack/config content only if server-specific taming rules are requested.
+
+## 2026-07-31 (player-facing localization)
+- Keep new UI, dialogue, job-status, command, and optional-integration copy in the language files; add translated locale values when translation support is expanded beyond the English fallback.
+
+## 2026-07-31 (configurable stamina costs and toggle)
+- Keep the three values in the common companion config; add per-class or per-attack stamina tuning only if live balancing shows the shared sprint/melee costs are insufficient.

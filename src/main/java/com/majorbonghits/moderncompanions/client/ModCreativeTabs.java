@@ -25,7 +25,8 @@ public final class ModCreativeTabs {
             event.accept(ModItems.VANGUARD_SPAWN_EGG.get());
             event.accept(ModItems.BERSERKER_SPAWN_EGG.get());
             event.accept(ModItems.BEASTMASTER_SPAWN_EGG.get());
-            event.accept(ModItems.CLERIC_SPAWN_EGG.get());
+            // Magic companions are absent when neither supported spell mod is loaded.
+            if (ModItems.CLERIC_SPAWN_EGG != null) event.accept(ModItems.CLERIC_SPAWN_EGG.get());
             event.accept(ModItems.ALCHEMIST_SPAWN_EGG.get());
             event.accept(ModItems.SCOUT_SPAWN_EGG.get());
             event.accept(ModItems.STORMCALLER_SPAWN_EGG.get());

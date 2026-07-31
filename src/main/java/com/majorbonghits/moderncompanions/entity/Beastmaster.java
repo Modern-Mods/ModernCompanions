@@ -210,6 +210,12 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
 
     private void checkBow() {
         ItemStack hand = this.getItemBySlot(EquipmentSlot.MAINHAND);
+        ItemStack firearm = getEquippedOrInventoryFirearm();
+        if (!firearm.isEmpty()) {
+            if (!ItemStack.isSameItemSameComponents(hand, firearm)) this.setItemSlot(EquipmentSlot.MAINHAND, firearm);
+            setPreferredWeaponBonus(true);
+            return;
+        }
         ItemStack bow = ItemStack.EMPTY;
         ItemStack meleePreferred = ItemStack.EMPTY;
         ItemStack fallback = !hand.isEmpty() && inventoryContains(hand.getItem()) && !isShieldItem(hand) ? hand : ItemStack.EMPTY;

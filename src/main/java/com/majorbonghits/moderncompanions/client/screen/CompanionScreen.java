@@ -1,193 +1,248 @@
 package com.majorbonghits.moderncompanions.client.screen;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
+import com.majorbonghits.moderncompanions.client.renderer.CompanionRenderer;
+import com.majorbonghits.moderncompanions.client.screen.job.CompanionJobScreen;
+import com.majorbonghits.moderncompanions.compat.sophisticatedbackpacks.SophisticatedBackpackCompat;
+import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.network.CompanionActionPayload;
+import com.majorbonghits.moderncompanions.network.OpenCompanionCuriosPayload;
+import com.majorbonghits.moderncompanions.network.OpenCompanionBackpackPayload;
 import com.majorbonghits.moderncompanions.network.SetPatrolRadiusPayload;
 import com.majorbonghits.moderncompanions.network.ToggleFlagPayload;
-import com.majorbonghits.moderncompanions.network.OpenCompanionCuriosPayload;
-import net.minecraft.ChatFormatting;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.neoforged.fml.ModList;
 
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 
-/**
- * Companion inventory screen styled like the original mod, including sidebar buttons and right-hand stats.
- */
+/** Companion inventory screen using the seven-row companion layout. */
 public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
-    private static final ResourceLocation BG = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/inventory_stats.png");
-    private static final int BG_WIDTH = 345;
-    private static final int BG_HEIGHT = 256;
-    private static final ResourceLocation ALERT_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/alertbutton.png");
-    private static final ResourceLocation HUNT_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/huntingbutton.png");
-    private static final ResourceLocation PATROL_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/patrolbutton.png");
-    private static final ResourceLocation CLEAR_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/clearbutton.png");
-    private static final ResourceLocation PICKUP_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/pickupbutton.png");
-    private static final ResourceLocation SPRINT_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/stationerybutton.png");
-    private static final ResourceLocation RELEASE_BTN = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/releasebutton.png");
-    // Right-hand info panel on inventory_stats.png
-    private static final int TOP_STATS_LEFT = 229;
-    private static final int TOP_STATS_TOP = 7;
-    private static final int TOP_STATS_RIGHT = 327;
-    // Attribute block lives in 228,137 to 326,194
-    private static final int ATTR_LEFT = 228;
-    private static final int ATTR_TOP = 137;
-    private static final int ATTR_RIGHT = 326;
-    private static final int ATTR_BOTTOM = 194;
-    // Wanted food strip shifted down to 228,215 to 327,236
-    private static final int FOOD_LEFT = 228;
-    private static final int FOOD_TOP = 215;
-    private static final int FOOD_RIGHT = 327;
-    private static final int FOOD_BOTTOM = 236;
-
-    private CompanionButton alertButton;
-    private CompanionButton huntButton;
-    private CompanionButton patrolButton;
-    private CompanionButton sprintButton;
-    private CompanionButton clearButton;
-    private CompanionButton pickupButton;
-    private CompanionButton releaseButton;
-    private CompanionButton radiusMinus;
-    private CompanionButton radiusPlus;
-    private Button curiosButton;
-    private Button journalButton;
-
-    private int sidebarX;
+    private static final ResourceLocation JOB_BG = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/newinventory.png");
+    private static final ResourceLocation NO_JOB_BG = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/newinventory_nojob.png");
+    private static final ResourceLocation BUTTONS = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/newbuttons.png");
+    private static final ResourceLocation SMALL_BUTTONS = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/newbuttons_small.png");
+    private static final int BG_WIDTH = 458;
+    private static final int BG_HEIGHT = 249;
+    private static final int CONTENT_X_OFFSET = 103;
+    private static final int BUTTON_X = CONTENT_X_OFFSET + 181;
+    private static final int BUTTON_Y = 17;
+    private static final int TEXT_COLOR = 0xFF000000;
 
     public CompanionScreen(CompanionMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
         this.imageWidth = BG_WIDTH;
-        this.imageHeight = BG_HEIGHT; // draw full texture 1:1; prevents GL wrapping
-        this.inventoryLabelY = this.imageHeight - 94;
-        this.sidebarX = 174;
+        this.imageHeight = BG_HEIGHT;
     }
 
     @Override
     protected void init() {
         super.init();
-        // Nudge whole GUI down by 1px to align with texture shadow
-        this.topPos += 1;
-        int rowHeight = 15;
-        int row1 = topPos + 66;
-        int row2 = row1 + rowHeight;
-        int row3 = row2 + rowHeight;
-        int col1 = leftPos + sidebarX + 3;
-        int col2 = col1 + 19;
+        int buttonX = leftPos + BUTTON_X;
+        int buttonY = topPos + BUTTON_Y;
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.alert"), buttonX, buttonY,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::isAlert).orElse(false),
+                () -> sendToggle("alert")));
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.hunting"), buttonX, buttonY + 17,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::isHunting).orElse(false),
+                () -> sendToggle("hunt")));
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.patrol"), buttonX, buttonY + 34,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::isPatrolling).orElse(false),
+                () -> sendOrder("patrol")));
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.guard"), buttonX, buttonY + 51,
+                () -> safeCompanion().map(companion -> companion.getJob().isWorker() ? companion.isWorkEnabled() : companion.isGuarding()).orElse(false),
+                () -> safeCompanion().ifPresent(companion -> {
+                    if (companion.getJob().isWorker()) sendToggle("work"); else sendOrder("guard");
+                })) {
+            @Override
+            public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+                setMessage(safeCompanion().map(companion -> companion.getJob().isWorker()
+                        ? Component.translatable("button.modern_companions.work")
+                        : Component.translatable("button.modern_companions.guard"))
+                        .orElse(Component.translatable("button.modern_companions.guard")));
+                super.renderWidget(gfx, mouseX, mouseY, partialTick);
+            }
+        });
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.follow"), buttonX, buttonY + 68,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::isFollowing).orElse(false),
+                () -> sendOrder("follow")));
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.sprint"), buttonX, buttonY + 85,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::isSprintEnabled).orElse(false),
+                () -> sendToggle("sprint")));
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.clear"), buttonX, buttonY + 102, () -> false,
+                () -> sendAction("clear_target")));
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.pickup"), buttonX, buttonY + 119,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::isPickupEnabled).orElse(false),
+                () -> sendToggle("pickup")));
 
-        alertButton = addRenderableWidget(new CompanionButton("alert", col1, row1, 16, 12, 0, 0, 13, ALERT_BTN, () -> sendToggle("alert"), true));
-        huntButton = addRenderableWidget(new CompanionButton("hunting", col2, row1, 16, 12, 0, 0, 13, HUNT_BTN, () -> sendToggle("hunt"), true));
-        patrolButton = addRenderableWidget(new CompanionButton("patrolling", col1, row2, 16, 12, 0, 0, 13, PATROL_BTN, () -> sendAction("cycle_orders"), true));
-        sprintButton = addRenderableWidget(new CompanionButton("sprint", col2, row2, 16, 12, 0, 0, 13, SPRINT_BTN, () -> sendToggle("sprint"), true));
-        clearButton = addRenderableWidget(new CompanionButton("clear", leftPos + sidebarX + 5, row3, 31, 12, 0, 0, 13, CLEAR_BTN, () -> sendAction("clear_target"), false));
-        int row4 = row3 + rowHeight;
-        pickupButton = addRenderableWidget(new CompanionButton("pickup", leftPos + sidebarX + 3, row4, 34, 12, 0, 0, 0, PICKUP_BTN, () -> sendToggle("pickup"), true));
-        releaseButton = addRenderableWidget(new CompanionButton("release", leftPos + sidebarX + 3, topPos + 148, 34, 12, 0, 0, 13, RELEASE_BTN, () -> {
-            sendAction("release");
-            this.onClose();
-        }, false));
+        ResourceLocation radiusTex = ResourceLocation.fromNamespaceAndPath(
+                ModernCompanions.MOD_ID, "textures/gui/radiusbutton.png");
+        // The 16px sprites are centered on the former 12px control row.
+        int radiusY = topPos + 154;
+        addRenderableWidget(new RadiusButton(leftPos + CONTENT_X_OFFSET + 182, radiusY, 16, radiusTex, () -> adjustRadius(-2)));
+        addRenderableWidget(new RadiusButton(leftPos + CONTENT_X_OFFSET + 205, radiusY, 0, radiusTex, () -> adjustRadius(2)));
 
-        int radiusY = topPos + 148 + 16;
-        ResourceLocation radiusTex = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "textures/gui/radiusbutton.png");
-        radiusMinus = addRenderableWidget(new CompanionButton("radius-", leftPos + sidebarX + 3, radiusY, 16, 12, 17, 0, 13, radiusTex, () -> adjustRadius(-2), false));
-        radiusPlus = addRenderableWidget(new CompanionButton("radius+", leftPos + sidebarX + 21, radiusY, 16, 12, 0, 0, 13, radiusTex, () -> adjustRadius(2), false));
-
-        int curiosY = topPos + 180; // move curios up
-        if (ModList.get().isLoaded("curios")) {
-            curiosButton = addRenderableWidget(Button.builder(Component.literal("Curios"), b -> openCurios())
-                    .pos(leftPos + sidebarX + 2, curiosY)
-                    .size(38, 16)
-                    .build());
+        int lowerButtonY = topPos + 174;
+        if (ModConfig.safeGet(ModConfig.SHOW_JOBS_BUTTON)) {
+            addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.jobs"), buttonX, lowerButtonY, () -> false, this::openJobInfo));
+            lowerButtonY += 18;
         }
-
-        int journalY = topPos + 200;
-        journalButton = addRenderableWidget(Button.builder(Component.translatable("button.modern_companions.journal"), b -> openJournal())
-                .pos(leftPos + sidebarX + 2, journalY)
-                .size(38, 16)
-                .build());
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.journal"),
+                buttonX, lowerButtonY, () -> false, this::openJournal));
+        lowerButtonY += 18;
+        if (ModList.get().isLoaded("curios")) {
+            addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.curios"), buttonX, lowerButtonY, () -> false, this::openCurios));
+            lowerButtonY += 18;
+        }
+        if (ModList.get().isLoaded("sophisticatedbackpacks") && ModList.get().isLoaded("curios")
+                && safeCompanion().map(SophisticatedBackpackCompat::hasBackpack).orElse(false)) {
+            addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.pack"), buttonX, lowerButtonY, () -> false, this::openBackpack));
+        }
+        addRenderableWidget(new ModeButton(leftPos + 82, topPos + 147,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmVillagers).orElse(false),
+                () -> sendToggle("villagers")));
+        addRenderableWidget(new ModeButton(leftPos + 82, topPos + 175,
+                () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmPlayers).orElse(false),
+                () -> sendToggle("players")));
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.release"), leftPos + CONTENT_X_OFFSET + 301, topPos + 232, () -> false, () -> {
+            sendAction("release");
+            onClose();
+        }, true));
     }
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
-        int x = this.leftPos;
-        int y = this.topPos;
-        gfx.blit(BG, x, y, 0, 0, this.imageWidth, this.imageHeight, BG_WIDTH, BG_HEIGHT);
-    }
-
-    @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        // vanilla labels suppressed; we draw custom stats at right
+        // The no-job asset omits the inactive Currently/State panel entirely.
+        ResourceLocation background = safeCompanion().filter(companion -> companion.getJob().isWorker()).isPresent()
+                ? JOB_BG : NO_JOB_BG;
+        gfx.blit(background, leftPos, topPos, 0, 0, imageWidth, imageHeight, BG_WIDTH, BG_HEIGHT);
         safeCompanion().ifPresent(companion -> {
-            // renderLabels already translates to (leftPos, topPos); use texture-relative coords
-            int statsX = TOP_STATS_LEFT + 4;
-            int statsWidth = (TOP_STATS_RIGHT - TOP_STATS_LEFT) - 8;
-            int y = TOP_STATS_TOP + 2;
-
-            gfx.drawString(this.font, Component.literal("Class").withStyle(ChatFormatting.UNDERLINE), statsX, y, 0x000000, false);
-            y += 10;
-            String cls = companion.getClassDisplayName();
-            gfx.drawString(this.font, Component.literal(cls), statsX, y, 0x000000, false);
-            y += 12;
-
-            gfx.drawString(this.font, Component.literal("Health").withStyle(ChatFormatting.UNDERLINE), statsX, y, 0x000000, false);
-            y += 10;
-            gfx.drawString(this.font, Component.literal(String.format("%.1f / %d", companion.getHealth(), (int) companion.getMaxHealth())), statsX, y, 0x000000, false);
-            y += 12;
-
-            float xpFrac = companion.getExperienceProgress();
-            int xpNeeded = companion.getXpNeededForNextLevel();
-            int xpHave = Math.round(xpFrac * xpNeeded);
-            gfx.drawString(this.font, Component.literal("Level " + companion.getExpLvl()), statsX, y, 0x000000, false);
-            y += 10;
-            int barW = Math.max(60, Math.min(90, statsWidth));
-            int barH = 6;
-            int filledW = (int) (barW * xpFrac);
-            gfx.fill(statsX, y, statsX + barW, y + barH, 0xFF777777);
-            gfx.fill(statsX + 1, y + 1, statsX + 1 + filledW, y + barH - 1, 0xFF55AA55);
-            y += 10;
-            gfx.drawString(this.font, Component.literal(xpHave + "/" + xpNeeded), statsX, y, 0x000000, false);
-            y += 12;
-
-            gfx.drawString(this.font, Component.literal("Kills: " + companion.getKillCount()), statsX, y, 0x000000, false);
-            y += 12;
-
-            gfx.drawString(this.font, Component.literal("Patrol Radius: " + companion.getPatrolRadius()), statsX, y, 0x000000, false);
-            renderAttributes(gfx, companion);
-            renderWantedFood(gfx, companion);
+            CompanionRenderer.setPreviewNameplateSuppressed(true);
+            try {
+                InventoryScreen.renderEntityInInventoryFollowsMouse(gfx,
+                        leftPos + 27, topPos + 40, leftPos + 76, topPos + 107, 30, 0.0625F,
+                        mouseX, mouseY, companion);
+            } finally {
+                CompanionRenderer.setPreviewNameplateSuppressed(false);
+            }
         });
     }
 
     @Override
-    public void containerTick() {
-        super.containerTick();
+    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
+        safeCompanion().ifPresent(companion -> {
+            drawCenteredText(gfx, companion.getDisplayName(), CONTENT_X_OFFSET + 296, 13);
+            renderCompanionInfo(gfx, companion);
+            renderAttributes(gfx, companion);
+            renderWantedFood(gfx, companion);
+            renderCurrentJob(gfx, companion);
+        });
     }
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        this.renderTooltip(gfx, mouseX, mouseY);
+        renderTooltip(gfx, mouseX, mouseY);
     }
 
-    /* ---------- Button actions ---------- */
+    private void renderCompanionInfo(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
+        int x = CONTENT_X_OFFSET + 238;
+        gfx.drawString(font, companion.getClassDisplayName(), x, 55, TEXT_COLOR, false);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.health", companion.getHealth(), (int) companion.getMaxHealth()),
+                x, 65, TEXT_COLOR, false);
+
+        float xpFraction = companion.getExperienceProgress();
+        int xpNeeded = companion.getXpNeededForNextLevel();
+        int xpHave = Math.round(xpFraction * xpNeeded);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.level", companion.getExpLvl()), x, 75, TEXT_COLOR, false);
+        gfx.fill(x, 86, x + 100, 92, 0xFF777777);
+        gfx.fill(x + 1, 87, x + 1 + (int) (98 * xpFraction), 91, 0xFF55AA55);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.xp_progress", xpHave, xpNeeded), x, 93, TEXT_COLOR, false);
+        // The taller Companion panel leaves room for the final status line below the XP readout.
+        gfx.drawString(font, Component.translatable("gui.modern_companions.kills", companion.getKillCount()), x, 105, TEXT_COLOR, false);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.radius", companion.getPatrolRadius()), x + 45, 105, TEXT_COLOR, false);
+    }
+
+    private void renderAttributes(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
+        int x = CONTENT_X_OFFSET + 246;
+        drawStatLine(gfx, x, 138, Component.translatable("gui.modern_companions.attribute.strength"), companion.getStrength(), isSpecialist(companion, 0));
+        drawStatLine(gfx, x, 148, Component.translatable("gui.modern_companions.attribute.dexterity"), companion.getDexterity(), isSpecialist(companion, 1));
+        drawStatLine(gfx, x, 158, Component.translatable("gui.modern_companions.attribute.intelligence"), companion.getIntelligence(), isSpecialist(companion, 2));
+        drawStatLine(gfx, x, 168, Component.translatable("gui.modern_companions.attribute.endurance"), companion.getEndurance(), isSpecialist(companion, 3));
+    }
+
+    private void drawStatLine(GuiGraphics gfx, int x, int y, Component name, int value, boolean highlight) {
+        gfx.drawString(font, Component.translatable("gui.modern_companions.attribute.value", name, value, highlight ? " ★" : ""), x, y,
+                highlight ? 0xFFFFD54F : TEXT_COLOR, false);
+    }
+
+    private boolean isSpecialist(AbstractHumanCompanionEntity companion, int index) {
+        return companion.getSpecialistAttributeIndex() == index;
+    }
+
+    private void renderWantedFood(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
+        Component food = companion.getFoodStatusForGui();
+        if (food.getString().isEmpty()) {
+            food = Component.translatable("gui.modern_companions.food.not_hungry");
+        }
+        int y = 204;
+        for (FormattedCharSequence line : font.split(food, 106)) {
+            gfx.drawString(font, line, CONTENT_X_OFFSET + 247, y, TEXT_COLOR, false);
+            y += 10;
+            if (y > 224) {
+                break;
+            }
+        }
+    }
+
+    /** Texture owns `Currently`; draw only synchronized dynamic job text inside its panel. */
+    private void renderCurrentJob(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
+        if (!companion.getJob().isWorker()) return;
+        gfx.enableScissor(leftPos + 4, topPos + 205, leftPos + 100, topPos + 239);
+        // renderLabels already translates to the GUI origin; using leftPos here drew off-panel.
+        gfx.drawString(font, font.plainSubstrByWidth(companion.getJob().displayName().getString(), 90), 7, 216, TEXT_COLOR, false);
+        gfx.drawString(font, font.plainSubstrByWidth(companion.getJobStatusComponent().getString(), 90), 7, 227, TEXT_COLOR, false);
+        gfx.disableScissor();
+    }
+
+    private void drawCenteredText(GuiGraphics gfx, Component text, int centerX, int y) {
+        gfx.drawString(font, text, centerX - font.width(text) / 2, y, TEXT_COLOR, false);
+    }
 
     private void sendToggle(String flag) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.getConnection() == null) return;
         safeCompanion().ifPresent(companion -> {
             boolean newValue = !companion.getFlagValue(flag);
-            mc.getConnection().send(new ServerboundCustomPayloadPacket(new ToggleFlagPayload(menu.getCompanionId(), flag, newValue)));
+            mc.getConnection().send(new ServerboundCustomPayloadPacket(
+                    new ToggleFlagPayload(menu.getCompanionId(), flag, newValue)));
             companion.applyFlag(flag, newValue);
         });
+    }
+
+    private void sendOrder(String order) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.getConnection() == null) return;
+        // Orders are radio-style controls: selecting one always leaves exactly one active.
+        mc.getConnection().send(new ServerboundCustomPayloadPacket(
+                new ToggleFlagPayload(menu.getCompanionId(), order, true)));
+        safeCompanion().ifPresent(companion -> companion.applyFlag(order, true));
     }
 
     private void sendAction(String action) {
@@ -200,154 +255,145 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.getConnection() == null) return;
         safeCompanion().ifPresent(companion -> {
-            int target = Math.max(2, Math.min(32, companion.getPatrolRadius() + delta));
-            mc.getConnection().send(new ServerboundCustomPayloadPacket(new SetPatrolRadiusPayload(menu.getCompanionId(), target)));
+            int step = hasShiftDown() ? 10 : 2;
+            int target = Math.max(2, Math.min(128, companion.getPatrolRadius() + (delta > 0 ? step : -step)));
+            mc.getConnection().send(new ServerboundCustomPayloadPacket(
+                    new SetPatrolRadiusPayload(menu.getCompanionId(), target)));
             companion.setPatrolRadius(target);
         });
     }
 
     private void openCurios() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc == null || mc.getConnection() == null) return;
-        mc.getConnection().send(new ServerboundCustomPayloadPacket(new OpenCompanionCuriosPayload(menu.getCompanionId())));
+        if (mc != null && mc.getConnection() != null) {
+            mc.getConnection().send(new ServerboundCustomPayloadPacket(new OpenCompanionCuriosPayload(menu.getCompanionId())));
+        }
+    }
+
+    private void openBackpack() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getConnection() != null) {
+            mc.getConnection().send(new ServerboundCustomPayloadPacket(new OpenCompanionBackpackPayload(menu.getCompanionId())));
+        }
+    }
+
+    private void openJobInfo() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null) {
+            mc.setScreen(new CompanionJobScreen(this, menu.getCompanionId()));
+        }
     }
 
     private void openJournal() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc == null) return;
-        mc.setScreen(new CompanionJournalScreen(this, menu.getCompanionId()));
+        if (mc != null) {
+            mc.setScreen(new CompanionJournalScreen(this, menu.getCompanionId()));
+        }
     }
 
     private Optional<AbstractHumanCompanionEntity> safeCompanion() {
-        AbstractHumanCompanionEntity c = menu.getCompanion();
-        if (c == null && this.minecraft != null && this.minecraft.level != null) {
-            var e = this.minecraft.level.getEntity(menu.getCompanionId());
-            if (e instanceof AbstractHumanCompanionEntity comp) {
-                c = comp;
-            }
+        AbstractHumanCompanionEntity companion = menu.getCompanion();
+        if (companion == null && minecraft != null && minecraft.level != null
+                && minecraft.level.getEntity(menu.getCompanionId()) instanceof AbstractHumanCompanionEntity found) {
+            companion = found;
         }
-        return Optional.ofNullable(c);
+        return Optional.ofNullable(companion);
     }
 
-    private class CompanionButton extends Button {
-        private final String name;
-        private int yTexStart;
-        private final int yDiffTex;
+    private class RadiusButton extends Button {
+        private final int xTexStart;
         private final ResourceLocation texture;
-        private final boolean toggleFlag;
-        private final int baseY;
-        private int xTexStart;
 
-        CompanionButton(String name, int x, int y, int w, int h, int xTexStart, int yTexStart, int yDiffTex, ResourceLocation texture, Runnable onClick, boolean toggleFlag) {
-            super(x, y, w, h, Component.empty(), b -> onClick.run(), DEFAULT_NARRATION);
-            this.name = name;
+        RadiusButton(int x, int y, int xTexStart, ResourceLocation texture, Runnable onClick) {
+            super(x, y, 16, 16, Component.empty(), button -> onClick.run(), DEFAULT_NARRATION);
             this.xTexStart = xTexStart;
-            this.yTexStart = yTexStart;
-            this.baseY = yTexStart;
-            this.yDiffTex = yDiffTex;
             this.texture = texture;
-            this.toggleFlag = toggleFlag;
         }
 
         @Override
         public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-            updateTex();
-            int v = this.yTexStart;
-            if (toggleFlag) {
-                v = this.isHoveredOrFocused() ? this.yTexStart + this.yDiffTex : this.yTexStart;
-            } else if (this.isHoveredOrFocused()) {
-                v = this.yTexStart + this.yDiffTex;
-            }
+            int textureY = isHoveredOrFocused() ? 16 : 0;
             RenderSystem.enableBlend();
-            gfx.blit(this.texture, this.getX(), this.getY(), this.xTexStart, v, this.width, this.height, 256, 256);
+            gfx.blit(texture, getX(), getY(), xTexStart, textureY, width, height, 32, 32);
             RenderSystem.disableBlend();
         }
+    }
 
+    private class TexturedButton extends Button {
+        private final BooleanSupplier toggled;
+        private final Runnable releaseAction;
+        private final boolean releaseStyle;
+        private boolean releasePressed;
 
-        private void updateTex() {
-            AbstractHumanCompanionEntity c = safeCompanion().orElse(null);
-            this.yTexStart = this.baseY;
-            switch (name) {
-                case "alert" -> this.xTexStart = flag(c != null && c.isAlert(), 0, 17);
-                case "hunting" -> this.xTexStart = flag(c != null && c.isHunting(), 0, 17);
-                case "sprint" -> this.xTexStart = flag(c != null && c.isSprintEnabled(), 0, 17);
-                case "pickup" -> {
-                    boolean on = c != null && c.isPickupEnabled();
-                    this.xTexStart = 0;
-                    this.yTexStart = on ? this.baseY + 13 : this.baseY;
-                }
-                case "patrolling" -> {
-                    if (c == null) { this.xTexStart = 0; break; }
-                    if (c.isFollowing()) this.xTexStart = 0;
-                    else if (c.isPatrolling()) this.xTexStart = 17;
-                    else this.xTexStart = 34;
-                }
-                case "radius+" -> this.xTexStart = 0;
-                case "radius-" -> this.xTexStart = 17;
-                default -> this.xTexStart = 0;
+        TexturedButton(String label, int x, int y, BooleanSupplier toggled, Runnable onClick) {
+            this(Component.literal(label), x, y, toggled, onClick, false);
+        }
+
+        TexturedButton(Component label, int x, int y, BooleanSupplier toggled, Runnable onClick) {
+            this(label, x, y, toggled, onClick, false);
+        }
+
+        TexturedButton(String label, int x, int y, BooleanSupplier toggled, Runnable onClick, boolean releaseStyle) {
+            this(Component.literal(label), x, y, toggled, onClick, releaseStyle);
+        }
+
+        TexturedButton(Component label, int x, int y, BooleanSupplier toggled, Runnable onClick, boolean releaseStyle) {
+            super(x, y, 48, 16, label, button -> onClick.run(), DEFAULT_NARRATION);
+            this.toggled = toggled;
+            this.releaseAction = onClick;
+            this.releaseStyle = releaseStyle;
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            int textureY = releaseStyle ? (releasePressed ? 64 : 48)
+                    : (toggled.getAsBoolean() ? 32 : (isHoveredOrFocused() ? 16 : 0));
+            RenderSystem.enableBlend();
+            gfx.blit(BUTTONS, getX(), getY(), 0, textureY, width, height, 48, 80);
+            RenderSystem.disableBlend();
+            drawCenteredText(gfx, getMessage(), getX() + width / 2, getY() + 4);
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (!releaseStyle) {
+                return super.mouseClicked(mouseX, mouseY, button);
             }
+            if (button == 0 && active && visible && isMouseOver(mouseX, mouseY)) {
+                releasePressed = true;
+                return true;
+            }
+            return false;
         }
 
-        private int flag(boolean value, int on, int off) {
-            return value ? on : off;
-        }
-    }
-
-    private void renderAttributes(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
-        int x = ATTR_LEFT + 3;
-        int y = ATTR_TOP + 3;
-        int width = (ATTR_RIGHT - ATTR_LEFT) - 6;
-        //gfx.drawString(this.font, Component.literal("Attributes").withStyle(ChatFormatting.UNDERLINE), x, y, 0x000000, false);
-        //y += 10;
-        drawStatLine(gfx, x, y, width, "Strength", companion.getStrength(), isSpecialist(companion, 0));
-        y += 10;
-        drawStatLine(gfx, x, y, width, "Dexterity", companion.getDexterity(), isSpecialist(companion, 1));
-        y += 10;
-        drawStatLine(gfx, x, y, width, "Intelligence", companion.getIntelligence(), isSpecialist(companion, 2));
-        y += 10;
-        drawStatLine(gfx, x, y, width, "Endurance", companion.getEndurance(), isSpecialist(companion, 3));
-    }
-
-    private void drawStatLine(GuiGraphics gfx, int x, int y, int width, String name, int value, boolean highlight) {
-        String line = name + ": " + value + (highlight ? " ★" : "");
-        int color = highlight ? 0xFFD54F : 0x000000;
-        for (FormattedCharSequence seq : this.font.split(Component.literal(line), width)) {
-            gfx.drawString(this.font, seq, x, y, color, false);
-            y += 10;
-            if (y > ATTR_BOTTOM) break;
+        @Override
+        public boolean mouseReleased(double mouseX, double mouseY, int button) {
+            if (!releaseStyle || !releasePressed || button != 0) {
+                return false;
+            }
+            releasePressed = false;
+            if (isMouseOver(mouseX, mouseY)) {
+                releaseAction.run();
+            }
+            return true;
         }
     }
 
-    private boolean isSpecialist(AbstractHumanCompanionEntity companion, int idx) {
-        return companion.getSpecialistAttributeIndex() == idx;
-    }
+    /** Safety switches use the asset's green/off and dark-red/on states. */
+    private class ModeButton extends Button {
+        private final BooleanSupplier enabled;
 
-    private void renderWantedFood(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
-        int foodX = FOOD_LEFT + 2;
-        int foodY = FOOD_TOP + 2;
-        int foodWidth = (FOOD_RIGHT - FOOD_LEFT) - 4;
-        String food = companion.getFoodStatusForGui();
-        if (food.isEmpty()) {
-            food = "Not Hungry";
+        ModeButton(int x, int y, BooleanSupplier enabled, Runnable onClick) {
+            super(x, y, 16, 16, Component.empty(), button -> onClick.run(), DEFAULT_NARRATION);
+            this.enabled = enabled;
         }
-        for (FormattedCharSequence line : this.font.split(Component.literal(food), foodWidth)) {
-            gfx.drawString(this.font, line, foodX, foodY, 0x000000, false);
-            foodY += 10;
-            if (foodY > FOOD_BOTTOM) break; // stay inside strip
+
+        @Override
+        public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            int textureY = enabled.getAsBoolean() ? 64 : 32;
+            RenderSystem.enableBlend();
+            gfx.blit(SMALL_BUTTONS, getX(), getY(), 0, textureY, width, height, 16, 80);
+            RenderSystem.disableBlend();
         }
     }
-
-    private int drawWrappedLine(GuiGraphics gfx, Component text, int x, int y, int width) {
-        int currentY = y;
-        for (FormattedCharSequence seq : this.font.split(text, width)) {
-            gfx.drawString(this.font, seq, x, currentY, 0x000000, false);
-            currentY += 10;
-        }
-        return currentY;
-    }
-
-    private Component traitName(String id) { return Component.empty(); }
-    private Component backstoryName(String id) { return Component.empty(); }
-    private String formatFirstTamed(AbstractHumanCompanionEntity companion) { return ""; }
-    private String formatDistance(long meters) { return ""; }
 }

@@ -3,8 +3,10 @@ package com.majorbonghits.moderncompanions.compat.curios;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.menu.CompanionCuriosMenu;
+import com.majorbonghits.moderncompanions.compat.sophisticatedbackpacks.SophisticatedBackpackCompat;
 import com.majorbonghits.moderncompanions.network.CompanionToggleCurioRenderPayload;
 import com.majorbonghits.moderncompanions.network.OpenCompanionCuriosPayload;
+import com.majorbonghits.moderncompanions.network.OpenCompanionBackpackPayload;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
@@ -23,7 +25,20 @@ public final class CuriosNetwork {
     public static void register(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar(ModernCompanions.MOD_ID);
         registrar.playToServer(OpenCompanionCuriosPayload.TYPE, OpenCompanionCuriosPayload.CODEC, CuriosNetwork::handleOpenCurios)
+                .playToServer(OpenCompanionBackpackPayload.TYPE, OpenCompanionBackpackPayload.CODEC, CuriosNetwork::handleOpenBackpack)
                 .playToServer(CompanionToggleCurioRenderPayload.TYPE, CompanionToggleCurioRenderPayload.CODEC, CuriosNetwork::handleToggleCurioRender);
+    }
+
+    private static void handleOpenBackpack(OpenCompanionBackpackPayload payload, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer serverPlayer)) return;
+            Entity entity = serverPlayer.level().getEntity(payload.entityId());
+            if (entity instanceof AbstractHumanCompanionEntity companion && companion.isOwnedBy(serverPlayer)) {
+                if (!SophisticatedBackpackCompat.open(serverPlayer, companion)) {
+                    serverPlayer.displayClientMessage(Component.translatable("message.modern_companions.no_backpack"), true);
+                }
+            }
+        });
     }
 
     private static void handleOpenCurios(OpenCompanionCuriosPayload payload, IPayloadContext ctx) {
@@ -36,9 +51,9 @@ public final class CuriosNetwork {
                 CuriosApi.getCuriosInventory(companion).ifPresentOrElse(handler -> {
                     serverPlayer.openMenu(new SimpleMenuProvider(
                                     (id, inv, player) -> new CompanionCuriosMenu(id, inv, companion),
-                                    Component.literal("Curios - " + companion.getName().getString())),
+                                    Component.translatable("container.modern_companions.curios", companion.getName())),
                             buf -> buf.writeVarInt(companion.getId()));
-                }, () -> serverPlayer.displayClientMessage(Component.literal("This companion has no curio slots."), true));
+                }, () -> serverPlayer.displayClientMessage(Component.translatable("message.modern_companions.no_curio_slots"), true));
             }
         });
     }

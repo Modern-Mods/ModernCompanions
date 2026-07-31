@@ -21,7 +21,7 @@ public enum BeastmasterPetWthitTooltipProvider implements IEntityComponentProvid
     public void appendBody(ITooltip tooltip, IEntityAccessor accessor, IPluginConfig config) {
         String owner = accessor.getData().raw().getString(BeastmasterPetHudUtil.KEY_OWNER_NAME);
         if (!owner.isEmpty()) {
-            tooltip.addLine(Component.literal("Owner: " + owner));
+            tooltip.addLine(Component.translatable("tooltip.modern_companions.owner", owner));
         }
     }
 }

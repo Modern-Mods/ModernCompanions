@@ -1,13 +1,17 @@
 package com.majorbonghits.moderncompanions.entity;
 
 import com.majorbonghits.moderncompanions.core.ModConfig;
+import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.entity.ai.*;
 import com.majorbonghits.moderncompanions.entity.personality.CompanionPersonality;
+import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.core.ModItems;
 import com.majorbonghits.moderncompanions.core.ModEnchantments;
 import com.majorbonghits.moderncompanions.item.ResurrectionScrollItem;
+import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
+import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -22,6 +26,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
@@ -39,14 +44,25 @@ import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.DiggerItem;
+import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.TieredItem;
+import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -54,15 +70,30 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.LanternBlock;
+import net.minecraft.world.level.block.TorchBlock;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.Container;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.entity.item.ItemEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import com.majorbonghits.moderncompanions.entity.SummonedWitherSkeleton;
 import com.majorbonghits.moderncompanions.core.TagsInit;
+import com.majorbonghits.moderncompanions.entity.job.LumberjackJobGoal;
+import com.majorbonghits.moderncompanions.entity.job.HunterJobGoal;
+import com.majorbonghits.moderncompanions.entity.job.MinerJobGoal;
+import com.majorbonghits.moderncompanions.entity.job.FisherJobGoal;
+import com.majorbonghits.moderncompanions.entity.job.ChefJobGoal;
+import com.majorbonghits.moderncompanions.entity.job.JobReservations;
+import com.majorbonghits.moderncompanions.entity.job.JobPhase;
 
 /**
  * Port of the original AbstractHumanCompanionEntity with taming, leveling,
@@ -78,6 +109,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final EntityDataAccessor<Integer> EXP_LVL = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<String> CUSTOM_SKIN_URL = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> CUSTOM_BIO = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> STR = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
@@ -107,13 +140,23 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> PICKUP_ITEMS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> ALLOW_VILLAGER_HARM = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> ALLOW_PLAYER_HARM = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Optional<BlockPos>> PATROL_POS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.OPTIONAL_BLOCK_POS);
     private static final EntityDataAccessor<Integer> PATROL_RADIUS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Optional<BlockPos>> DELIVERY_CHEST = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.OPTIONAL_BLOCK_POS);
+    private static final EntityDataAccessor<String> DELIVERY_DIMENSION = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> FOOD1 = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> FOOD2 = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> FAVORITE_FOOD = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> FOOD1_AMT = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
@@ -145,6 +188,34 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> AGE_YEARS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> JOB_ID = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> WORK_ENABLED = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<String> JOB_STATUS = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Integer> MINER_ORES_COUNTED = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> MINER_ORES_MINED = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> MINER_ORES_LIFETIME = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> LUMBER_LOGS_SESSION = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> LUMBER_LOGS_LIFETIME = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FISH_CAUGHT_SESSION = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FISH_CAUGHT_LIFETIME = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> STAMINA = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> STAMINA_MAX = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> MANA = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> MANA_MAX = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final ResourceLocation MOD_MORALE_DAMAGE = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "morale_damage");
     private static final ResourceLocation MOD_MORALE_ARMOR = ResourceLocation.fromNamespaceAndPath(
@@ -172,13 +243,22 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final ResourceLocation MOD_TRAIT_MELANCHOLIC = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "trait_melancholic_penalty");
     private static final int FOOD_REQUEST_COOLDOWN_TICKS = 600; // ~30s between requests
+    private static final int STAMINA_MAX_DEFAULT = 100;
+    private static final int MANA_MAX_DEFAULT = 100;
+    private static final int SPRINT_RESUME_STAMINA = 15;
 
-    protected final SimpleContainer inventory = new SimpleContainer(54);
+    // Seven visible rows in the companion menu; saved inventories keep their existing slot indices.
+    protected final SimpleContainer inventory = new SimpleContainer(63);
+    // Vanilla LivingEntity equipment is the single source of truth; only manual locks need extra state.
+    private final boolean[] manuallyEquipped = new boolean[6];
+    private ItemStack savedOffhand = ItemStack.EMPTY;
     protected final Map<Item, Integer> foodRequirements = new HashMap<>();
+    private boolean resourceRequirementResolved;
     protected final Random rand = new Random();
 
     public PatrolGoal patrolGoal;
     public MoveBackToPatrolGoal moveBackGoal;
+    public com.majorbonghits.moderncompanions.entity.job.LumberjackJobGoal lumberjackGoal;
     private int lastFoodRequestTick = -200;
     private int specialistAttr = -1; // 0=STR,1=DEX,2=INT,3=END; -1 none
 
@@ -198,11 +278,35 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     private int equipmentStrengthBonus;
     private int equipmentDexterityBonus;
+    private ItemStack cachedPatrolWeapon = ItemStack.EMPTY; // weapon the companion held before swapping to job tool
+    private ItemStack cachedPatrolTool = ItemStack.EMPTY;   // tool currently borrowed from inventory while patrolling
+    private int cachedPatrolToolSlot = -1;                  // original slot of the borrowed tool so we can return it
     private int equipmentIntelligenceBonus;
     private int equipmentEnduranceBonus;
+    // Miner persistent memory: ore positions catalogued during patrol session
+    private java.util.List<BlockPos> minerOreMemory = new java.util.ArrayList<>();
+    private int minerOreIndex = 0;
+    private BlockPos minerPlanCenter = BlockPos.ZERO;
+    private int minerPlanRadius = 0;
+    private int minerPlanUp = 0;
+    private int minerPlanDown = 0;
+
+    private net.minecraft.world.level.ChunkPos forcedChestChunk;
+    private ResourceKey<Level> forcedChestDimension;
+    private long lastCourierMessageTick = -200L;
+    private boolean forceDeliverRequest;
+    private long lastDeliveryGameTime = -24000L;
+    // Only durable job facts survive saves; goals rebuild paths and scan cursors on resume.
+    private JobPhase jobCheckpointPhase = JobPhase.SEARCHING;
+    @Nullable private BlockPos jobCheckpointTarget;
+    @Nullable private BlockPos jobCheckpointReturn;
+    private int committedSwimTicks;
+    private net.minecraft.world.phys.Vec3 committedSwimDir = net.minecraft.world.phys.Vec3.ZERO;
 
     // Client-side tracking of the last swing tick we already applied locally.
     private int lastAppliedSwingTick = -1;
+    private int combatGraceTicks;
+    private int lastExhaustedMeleeTick = -100;
 
     private static final ResourceLocation PREFERRED_WEAPON_MOD = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "preferred_weapon_bonus");
@@ -214,6 +318,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             nav.setCanOpenDoors(true);
             nav.setCanFloat(true);
         }
+        this.setPathfindingMalus(PathType.WATER, 0.0F);
+        this.setPathfindingMalus(PathType.WATER_BORDER, 0.0F);
     }
 
     /* ---------- Registration ---------- */
@@ -246,10 +352,18 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(GUARDING, false);
         builder.define(SPRINT_ENABLED, false);
         builder.define(PICKUP_ITEMS, true);
+        builder.define(ALLOW_VILLAGER_HARM, false);
+        builder.define(ALLOW_PLAYER_HARM, false);
         builder.define(PATROL_POS, Optional.empty());
         builder.define(PATROL_RADIUS, 10);
+        builder.define(DELIVERY_CHEST, Optional.empty());
+        builder.define(DELIVERY_DIMENSION, "");
+        if (minerOreMemory == null) minerOreMemory = new java.util.ArrayList<>();
+        minerOreMemory.clear();
+        minerOreIndex = 0;
         builder.define(FOOD1, "");
         builder.define(FOOD2, "");
+        builder.define(FAVORITE_FOOD, "");
         builder.define(FOOD1_AMT, 0);
         builder.define(FOOD2_AMT, 0);
         builder.define(EXP_PROGRESS, 0.0F);
@@ -271,7 +385,22 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(MAJOR_KILLS, 0);
         builder.define(AGE_YEARS, 0);
         builder.define(CUSTOM_SKIN_URL, "");
+        builder.define(CUSTOM_BIO, "");
         builder.define(LAST_SWING_TICK, 0);
+        builder.define(JOB_ID, CompanionJob.NONE.id());
+        builder.define(WORK_ENABLED, false);
+        builder.define(JOB_STATUS, "job_status.modern_companions.idle");
+        builder.define(MINER_ORES_COUNTED, 0);
+        builder.define(MINER_ORES_MINED, 0);
+        builder.define(MINER_ORES_LIFETIME, 0);
+        builder.define(LUMBER_LOGS_SESSION, 0);
+        builder.define(LUMBER_LOGS_LIFETIME, 0);
+        builder.define(FISH_CAUGHT_SESSION, 0);
+        builder.define(FISH_CAUGHT_LIFETIME, 0);
+        builder.define(STAMINA_MAX, STAMINA_MAX_DEFAULT);
+        builder.define(STAMINA, STAMINA_MAX_DEFAULT);
+        builder.define(MANA_MAX, MANA_MAX_DEFAULT);
+        builder.define(MANA, MANA_MAX_DEFAULT);
     }
 
     @Override
@@ -295,14 +424,37 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(0, new EatGoal(this));
         this.goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
+        this.goalSelector.addGoal(2, new FirearmAttackGoal(this));
         this.goalSelector.addGoal(2, new AvoidCreeperGoal(this, 1.5D, 1.5D));
         this.goalSelector.addGoal(3, new MoveBackToGuardGoal(this));
-        this.goalSelector.addGoal(3, new CustomFollowOwnerGoal(this, followSpeed(), followStartDistance(), followStopDistance(), true));
-        this.goalSelector.addGoal(4, new CustomWaterAvoidingRandomStrollGoal(this, 1.0D));
-        this.goalSelector.addGoal(5, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(6, new RandomLookAroundGoal(this));
-        this.goalSelector.addGoal(7, new OpenDoorGoal(this, true));
-        this.goalSelector.addGoal(8, new LowHealthGoal(this));
+        this.goalSelector.addGoal(3, new CustomFollowOwnerGoal(this, followSpeed(), true));
+        this.goalSelector.addGoal(4, new DeliverToChestGoal(this, 1.1D));
+        if (ModConfig.safeGet(ModConfig.JOB_LUMBERJACK_ENABLED)) {
+            int radius = ModConfig.safeGet(ModConfig.JOB_LUMBERJACK_RADIUS);
+            this.lumberjackGoal = new LumberjackJobGoal(this, radius, true);
+            this.goalSelector.addGoal(5, lumberjackGoal);
+        }
+        if (ModConfig.safeGet(ModConfig.JOB_MINER_ENABLED)) {
+            int radius = ModConfig.safeGet(ModConfig.JOB_MINER_RADIUS);
+            this.goalSelector.addGoal(6, new MinerJobGoal(this, radius, true));
+        }
+        if (ModConfig.safeGet(ModConfig.JOB_FISHER_ENABLED)) {
+            int radius = ModConfig.safeGet(ModConfig.JOB_FISHER_RADIUS);
+            this.goalSelector.addGoal(7, new FisherJobGoal(this, radius, true));
+        }
+        if (ModConfig.safeGet(ModConfig.JOB_CHEF_ENABLED)) {
+            int radius = ModConfig.safeGet(ModConfig.JOB_CHEF_RADIUS);
+            this.goalSelector.addGoal(8, new ChefJobGoal(this, radius, true));
+        }
+        if (ModConfig.safeGet(ModConfig.JOB_HUNTER_ENABLED)) {
+            int radius = ModConfig.safeGet(ModConfig.JOB_HUNTER_RADIUS);
+            this.goalSelector.addGoal(9, new HunterJobGoal(this, radius, true));
+        }
+        this.goalSelector.addGoal(10, new CustomWaterAvoidingRandomStrollGoal(this, 1.0D));
+        this.goalSelector.addGoal(11, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(12, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(13, new OpenDoorGoal(this, true));
+        this.goalSelector.addGoal(14, new LowHealthGoal(this));
         patrolGoal = new PatrolGoal(this, 60, getPatrolRadius());
         moveBackGoal = new MoveBackToPatrolGoal(this, getPatrolRadius());
         this.goalSelector.addGoal(3, moveBackGoal);
@@ -344,6 +496,465 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     /* ---------- Flags & helpers ---------- */
 
+    /**
+     * Current job assignment. Job enum lives in a dedicated package so UI, NBT,
+     * and AI goals can share the same identifiers. Set via SetCompanionJobPayload
+     * from the CompanionScreen cycle button.
+     */
+    public CompanionJob getJob() {
+        return CompanionJob.fromId(this.entityData.get(JOB_ID));
+    }
+
+    public void setJob(CompanionJob job) {
+        CompanionJob safeJob = job == null ? CompanionJob.NONE : job;
+        if (safeJob != getJob() && this.level() instanceof ServerLevel level) {
+            JobReservations.release(level, this.getUUID());
+            this.entityData.set(WORK_ENABLED, false);
+            clearJobCheckpoint();
+        }
+        this.entityData.set(JOB_ID, safeJob.id());
+        if (safeJob == CompanionJob.NONE) {
+            this.entityData.set(WORK_ENABLED, false);
+            this.entityData.set(JOB_STATUS, "job_status.modern_companions.idle");
+        }
+    }
+
+    /** Server-synchronized profession gate; paused work retains each goal's checkpoint. */
+    public boolean isWorkEnabled() {
+        return getJob() != CompanionJob.NONE && this.entityData.get(WORK_ENABLED);
+    }
+
+    public void setWorkEnabled(boolean enabled) {
+        boolean active = enabled && getJob() != CompanionJob.NONE;
+        this.entityData.set(WORK_ENABLED, active);
+        if (active) {
+            // Work owns movement; player Follow/Patrol orders must not compete with job goals.
+            setFollowing(false);
+            setPatrolling(false);
+            setGuarding(false);
+            setJobStatus(getWorkCenter().isPresent() ? "job_status.modern_companions.searching" : "job_status.modern_companions.assign_chest");
+        } else if (getJob() != CompanionJob.NONE) {
+            this.getNavigation().stop();
+            if (getJob() == CompanionJob.HUNTER) setHunting(false);
+            checkpointJob(JobPhase.PAUSED, jobCheckpointTarget);
+            setJobStatus("job_status.modern_companions.paused");
+        }
+    }
+
+    /** Jobs use their Assignment-Wand chest as center; patrol radius remains Work radius. */
+    public Optional<BlockPos> getWorkCenter() {
+        Optional<ResourceKey<Level>> dimension = getAssignedChestDimension();
+        if (this.level() == null || dimension.isEmpty() || !this.level().dimension().equals(dimension.get())) return Optional.empty();
+        return getAssignedChest();
+    }
+
+    public boolean isInWorkArea(BlockPos pos) {
+        return getWorkCenter().filter(center -> center.distSqr(pos) <= (long) getPatrolRadius() * getPatrolRadius()).isPresent();
+    }
+
+    public JobPhase getJobCheckpointPhase() {
+        return jobCheckpointPhase;
+    }
+
+    public Optional<BlockPos> getJobCheckpointTarget() {
+        return Optional.ofNullable(jobCheckpointTarget);
+    }
+
+    public void checkpointJob(JobPhase phase, @Nullable BlockPos target) {
+        jobCheckpointPhase = phase == null ? JobPhase.SEARCHING : phase;
+        jobCheckpointTarget = target == null ? null : target.immutable();
+        jobCheckpointReturn = this.blockPosition().immutable();
+    }
+
+    private void clearJobCheckpoint() {
+        jobCheckpointPhase = JobPhase.SEARCHING;
+        jobCheckpointTarget = null;
+        jobCheckpointReturn = null;
+    }
+
+    public String getJobStatus() {
+        return this.entityData.get(JOB_STATUS);
+    }
+
+    public void setJobStatus(String status) {
+        this.entityData.set(JOB_STATUS, status == null || status.isBlank()
+                ? "job_status.modern_companions.idle"
+                : status.substring(0, Math.min(128, status.length())));
+    }
+
+    public Component getJobStatusComponent() {
+        String status = getJobStatus();
+        return status.startsWith("job_status.") ? Component.translatable(status) : Component.translatable("job_status.modern_companions.idle");
+    }
+
+    /**
+     * Re-sync any secondary flags that depend on job selection. This keeps legacy
+     * hunt/alert toggles aligned with the new job pipeline until the dedicated job
+     * goals take over more behavior.
+     */
+    public void onJobChanged() {
+        if (this.level() == null || this.level().isClientSide()) {
+            return;
+        }
+        CompanionJob job = getJob();
+        if (job == CompanionJob.NONE) {
+            // NONE is an explicit return to regular companion behavior.
+            setPatrolling(false);
+            setGuarding(false);
+            setWorkEnabled(false);
+        } else {
+            // Job territory is bound later by Assignment Wand, never by an independent Patrol order.
+            setPatrolling(false);
+            setFollowing(false);
+            equipJobToolIfNeeded();
+            if (!isWorkEnabled()) setJobStatus("job_status.modern_companions.paused");
+        }
+        if (job != CompanionJob.HUNTER && isHunting()) {
+            setHunting(false);
+        }
+
+        // Reset per-session stats when a job is selected.
+        switch (job) {
+            case MINER -> {
+                setMinerOresCounted(0);
+                setMinerOresMined(0);
+            }
+            case LUMBERJACK -> setLumberLogsSession(0);
+            case FISHER -> setFishCaughtSession(0);
+            default -> {
+            }
+        }
+    }
+
+    /* ---------- Courier / chest assignment ---------- */
+
+    public Optional<BlockPos> getAssignedChest() {
+        return this.entityData.get(DELIVERY_CHEST);
+    }
+
+    public Optional<ResourceKey<Level>> getAssignedChestDimension() {
+        String raw = this.entityData.get(DELIVERY_DIMENSION);
+        if (raw == null || raw.isBlank()) return Optional.empty();
+        try {
+            return Optional.of(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(raw)));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+    }
+
+    public void assignDeliveryChest(ServerLevel level, BlockPos pos) {
+        releaseDeliveryChunkTicket(level);
+        this.entityData.set(DELIVERY_CHEST, Optional.of(pos.immutable()));
+        this.entityData.set(DELIVERY_DIMENSION, level.dimension().location().toString());
+        refreshDeliveryChunkTicket(level);
+    }
+
+    public void clearDeliveryChest(ServerLevel level) {
+        releaseDeliveryChunkTicket(level);
+        this.entityData.set(DELIVERY_CHEST, Optional.empty());
+        this.entityData.set(DELIVERY_DIMENSION, "");
+    }
+
+    public boolean hasDeliverableCargo() {
+        List<ItemStack> reservedEquipment = collectEquippedStacks();
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.getItem(i);
+            if (stack.isEmpty()) continue;
+            if (reserveForEquippedCopy(stack, reservedEquipment)) continue;
+            if (shouldRetainForUse(stack) || getJob() == CompanionJob.LUMBERJACK && isSaplingItem(stack)) continue;
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isInventoryFull() {
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            if (this.inventory.getItem(i).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean requestImmediateDelivery(@Nullable ServerPlayer requester) {
+        if (getAssignedChest().isEmpty()) {
+            if (requester != null) {
+                requester.sendSystemMessage(Component.translatable("message.modern_companions.courier.no_chest"));
+            }
+            return false;
+        }
+        this.forceDeliverRequest = true;
+        this.setTarget(null);
+        if (this.getNavigation() != null) {
+            this.getNavigation().stop();
+        }
+        return true;
+    }
+
+    public DeliveryResult deliverInventoryToChest(ServerLevel level, BlockPos chestPos) {
+        Container container = resolveChestContainer(level, chestPos);
+        net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
+                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, chestPos, null);
+        if (container == null && handler == null) {
+            return DeliveryResult.MISSING;
+        }
+
+        List<ItemStack> reservedEquipment = collectEquippedStacks();
+        boolean movedAny = false;
+
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.getItem(i);
+            if (stack.isEmpty()) continue;
+            if (reserveForEquippedCopy(stack, reservedEquipment)) continue;
+
+            if (shouldRetainForUse(stack)) continue;
+            if (getJob() == CompanionJob.LUMBERJACK && isSaplingItem(stack)) continue;
+
+            ItemStack toMove = stack.copy();
+            ItemStack remainder = handler != null
+                    ? net.neoforged.neoforge.items.ItemHandlerHelper.insertItemStacked(handler, toMove, false)
+                    : insertIntoContainer(container, toMove);
+            if (remainder.getCount() != toMove.getCount()) {
+                movedAny = true;
+            }
+            this.inventory.setItem(i, remainder);
+        }
+
+        if (container instanceof net.minecraft.world.level.block.entity.BlockEntity blockEntity) {
+            blockEntity.setChanged();
+        }
+        this.inventory.setChanged();
+
+        this.lastDeliveryGameTime = level.getGameTime();
+        onDeliveryFinished(movedAny ? DeliveryResult.SUCCESS : DeliveryResult.FULL);
+
+        return movedAny ? DeliveryResult.SUCCESS : DeliveryResult.FULL;
+    }
+
+    /** Caller must already be at an approved chest stand; this only performs one safe inventory transfer. */
+    public ItemStack withdrawOneFromChest(ServerLevel level, BlockPos chestPos, java.util.function.Predicate<ItemStack> accepted) {
+        if (!level.isLoaded(chestPos)) return ItemStack.EMPTY;
+        net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
+                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, chestPos, null);
+        if (handler != null) {
+            for (int slot = 0; slot < handler.getSlots(); slot++) {
+                ItemStack stack = handler.getStackInSlot(slot);
+                if (!stack.isEmpty() && accepted.test(stack) && canStoreInInventory(stack)) {
+                    return handler.extractItem(slot, 1, false);
+                }
+            }
+            return ItemStack.EMPTY;
+        }
+        Container container = resolveChestContainer(level, chestPos);
+        if (container == null) return ItemStack.EMPTY;
+        for (int slot = 0; slot < container.getContainerSize(); slot++) {
+            ItemStack stack = container.getItem(slot);
+            if (!stack.isEmpty() && accepted.test(stack) && canStoreInInventory(stack)) {
+                return container.removeItem(slot, 1);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private Container resolveChestContainer(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof ChestBlock) {
+            Container chest = ChestBlock.getContainer((ChestBlock) state.getBlock(), state, level, pos, true);
+            if (chest != null) return chest;
+        }
+        var be = level.getBlockEntity(pos);
+        if (be instanceof Container container) {
+            return container;
+        }
+        return null;
+    }
+
+    private void onDeliveryFinished(DeliveryResult result) {
+        if (result == DeliveryResult.SUCCESS) {
+            clearForceDeliverRequest();
+        }
+    }
+
+    public void refreshDeliveryChunkTicket(ServerLevel level) {
+        if (!ModConfig.safeGet(ModConfig.JOB_ASSIGNED_CHESTS_CHUNKLOAD)) {
+            releaseDeliveryChunkTicket(level);
+            return;
+        }
+        Optional<BlockPos> pos = getAssignedChest();
+        Optional<ResourceKey<Level>> dim = getAssignedChestDimension();
+        if (pos.isEmpty() || dim.isEmpty()) return;
+        if (!level.dimension().equals(dim.get())) return;
+
+        ChunkPos chunkPos = new ChunkPos(pos.get());
+        releaseDeliveryChunkTicket(level);
+        level.getChunkSource().addRegionTicket(TicketType.FORCED, chunkPos, 1, chunkPos);
+        forcedChestChunk = chunkPos;
+        forcedChestDimension = dim.get();
+    }
+
+    private void releaseDeliveryChunkTicket(@Nullable ServerLevel level) {
+        if (forcedChestChunk == null || level == null) return;
+        if (forcedChestDimension != null && !level.dimension().equals(forcedChestDimension)) return;
+        level.getChunkSource().removeRegionTicket(TicketType.FORCED, forcedChestChunk, 1, forcedChestChunk);
+        forcedChestChunk = null;
+        forcedChestDimension = null;
+    }
+
+    public void alertChestUnloaded() {
+        notifyCourierOwnerText(Component.translatable("message.modern_companions.courier.unloaded"));
+    }
+
+    public void notifyCourierOwnerText(Component message) {
+        notifyCourierOwner(message, 80);
+    }
+
+    public boolean isForceDeliverRequested() {
+        return this.forceDeliverRequest;
+    }
+
+    public void clearForceDeliverRequest() {
+        this.forceDeliverRequest = false;
+    }
+
+    private void notifyCourierOwner(Component message, int cooldownTicks) {
+        if (!(this.level() instanceof ServerLevel server)) return;
+        long now = server.getGameTime();
+        if (now - lastCourierMessageTick < cooldownTicks) return;
+        lastCourierMessageTick = now;
+        if (this.getOwner() instanceof ServerPlayer owner) {
+            owner.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), message));
+        }
+    }
+
+    private List<ItemStack> collectEquippedStacks() {
+        List<ItemStack> equipped = new ArrayList<>();
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            ItemStack stack = this.getItemBySlot(slot);
+            if (!stack.isEmpty()) {
+                equipped.add(stack.copy());
+            }
+        }
+        return equipped;
+    }
+
+    private boolean reserveForEquippedCopy(ItemStack stack, List<ItemStack> reserved) {
+        for (int i = 0; i < reserved.size(); i++) {
+            ItemStack equipped = reserved.get(i);
+            if (ItemStack.isSameItemSameComponents(stack, equipped)) {
+                reserved.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private ItemStack insertIntoContainer(Container container, ItemStack stack) {
+        ItemStack remaining = stack;
+        for (int slot = 0; slot < container.getContainerSize() && !remaining.isEmpty(); slot++) {
+            ItemStack target = container.getItem(slot);
+            if (target.isEmpty()) {
+                int move = Math.min(remaining.getCount(), Math.min(remaining.getMaxStackSize(), container.getMaxStackSize()));
+                ItemStack placed = remaining.copyWithCount(move);
+                container.setItem(slot, placed);
+                remaining.shrink(move);
+                continue;
+            }
+            if (ItemStack.isSameItemSameComponents(target, remaining)) {
+                int max = Math.min(target.getMaxStackSize(), container.getMaxStackSize());
+                int space = max - target.getCount();
+                if (space > 0) {
+                    int move = Math.min(space, remaining.getCount());
+                    target.grow(move);
+                    remaining.shrink(move);
+                }
+            }
+        }
+        return remaining;
+    }
+
+    public enum DeliveryResult {
+        SUCCESS,
+        FULL,
+        MISSING
+    }
+
+    public long getLastDeliveryGameTime() {
+        return lastDeliveryGameTime;
+    }
+
+    private boolean shouldRetainForUse(ItemStack stack) {
+        if (stack.isEmpty()) return true;
+        if (CompanionData.isFood(stack) || stack.has(net.minecraft.core.component.DataComponents.POTION_CONTENTS)) return true;
+        if (stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem
+                || stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem) {
+            return true; // keep primary weapons
+        }
+        return false;
+    }
+
+    private boolean isSaplingItem(ItemStack stack) {
+        var block = net.minecraft.world.level.block.Block.byItem(stack.getItem());
+        if (block == net.minecraft.world.level.block.Blocks.AIR) return false;
+        BlockState state = block.defaultBlockState();
+        return state.is(BlockTags.SAPLINGS);
+    }
+
+    private void boostWaterMovement() {
+        if (!this.isInWater()) {
+            if (this.isSwimming()) this.setSwimming(false);
+            committedSwimTicks = 0;
+            return;
+        }
+        this.setSwimming(true);
+        var grace = this.getEffect(MobEffects.DOLPHINS_GRACE);
+        if (grace == null || grace.getDuration() <= 20) {
+            this.addEffect(new MobEffectInstance(MobEffects.DOLPHINS_GRACE, 100, 0, true, false, false));
+        }
+
+        if (committedSwimTicks <= 0) {
+            committedSwimTicks = 200; // ~10 seconds before reconsidering
+            committedSwimDir = currentSwimVector();
+        }
+
+        if (committedSwimTicks > 0) {
+            double push = 1.25D;
+            this.getMoveControl().setWantedPosition(
+                    this.getX() + committedSwimDir.x * 1.8D,
+                    this.getY() + committedSwimDir.y * 0.15D,
+                    this.getZ() + committedSwimDir.z * 1.8D,
+                    push);
+        }
+    }
+
+    private void tickCommittedSwim() {
+        if (committedSwimTicks > 0) {
+            committedSwimTicks--;
+            if (this.getNavigation() instanceof GroundPathNavigation nav && !nav.isDone()) {
+                nav.setSpeedModifier(1.25D);
+            }
+        }
+    }
+
+    private net.minecraft.world.phys.Vec3 currentSwimVector() {
+        if (this.getNavigation() != null && this.getNavigation().getPath() != null) {
+            var path = this.getNavigation().getPath();
+            if (!path.isDone()) {
+                var next = path.getNextNodePos();
+                if (next != null) {
+                    net.minecraft.world.phys.Vec3 dir = net.minecraft.world.phys.Vec3.atCenterOf(next).subtract(this.position());
+                    if (dir.lengthSqr() > 0.0001D) {
+                        return dir.normalize();
+                    }
+                }
+            }
+        }
+        net.minecraft.world.phys.Vec3 look = this.getLookAngle();
+        if (look.lengthSqr() < 0.0001D) {
+            return new net.minecraft.world.phys.Vec3(0, 0, 1);
+        }
+        return look.normalize();
+    }
+
     public boolean isFollowing() {
         return this.entityData.get(FOLLOWING);
     }
@@ -357,7 +968,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     public void setPatrolling(boolean value) {
+        boolean was = this.entityData.get(PATROLLING);
         this.entityData.set(PATROLLING, value);
+        if (!was && value) {
+            cachePatrolWeapon();
+            equipJobToolIfNeeded();
+        } else if (was && !value) {
+            restoreCachedWeapon();
+        }
     }
 
     public boolean isGuarding() {
@@ -368,12 +986,114 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(GUARDING, value);
     }
 
+    private void cachePatrolWeapon() {
+        ItemStack main = this.getMainHandItem();
+        cachedPatrolWeapon = main.isEmpty() ? ItemStack.EMPTY : main.copy();
+        if (!main.isEmpty()) {
+            // Hold onto a copy while we visually equip tools; clear the hand.
+            this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        }
+    }
+
+    private void restoreCachedWeapon() {
+        // Tool stayed in inventory; just clear cached refs.
+        cachedPatrolTool = ItemStack.EMPTY;
+        cachedPatrolToolSlot = -1;
+
+        if (!cachedPatrolWeapon.isEmpty()) {
+            this.setItemSlot(EquipmentSlot.MAINHAND, cachedPatrolWeapon);
+            cachedPatrolWeapon = ItemStack.EMPTY;
+        }
+    }
+
+    private void equipJobToolIfNeeded() {
+        CompanionJob job = getJob();
+        if (job == CompanionJob.NONE || !isPatrolling()) return;
+        if (job == CompanionJob.HUNTER && !cachedPatrolWeapon.isEmpty()) {
+            setItemSlot(EquipmentSlot.MAINHAND, cachedPatrolWeapon);
+            return;
+        }
+        ItemStack current = this.getMainHandItem();
+        if (isJobTool(current, job)) {
+            // Already holding a tool; remember it so we can return it later if we missed caching.
+            if (cachedPatrolTool.isEmpty()) {
+                cachedPatrolTool = current;
+            }
+            return;
+        }
+        int slot = findJobToolSlot(job);
+        if (slot < 0) return;
+
+        ItemStack tool = this.getInventory().getItem(slot);
+        if (tool.isEmpty()) return;
+
+        // Place the same stack in hand without removing it from the inventory slot.
+        // Sharing the instance keeps durability updates visible while leaving the tool visible in the GUI.
+        this.setItemSlot(EquipmentSlot.MAINHAND, tool);
+        cachedPatrolToolSlot = slot;
+        cachedPatrolTool = tool;
+    }
+
+    private boolean isJobTool(ItemStack stack, CompanionJob job) {
+        return switch (job) {
+            case LUMBERJACK -> stack.getItem() instanceof net.minecraft.world.item.AxeItem;
+            case MINER -> stack.getItem() instanceof net.minecraft.world.item.PickaxeItem;
+            case FISHER -> stack.getItem() instanceof net.minecraft.world.item.FishingRodItem;
+            case HUNTER -> stack.getItem() instanceof net.minecraft.world.item.SwordItem
+                    || stack.getItem() instanceof net.minecraft.world.item.AxeItem
+                    || stack.getItem() instanceof net.minecraft.world.item.BowItem
+                    || stack.getItem() instanceof net.minecraft.world.item.CrossbowItem;
+            default -> false;
+        };
+    }
+
+    /**
+     * Remove a single matching stack from the companion inventory so we avoid duplicating
+     * weapons/tools when swapping in and out of patrol mode.
+     */
+    private boolean removeOneMatchingFromInventory(ItemStack match) {
+        for (int i = 0; i < this.getInventory().getContainerSize(); i++) {
+            ItemStack stack = this.getInventory().getItem(i);
+            if (ItemStack.isSameItemSameComponents(stack, match)) {
+                this.getInventory().removeItem(i, 1);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int findJobToolSlot(CompanionJob job) {
+        for (int i = 0; i < this.getInventory().getContainerSize(); i++) {
+            ItemStack stack = this.getInventory().getItem(i);
+            if (isJobTool(stack, job)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public boolean isPickupEnabled() {
         return this.entityData.get(PICKUP_ITEMS);
     }
 
     public void setPickupEnabled(boolean value) {
         this.entityData.set(PICKUP_ITEMS, value);
+    }
+
+    public boolean canHarmVillagers() {
+        return this.entityData.get(ALLOW_VILLAGER_HARM);
+    }
+
+    public void setCanHarmVillagers(boolean value) {
+        this.entityData.set(ALLOW_VILLAGER_HARM, value);
+    }
+
+    public boolean canHarmPlayers() {
+        return this.entityData.get(ALLOW_PLAYER_HARM);
+    }
+
+    public void setCanHarmPlayers(boolean value) {
+        this.entityData.set(ALLOW_PLAYER_HARM, value);
     }
 
     public boolean isSprintEnabled() {
@@ -415,26 +1135,20 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     /**
      * Human-readable class label derived from the entity registry name.
      */
-    public String getClassDisplayName() {
+    public Component getClassDisplayName() {
         var key = BuiltInRegistries.ENTITY_TYPE.getKey(this.getType());
         if (key == null)
-            return "Companion";
-        String path = key.getPath().replace('_', ' ');
-        StringBuilder builder = new StringBuilder();
-        for (String part : path.split(" ")) {
-            if (part.isEmpty())
-                continue;
-            builder.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1)).append(' ');
-        }
-        return builder.toString().trim();
+            return Component.translatable("entity.modern_companions.companion");
+        return Component.translatable("entity." + key.getNamespace() + "." + key.getPath());
     }
 
     public void setPatrolRadius(int radius) {
-        this.entityData.set(PATROL_RADIUS, Mth.clamp(radius, 1, 64));
+        int clamped = Mth.clamp(radius, 1, 128);
+        this.entityData.set(PATROL_RADIUS, clamped);
         if (patrolGoal != null)
-            patrolGoal.radius = radius;
+            patrolGoal.radius = clamped;
         if (moveBackGoal != null)
-            moveBackGoal.radius = radius;
+            moveBackGoal.radius = clamped;
     }
 
     public void clearPatrol() {
@@ -443,38 +1157,265 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         setPatrolRadius(4);
     }
 
-    public String getFoodStatus() {
-        String f1 = entityData.get(FOOD1_AMT) > 0 ? entityData.get(FOOD1_AMT) + "x " + entityData.get(FOOD1) : "done";
-        String f2 = entityData.get(FOOD2_AMT) > 0 ? entityData.get(FOOD2_AMT) + "x " + entityData.get(FOOD2) : "done";
-        return "Wants: " + f1 + " and " + f2;
+    public Component getFoodStatus() {
+        Component f1 = foodRequirementComponent(entityData.get(FOOD1), entityData.get(FOOD1_AMT));
+        Component f2 = foodRequirementComponent(entityData.get(FOOD2), entityData.get(FOOD2_AMT));
+        return Component.translatable("food.modern_companions.wants", f1, f2);
     }
 
-    public String getFoodStatusForGui() {
+    public Component getFoodStatusForGui() {
         if (!this.isTame()) {
             return getWantedFoodsCompact();
         }
         if (this.getHealth() < this.getMaxHealth() - 0.5F) {
-            return hasFoodInInventory() ? "Healing..." : "Needs food to heal";
+            return hasFoodInInventory()
+                    ? Component.translatable("gui.modern_companions.food.healing")
+                    : Component.translatable("gui.modern_companions.food.needs_heal");
         }
-        return "";
+        return Component.empty();
     }
 
-    public String getWantedFoodsCompact() {
+    public Component getFavoriteFoodName() {
+        String id = this.entityData.get(FAVORITE_FOOD);
+        ResourceLocation key = ResourceLocation.tryParse(id);
+        return key == null ? Component.translatable("gui.modern_companions.memory.unknown") : BuiltInRegistries.ITEM.get(key).getDescription();
+    }
+
+    public boolean isFavoriteFood(ItemStack stack) {
+        return !stack.isEmpty() && BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(this.entityData.get(FAVORITE_FOOD));
+    }
+
+    private void assignFavoriteFood() {
+        Item favorite = CompanionData.ALL_FOODS[this.random.nextInt(CompanionData.ALL_FOODS.length)];
+        this.entityData.set(FAVORITE_FOOD, BuiltInRegistries.ITEM.getKey(favorite).toString());
+    }
+
+    public Component getWantedFoodsCompact() {
         int amt1 = entityData.get(FOOD1_AMT);
         int amt2 = entityData.get(FOOD2_AMT);
         String id1 = entityData.get(FOOD1);
         String id2 = entityData.get(FOOD2);
-        String first = amt1 > 0 ? amt1 + "x " + prettyItemName(id1) : "";
-        String second = amt2 > 0 ? amt2 + "x " + prettyItemName(id2) : "";
-        if (first.isEmpty() && second.isEmpty())
-            return "";
-        if (!first.isEmpty() && !second.isEmpty())
-            return first + ", " + second;
-        return first + second;
+        Component first = foodRequirementComponent(id1, amt1);
+        Component second = foodRequirementComponent(id2, amt2);
+        if (amt1 <= 0 && amt2 <= 0) return Component.empty();
+        if (amt1 > 0 && amt2 > 0) return Component.translatable("food.modern_companions.compact.both", first, second);
+        return amt1 > 0 ? first : second;
+    }
+
+    private Component foodRequirementComponent(String id, int amount) {
+        return amount > 0
+                ? Component.translatable("food.modern_companions.item_amount", amount, prettyItemComponent(id))
+                : Component.translatable("food.modern_companions.done");
+    }
+
+    private Component prettyItemComponent(String id) {
+        ResourceLocation resource = ResourceLocation.tryParse(id);
+        if (resource == null) return Component.literal(id);
+        return BuiltInRegistries.ITEM.get(resource).getDescription();
     }
 
     public SimpleContainer getInventory() {
         return inventory;
+    }
+
+    private boolean hasDedicatedEquipment(EquipmentSlot slot) {
+        int index = dedicatedEquipmentIndex(slot);
+        return manuallyEquipped[index] && !super.getItemBySlot(slot).isEmpty();
+    }
+
+    private int dedicatedEquipmentIndex(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> 0;
+            case CHEST -> 1;
+            case LEGS -> 2;
+            case FEET -> 3;
+            case MAINHAND -> 4;
+            case OFFHAND -> 5;
+            default -> throw new IllegalArgumentException("Unsupported companion equipment slot: " + slot);
+        };
+    }
+
+    /** Manual slots are locks; automatic equipment continues to use the live entity slot. */
+    public void setManualEquipment(EquipmentSlot slot, ItemStack stack) {
+        if (!canEquipInSlot(slot, stack)) return;
+        int index = dedicatedEquipmentIndex(slot);
+        manuallyEquipped[index] = !stack.isEmpty();
+        super.setItemSlot(slot, stack.copy());
+    }
+
+    /** Removes gear through the same live slot used by rendering and vanilla NBT. */
+    public ItemStack removeEquipment(EquipmentSlot slot, int amount) {
+        ItemStack current = super.getItemBySlot(slot);
+        if (current.isEmpty()) return ItemStack.EMPTY;
+        ItemStack removed = current.split(amount);
+        super.setItemSlot(slot, current);
+        if (current.isEmpty()) manuallyEquipped[dedicatedEquipmentIndex(slot)] = false;
+        return removed;
+    }
+
+    /** Food is held only for the existing eat animation, then the saved offhand returns. */
+    public void setTemporaryOffhandItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            super.setItemSlot(EquipmentSlot.OFFHAND, savedOffhand);
+            savedOffhand = ItemStack.EMPTY;
+        } else {
+            if (savedOffhand.isEmpty()) savedOffhand = super.getItemBySlot(EquipmentSlot.OFFHAND).copy();
+            super.setItemSlot(EquipmentSlot.OFFHAND, stack);
+        }
+    }
+
+    /** Hand slots only accept usable gear; cargo and consumables stay in the companion inventory. */
+    public boolean canEquipInSlot(EquipmentSlot slot, ItemStack stack) {
+        if (stack.isEmpty()) return true;
+        if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
+            return stack.getItem() instanceof ArmorItem armor && armor.getEquipmentSlot() == slot;
+        }
+        return switch (slot) {
+            case MAINHAND -> isMainHandEquipment(stack) && (!FirearmSupport.isFirearm(stack) || isFirearmAllowed(stack));
+            case OFFHAND -> isShieldItem(stack) || stack.getItem() instanceof BlockItem blockItem
+                    && (blockItem.getBlock() instanceof TorchBlock || blockItem.getBlock() instanceof LanternBlock);
+            default -> false;
+        };
+    }
+
+    @Override
+    public void setItemSlot(EquipmentSlot slot, ItemStack stack) {
+        if (slot.getType() != EquipmentSlot.Type.HUMANOID_ARMOR && slot != EquipmentSlot.MAINHAND && slot != EquipmentSlot.OFFHAND) {
+            super.setItemSlot(slot, stack);
+            return;
+        }
+        if (!canEquipInSlot(slot, stack)) {
+            if (slot != EquipmentSlot.MAINHAND) return;
+            stack = ItemStack.EMPTY;
+        }
+        if (slot == EquipmentSlot.MAINHAND && getJob() != CompanionJob.NONE && getJob() != CompanionJob.HUNTER
+                && !stack.isEmpty() && !isJobTool(stack, getJob())) return;
+        if (slot == EquipmentSlot.MAINHAND && getJob() == CompanionJob.NONE && !isMainHandWeapon(stack)) {
+            ItemStack fallback = findInventoryWeaponOrTool();
+            stack = fallback.isEmpty() ? (isMainHandEquipment(stack) ? stack : ItemStack.EMPTY) : fallback;
+        }
+        int index = dedicatedEquipmentIndex(slot);
+        ItemStack manual = super.getItemBySlot(slot);
+        if (manuallyEquipped[index] && !manual.isEmpty()) {
+            if (!ItemStack.isSameItemSameComponents(manual, stack)) return;
+        } else {
+            // Keep a player-upgraded sword when a class scans cargo and finds a weaker one.
+            if (slot == EquipmentSlot.MAINHAND && manual.getItem() instanceof SwordItem
+                    && stack.getItem() instanceof SwordItem && !isBetterEquipment(stack, manual, slot)) return;
+            manuallyEquipped[index] = false;
+            if (!setAutomaticEquipment(slot, stack)) return;
+            return;
+        }
+        super.setItemSlot(slot, stack);
+    }
+
+    private boolean isMainHandEquipment(ItemStack stack) {
+        return !stack.isEmpty() && (stack.getItem() instanceof TieredItem
+                || stack.getItem() instanceof BowItem
+                || stack.getItem() instanceof CrossbowItem
+                || stack.getItem() instanceof TridentItem
+                || stack.getItem() instanceof FishingRodItem
+                || FirearmSupport.isFirearm(stack)
+                || stack.is(TagsInit.Items.SWORDS));
+    }
+
+    private boolean isMainHandWeapon(ItemStack stack) {
+        return isMainHandEquipment(stack) && !(stack.getItem() instanceof DiggerItem)
+                && !(stack.getItem() instanceof FishingRodItem);
+    }
+
+    /** Weapons win for companions without jobs; tools remain a valid fallback. */
+    private ItemStack findInventoryWeaponOrTool() {
+        ItemStack tool = ItemStack.EMPTY;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack candidate = inventory.getItem(i);
+            if (!isAutomaticMainHandCandidate(candidate)) continue;
+            if (isMainHandWeapon(candidate)) return candidate;
+            if (tool.isEmpty() && isMainHandEquipment(candidate)) tool = candidate;
+        }
+        return tool;
+    }
+
+    /** Shift-click equips one better armor piece, sword, or shield without overriding a manual slot. */
+    public boolean equipBetterFromPlayer(ItemStack stack) {
+        EquipmentSlot slot = equipmentSlotFor(stack);
+        if (slot == null || hasDedicatedEquipment(slot)) return false;
+        ItemStack current = getItemBySlot(slot);
+        if (!isBetterEquipment(stack, current, slot)) return false;
+        ItemStack equipped = stack.copyWithCount(1);
+        if (!setAutomaticEquipment(slot, equipped)) return false;
+        stack.shrink(1);
+        return true;
+    }
+
+    /** Moves auto-equipped cargo into its dedicated slot and returns replaced gear to cargo. */
+    private boolean setAutomaticEquipment(EquipmentSlot slot, ItemStack stack) {
+        ItemStack current = super.getItemBySlot(slot);
+        int sourceSlot = findInventorySlot(stack);
+        boolean unchanged = ItemStack.isSameItemSameComponents(current, stack);
+        if (!unchanged && !current.isEmpty() && sourceSlot < 0 && !canStoreInInventory(current)) return false;
+
+        ItemStack equipped = sourceSlot < 0 ? stack : inventory.removeItem(sourceSlot, 1);
+        if (equipped.isEmpty() && !stack.isEmpty()) return false;
+        if (!unchanged && !current.isEmpty() && !insertIntoContainer(inventory, current.copy()).isEmpty()) return false;
+        super.setItemSlot(slot, equipped);
+        return true;
+    }
+
+    @Nullable
+    private EquipmentSlot equipmentSlotFor(ItemStack stack) {
+        if (stack.getItem() instanceof ArmorItem armor) return armor.getEquipmentSlot();
+        if (stack.getItem() instanceof SwordItem) return EquipmentSlot.MAINHAND;
+        return isShieldItem(stack) ? EquipmentSlot.OFFHAND : null;
+    }
+
+    private boolean isBetterEquipment(ItemStack candidate, ItemStack current, EquipmentSlot slot) {
+        if (current.isEmpty()) return true;
+        if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) return CompanionData.isBetterArmor(candidate, current);
+        if (slot == EquipmentSlot.MAINHAND && candidate.getItem() instanceof SwordItem sword
+                && current.getItem() instanceof SwordItem equippedSword) return sword.getDamage(candidate) > equippedSword.getDamage(current);
+        return false;
+    }
+
+    private boolean inventoryContains(ItemStack stack) {
+        return findInventorySlot(stack) >= 0;
+    }
+
+    private int findInventorySlot(ItemStack stack) {
+        if (stack.isEmpty()) return -1;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            if (ItemStack.isSameItemSameComponents(inventory.getItem(i), stack)) return i;
+        }
+        return -1;
+    }
+
+    private boolean canStoreInInventory(ItemStack stack) {
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stored = inventory.getItem(i);
+            if (stored.isEmpty() || ItemStack.isSameItemSameComponents(stored, stack)
+                    && stored.getCount() < stored.getMaxStackSize()) return true;
+        }
+        return false;
+    }
+
+    /** Firearms take precedence over class weapons so per-tick selectors cannot unequip them. */
+    protected ItemStack getEquippedOrInventoryFirearm() {
+        if (FirearmSupport.isAllowedFirearm(this, getMainHandItem())) return getMainHandItem();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (FirearmSupport.isAllowedFirearm(this, stack)) return stack;
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /** Normal companions accept every TacZ firearm; specialists narrow this hook. */
+    public boolean isFirearmAllowed(ItemStack stack) {
+        return true;
+    }
+
+    /** Controls automatic main-hand selection without changing manual inventory storage. */
+    protected boolean isAutomaticMainHandCandidate(ItemStack stack) {
+        return true;
     }
 
     public Map<Item, Integer> getFoodRequirements() {
@@ -507,6 +1448,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         // Store URL as a synced string so clients can fetch/download the texture on
         // demand.
         this.entityData.set(CUSTOM_SKIN_URL, url == null ? "" : url.trim());
+    }
+
+    /** Player-authored journal text, synchronized so the journal updates for every viewer. */
+    public String getCustomBio() {
+        return this.entityData.get(CUSTOM_BIO);
+    }
+
+    public void setCustomBio(@Nullable String bio) {
+        this.entityData.set(CUSTOM_BIO, bio == null ? "" : bio.trim());
     }
 
     public int getSex() {
@@ -551,6 +1501,131 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public int getKillCount() {
         return this.entityData.get(KILL_COUNT);
+    }
+
+    public java.util.List<BlockPos> getMinerOreMemory() {
+        return minerOreMemory;
+    }
+
+    public int getMinerOreIndex() {
+        return minerOreIndex;
+    }
+
+    public void setMinerOreIndex(int idx) {
+        this.minerOreIndex = Math.max(0, idx);
+    }
+
+    public void overwriteMinerOreMemory(java.util.List<BlockPos> newMemory) {
+        minerOreMemory.clear();
+        minerOreMemory.addAll(newMemory);
+    }
+
+    public void resetMinerOreMemory() {
+        minerOreMemory.clear();
+        minerOreIndex = 0;
+    }
+
+    public int getMinerOresCounted() {
+        return this.entityData.get(MINER_ORES_COUNTED);
+    }
+
+    public void setMinerOresCounted(int counted) {
+        this.entityData.set(MINER_ORES_COUNTED, Math.max(0, counted));
+    }
+
+    public int getMinerOresMined() {
+        return this.entityData.get(MINER_ORES_MINED);
+    }
+
+    public void setMinerOresMined(int mined) {
+        this.entityData.set(MINER_ORES_MINED, Math.max(0, mined));
+    }
+
+    public void incrementMinerOresMined() {
+        setMinerOresMined(getMinerOresMined() + 1);
+        setMinerOresLifetime(getMinerOresLifetime() + 1);
+    }
+
+    public int getMinerOresLifetime() {
+        return this.entityData.get(MINER_ORES_LIFETIME);
+    }
+
+    public void setMinerOresLifetime(int lifetime) {
+        this.entityData.set(MINER_ORES_LIFETIME, Math.max(0, lifetime));
+    }
+
+    public int getLumberLogsSession() {
+        return this.entityData.get(LUMBER_LOGS_SESSION);
+    }
+
+    public void setLumberLogsSession(int logs) {
+        this.entityData.set(LUMBER_LOGS_SESSION, Math.max(0, logs));
+    }
+
+    public void incrementLumberLogsSession() {
+        setLumberLogsSession(getLumberLogsSession() + 1);
+        setLumberLogsLifetime(getLumberLogsLifetime() + 1);
+    }
+
+    public int getLumberLogsLifetime() {
+        return this.entityData.get(LUMBER_LOGS_LIFETIME);
+    }
+
+    public void setLumberLogsLifetime(int logs) {
+        this.entityData.set(LUMBER_LOGS_LIFETIME, Math.max(0, logs));
+    }
+
+    public int getFishCaughtSession() {
+        return this.entityData.get(FISH_CAUGHT_SESSION);
+    }
+
+    public void setFishCaughtSession(int fish) {
+        this.entityData.set(FISH_CAUGHT_SESSION, Math.max(0, fish));
+    }
+
+    public void incrementFishCaughtSession() {
+        setFishCaughtSession(getFishCaughtSession() + 1);
+        setFishCaughtLifetime(getFishCaughtLifetime() + 1);
+    }
+
+    public int getFishCaughtLifetime() {
+        return this.entityData.get(FISH_CAUGHT_LIFETIME);
+    }
+
+    public void setFishCaughtLifetime(int fish) {
+        this.entityData.set(FISH_CAUGHT_LIFETIME, Math.max(0, fish));
+    }
+
+    public BlockPos getMinerPlanCenter() {
+        return minerPlanCenter == null ? BlockPos.ZERO : minerPlanCenter;
+    }
+
+    public void setMinerPlanCenter(BlockPos center) {
+        this.minerPlanCenter = center == null ? BlockPos.ZERO : center;
+    }
+
+    public int getMinerPlanRadius() {
+        return minerPlanRadius;
+    }
+
+    public void setMinerPlanRadius(int radius) {
+        this.minerPlanRadius = Math.max(0, radius);
+    }
+
+    public int getMinerPlanUp() {
+        return minerPlanUp;
+    }
+
+    public void setMinerPlanUp(int up) {
+        this.minerPlanUp = Math.max(0, up);
+    }
+
+    public int getMinerPlanDown() {
+        return minerPlanDown;
+    }
+
+    public void setMinerPlanDown(int down) {
+        this.minerPlanDown = Math.max(0, down);
     }
 
     public void setKillCount(int kills) {
@@ -958,10 +2033,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         ItemStack held = player.getItemInHand(hand);
         if (hand == InteractionHand.MAIN_HAND) {
             if (!this.isTame() && !this.level().isClientSide()) {
-                if (foodRequirements.isEmpty()) {
-                    assignFoodRequirements();
+                if (foodRequirements.isEmpty() || !resourceRequirementResolved) {
+                    assignFoodRequirements(player);
                 }
-                if (foodRequirements.containsKey(held.getItem())) {
+                if (held.isEmpty()) {
+                    // Empty-hand conversations use the dedicated pre-taming dialogue pool.
+                    player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
+                            CompanionData.notTamed[this.random.nextInt(CompanionData.notTamed.length)]));
+                } else if (foodRequirements.containsKey(held.getItem())) {
                     int remaining = foodRequirements.get(held.getItem());
                     if (remaining > 0) {
                         held.shrink(1);
@@ -972,8 +2051,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                             setFirstTamedGameTime(this.level().getGameTime());
                             syncPersonalityToData();
                             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
-                                    Component.literal("Thanks!")));
-                            player.sendSystemMessage(Component.literal("Companion added"));
+                                    Component.translatable("dialogue.modern_companions.tamed.thanks")));
+                            player.sendSystemMessage(Component.translatable("message.modern_companions.companion_added"));
                             setPatrolPos(null);
                             setPatrolling(false);
                             setFollowing(true);
@@ -997,7 +2076,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 } else {
                     player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
                             CompanionData.WRONG_FOOD[this.random.nextInt(CompanionData.WRONG_FOOD.length)]));
-                    player.sendSystemMessage(Component.literal(getFoodStatus()));
+                    player.sendSystemMessage(getFoodStatus());
                 }
                 return InteractionResult.sidedSuccess(this.level().isClientSide);
             } else {
@@ -1005,11 +2084,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                     if (!this.level().isClientSide() && CompanionData.isFood(held) && this.getHealth() < this.getMaxHealth() - 0.1F) {
                         ItemStack single = held.copyWithCount(1);
                         if (healFromFoodStack(single)) {
+                            boolean favorite = isFavoriteFood(held);
                             held.shrink(1);
-                            int feedXp = applyBondTraitMultiplier(ModConfig.safeGet(ModConfig.BOND_FEED_XP), true, false, false);
+                            int feedXp = applyBondTraitMultiplier(ModConfig.safeGet(ModConfig.BOND_FEED_XP), true, false, false)
+                                    * (favorite ? 2 : 1);
                             awardBondXp(feedXp);
                             if (ModConfig.safeGet(ModConfig.MORALE_ENABLED)) {
-                                adjustMorale(ModConfig.safeGet(ModConfig.MORALE_FEED_DELTA).floatValue());
+                                float morale = ModConfig.safeGet(ModConfig.MORALE_FEED_DELTA).floatValue();
+                                adjustMorale(favorite ? morale * 2.0F : morale);
                             }
                             return InteractionResult.CONSUME;
                         }
@@ -1018,6 +2100,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                     // triggering sit/GUI.
                     if (held.is(ModItems.COMPANION_MOVER.get())) {
                         return InteractionResult.PASS;
+                    }
+                    if (held.is(ModItems.ASSIGNMENT_WAND.get())) {
+                        // Entity interaction runs before Item#interactLivingEntity; delegate explicitly.
+                        return held.interactLivingEntity(player, this, hand);
                     }
                     if (player.isShiftKeyDown()) {
                         if (!this.level().isClientSide()) {
@@ -1038,11 +2124,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private void toggleSit(ServerPlayer player) {
         if (!this.isOrderedToSit()) {
             this.setOrderedToSit(true);
-            Component text = Component.literal("I'll stand here.");
+            Component text = Component.translatable("message.modern_companions.sit.stand_here");
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         } else {
             this.setOrderedToSit(false);
-            Component text = Component.literal("I'll move around.");
+            Component text = Component.translatable("message.modern_companions.sit.move_around");
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         }
     }
@@ -1055,9 +2141,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private void assignFoodRequirements() {
-        Map<Item, Integer> newReq = CompanionData.getRandomFoodRequirement(rand);
+        assignFoodRequirements(null);
+    }
+
+    private void assignFoodRequirements(Player player) {
+        Map<Item, Integer> newReq = player == null
+                ? CompanionData.getRandomFoodRequirement(rand)
+                : CompanionData.getRandomFoodRequirement(rand, player);
         foodRequirements.clear();
         foodRequirements.putAll(newReq);
+        resourceRequirementResolved = player != null;
         var entries = foodRequirements.entrySet().stream().toList();
         this.entityData.set(FOOD1, BuiltInRegistries.ITEM.getKey(entries.get(0).getKey()).toString());
         this.entityData.set(FOOD1_AMT, entries.get(0).getValue());
@@ -1088,20 +2181,35 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     @Override
     public boolean wantsToAttack(LivingEntity target, LivingEntity owner) {
-        if (target instanceof SummonedWitherSkeleton) {
-            // Companion summons are utility allies; never mark them as valid targets.
-            return false;
-        }
-        return super.wantsToAttack(target, owner);
+        return canHarm(target) && super.wantsToAttack(target, owner);
     }
+
+    public int getStamina() { return this.entityData.get(STAMINA); }
+    public int getStaminaMax() { return this.entityData.get(STAMINA_MAX); }
+    public boolean isStaminaEnabled() { return ModConfig.safeGet(ModConfig.STAMINA_ENABLED); }
+    private int sprintStaminaCost() { return ModConfig.safeGet(ModConfig.STAMINA_SPRINT_COST); }
+    private int meleeStaminaCost() { return ModConfig.safeGet(ModConfig.STAMINA_MELEE_COST); }
+    public int getMana() { return this.entityData.get(MANA); }
+    public int getManaMax() { return this.entityData.get(MANA_MAX); }
+    public boolean hasMana() { return this instanceof AbstractMageCompanion; }
+    public boolean canSpendMana(int amount) { return hasMana() && getMana() >= amount; }
+    public void restoreStamina(int amount) {
+        if (!isStaminaEnabled()) {
+            this.entityData.set(STAMINA, getStaminaMax());
+            return;
+        }
+        this.entityData.set(STAMINA, bounded(getStamina() + amount, getStaminaMax()));
+    }
+    public void restoreMana(int amount) { if (hasMana()) this.entityData.set(MANA, bounded(getMana() + amount, getManaMax())); }
+    public boolean spendMana(int amount) {
+        if (!canSpendMana(amount)) return false;
+        this.entityData.set(MANA, getMana() - amount);
+        return true;
+    }
+    public static int bounded(int value, int max) { return CompanionResourceRules.bounded(value, max); }
 
     @Override
     public boolean isAlliedTo(Entity other) {
-        if (other instanceof SummonedWitherSkeleton skeleton) {
-            // Treat any summoned wither skeleton as an ally so cross-class parties stay
-            // cooperative.
-            return true;
-        }
         return super.isAlliedTo(other);
     }
 
@@ -1111,8 +2219,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
+        byte[] manualSlots = new byte[manuallyEquipped.length];
+        for (int i = 0; i < manualSlots.length; i++) manualSlots[i] = (byte) (manuallyEquipped[i] ? 1 : 0);
+        tag.putByteArray("DedicatedEquipmentManual", manualSlots);
         tag.putInt("skin", this.getSkinIndex());
         tag.putString("CustomSkinUrl", this.entityData.get(CUSTOM_SKIN_URL));
+        tag.putString("CustomBio", this.entityData.get(CUSTOM_BIO));
         tag.putBoolean("Eating", this.isEating());
         tag.putBoolean("Alert", this.isAlert());
         tag.putBoolean("Hunting", this.isHunting());
@@ -1121,8 +2233,18 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putBoolean("Guarding", this.isGuarding());
         tag.putBoolean("SprintEnabled", this.isSprintEnabled());
         tag.putBoolean("Pickup", this.isPickupEnabled());
+        tag.putBoolean("AllowVillagerHarm", this.canHarmVillagers());
+        tag.putBoolean("AllowPlayerHarm", this.canHarmPlayers());
         tag.putInt("radius", this.getPatrolRadius());
         tag.putInt("sex", this.getSex());
+        tag.putString("JobId", this.getJob().id());
+        tag.putBoolean("WorkEnabled", this.isWorkEnabled());
+        tag.putString("JobStatus", this.getJobStatus());
+        CompoundTag checkpoint = new CompoundTag();
+        checkpoint.putString("Phase", jobCheckpointPhase.name());
+        if (jobCheckpointTarget != null) checkpoint.putLong("Target", jobCheckpointTarget.asLong());
+        if (jobCheckpointReturn != null) checkpoint.putLong("Return", jobCheckpointReturn.asLong());
+        tag.put("JobCheckpoint", checkpoint);
         tag.putInt("baseHealth", this.getBaseHealth());
         tag.putFloat("XpP", this.experienceProgress);
         tag.putInt("XpLevel", this.getExpLvl());
@@ -1130,13 +2252,32 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("KillCount", this.getKillCount());
         tag.putString("food1", entityData.get(FOOD1));
         tag.putString("food2", entityData.get(FOOD2));
+        tag.putString("FavoriteFood", entityData.get(FAVORITE_FOOD));
         tag.putInt("food1_amt", entityData.get(FOOD1_AMT));
         tag.putInt("food2_amt", entityData.get(FOOD2_AMT));
+        tag.putBoolean("ResourceRequirementResolved", resourceRequirementResolved);
         tag.putInt("Strength", getBaseStrength());
         tag.putInt("Dexterity", getBaseDexterity());
         tag.putInt("Intelligence", getBaseIntelligence());
         tag.putInt("Endurance", getBaseEndurance());
         tag.putInt("SpecialistAttr", getSpecialistAttributeIndex());
+        long[] oreArr = minerOreMemory.stream().mapToLong(BlockPos::asLong).toArray();
+        tag.putLongArray("MinerOreMemory", oreArr);
+        tag.putInt("MinerOreIndex", minerOreIndex);
+        tag.putInt("MinerOresCounted", getMinerOresCounted());
+        tag.putInt("MinerOresMined", getMinerOresMined());
+        tag.putInt("MinerOresLifetime", getMinerOresLifetime());
+        tag.putInt("LumberLogsSession", getLumberLogsSession());
+        tag.putInt("LumberLogsLifetime", getLumberLogsLifetime());
+        tag.putInt("FishCaughtSession", getFishCaughtSession());
+        tag.putInt("FishCaughtLifetime", getFishCaughtLifetime());
+        tag.putIntArray("MinerPlanCenter", new int[] { getMinerPlanCenter().getX(), getMinerPlanCenter().getY(), getMinerPlanCenter().getZ() });
+        tag.putInt("MinerPlanRadius", getMinerPlanRadius());
+        tag.putInt("MinerPlanUp", getMinerPlanUp());
+        tag.putInt("MinerPlanDown", getMinerPlanDown());
+        tag.putLong("LastDeliveryTime", lastDeliveryGameTime);
+        getAssignedChest().ifPresent(chest -> tag.putIntArray("AssignedChest", new int[] { chest.getX(), chest.getY(), chest.getZ() }));
+        getAssignedChestDimension().ifPresent(dim -> tag.putString("AssignedChestDim", dim.location().toString()));
         if (this.getPatrolPos().isPresent()) {
             int[] patrolPos = { this.getPatrolPos().get().getX(), this.getPatrolPos().get().getY(),
                     this.getPatrolPos().get().getZ() };
@@ -1147,6 +2288,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.put("Personality", personalityTag);
         tag.putInt("AgeYears", personality.getAgeYears());
         tag.putLong("AgeLastCheck", personality.getLastAgeCheckGameTime());
+        tag.putInt("Stamina", getStamina());
+        tag.putInt("StaminaMax", getStaminaMax());
+        tag.putInt("Mana", getMana());
+        tag.putInt("ManaMax", getManaMax());
     }
 
     @Override
@@ -1155,6 +2300,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.setSkinIndex(tag.getInt("skin"));
         if (tag.contains("CustomSkinUrl")) {
             this.setCustomSkinUrl(tag.getString("CustomSkinUrl"));
+        }
+        if (tag.contains("CustomBio")) {
+            this.setCustomBio(tag.getString("CustomBio"));
         }
         this.setEating(tag.getBoolean("Eating"));
         this.setAlert(tag.getBoolean("Alert"));
@@ -1170,8 +2318,24 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.setSprintEnabled(false);
         }
         this.setPickupEnabled(tag.contains("Pickup") ? tag.getBoolean("Pickup") : true);
+        this.setCanHarmVillagers(tag.getBoolean("AllowVillagerHarm"));
+        this.setCanHarmPlayers(tag.getBoolean("AllowPlayerHarm"));
         this.setPatrolRadius(tag.getInt("radius"));
         this.setSex(tag.getInt("sex"));
+        this.setJob(CompanionJob.fromId(tag.getString("JobId")));
+        this.setWorkEnabled(tag.getBoolean("WorkEnabled"));
+        if (tag.contains("JobStatus")) this.setJobStatus(tag.getString("JobStatus"));
+        if (tag.contains("JobCheckpoint", 10)) {
+            CompoundTag checkpoint = tag.getCompound("JobCheckpoint");
+            try {
+                jobCheckpointPhase = JobPhase.valueOf(checkpoint.getString("Phase"));
+            } catch (IllegalArgumentException ignored) {
+                jobCheckpointPhase = JobPhase.SEARCHING;
+            }
+            jobCheckpointTarget = checkpoint.contains("Target") ? BlockPos.of(checkpoint.getLong("Target")) : null;
+            jobCheckpointReturn = checkpoint.contains("Return") ? BlockPos.of(checkpoint.getLong("Return")) : null;
+        }
+        this.onJobChanged();
         this.experienceProgress = tag.getFloat("XpP");
         this.totalExperience = tag.getInt("XpTotal");
         this.setExpLvl(tag.getInt("XpLevel"));
@@ -1179,8 +2343,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         syncExpProgress();
         entityData.set(FOOD1, tag.getString("food1"));
         entityData.set(FOOD2, tag.getString("food2"));
+        entityData.set(FAVORITE_FOOD, tag.getString("FavoriteFood"));
         entityData.set(FOOD1_AMT, tag.getInt("food1_amt"));
         entityData.set(FOOD2_AMT, tag.getInt("food2_amt"));
+        resourceRequirementResolved = tag.contains("ResourceRequirementResolved")
+                ? tag.getBoolean("ResourceRequirementResolved") : this.isTame();
         foodRequirements.clear();
         ResourceLocation id1 = ResourceLocation.parse(entityData.get(FOOD1));
         ResourceLocation id2 = ResourceLocation.parse(entityData.get(FOOD2));
@@ -1192,6 +2359,48 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.setBaseHealth(tag.getInt("baseHealth"));
         }
         setSpecialistAttributeIndex(tag.contains("SpecialistAttr") ? tag.getInt("SpecialistAttr") : -1);
+        minerOreMemory.clear();
+        if (tag.contains("MinerOreMemory")) {
+            long[] arr = tag.getLongArray("MinerOreMemory");
+            for (long l : arr) {
+                minerOreMemory.add(BlockPos.of(l));
+            }
+        }
+        minerOreIndex = tag.getInt("MinerOreIndex");
+        if (tag.contains("MinerOresCounted")) setMinerOresCounted(tag.getInt("MinerOresCounted"));
+        if (tag.contains("MinerOresMined")) setMinerOresMined(tag.getInt("MinerOresMined"));
+        if (tag.contains("MinerOresLifetime")) setMinerOresLifetime(tag.getInt("MinerOresLifetime"));
+        if (tag.contains("LumberLogsSession")) setLumberLogsSession(tag.getInt("LumberLogsSession"));
+        if (tag.contains("LumberLogsLifetime")) setLumberLogsLifetime(tag.getInt("LumberLogsLifetime"));
+        if (tag.contains("FishCaughtSession")) setFishCaughtSession(tag.getInt("FishCaughtSession"));
+        if (tag.contains("FishCaughtLifetime")) setFishCaughtLifetime(tag.getInt("FishCaughtLifetime"));
+        if (tag.contains("MinerPlanCenter")) {
+            int[] arr = tag.getIntArray("MinerPlanCenter");
+            if (arr.length == 3) {
+                setMinerPlanCenter(new BlockPos(arr[0], arr[1], arr[2]));
+            }
+        }
+        if (tag.contains("MinerPlanRadius")) {
+            setMinerPlanRadius(tag.getInt("MinerPlanRadius"));
+        }
+        if (tag.contains("MinerPlanUp")) {
+            setMinerPlanUp(tag.getInt("MinerPlanUp"));
+        }
+        if (tag.contains("MinerPlanDown")) {
+            setMinerPlanDown(tag.getInt("MinerPlanDown"));
+        }
+        if (tag.contains("LastDeliveryTime")) {
+            lastDeliveryGameTime = tag.getLong("LastDeliveryTime");
+        }
+        if (tag.contains("AssignedChest")) {
+            int[] arr = tag.getIntArray("AssignedChest");
+            if (arr.length == 3) {
+                this.entityData.set(DELIVERY_CHEST, Optional.of(new BlockPos(arr[0], arr[1], arr[2])));
+            }
+        }
+        if (tag.contains("AssignedChestDim")) {
+            this.entityData.set(DELIVERY_DIMENSION, tag.getString("AssignedChestDim"));
+        }
         if (tag.contains("Personality", 10)) {
             personality.loadFrom(tag.getCompound("Personality"));
         } else {
@@ -1218,6 +2427,34 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (tag.contains("Inventory", 9)) {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
         }
+        // Migrate the short-lived duplicate equipment store from the previous release.
+        SimpleContainer legacyEquipment = new SimpleContainer(manuallyEquipped.length);
+        if (tag.contains("DedicatedEquipment", 9)) {
+            legacyEquipment.fromTag(tag.getList("DedicatedEquipment", 10), this.registryAccess());
+        }
+        for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS,
+                EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
+            int index = dedicatedEquipmentIndex(slot);
+            ItemStack legacy = legacyEquipment.getItem(index);
+            if (!legacy.isEmpty() && canEquipInSlot(slot, legacy)) {
+                super.setItemSlot(slot, legacy.copy());
+            }
+        }
+        Arrays.fill(manuallyEquipped, false);
+        byte[] manualSlots = tag.getByteArray("DedicatedEquipmentManual");
+        if (manualSlots.length == manuallyEquipped.length) {
+            for (int i = 0; i < manuallyEquipped.length; i++) manuallyEquipped[i] = manualSlots[i] != 0;
+        } else {
+            // Equipment saved before manual-lock metadata was introduced was all player placed.
+            for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS,
+                    EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
+                manuallyEquipped[dedicatedEquipmentIndex(slot)] = !super.getItemBySlot(slot).isEmpty();
+            }
+        }
+        this.entityData.set(STAMINA_MAX, Math.max(1, tag.contains("StaminaMax") ? tag.getInt("StaminaMax") : STAMINA_MAX_DEFAULT));
+        this.entityData.set(STAMINA, bounded(tag.contains("Stamina") ? tag.getInt("Stamina") : getStaminaMax(), getStaminaMax()));
+        this.entityData.set(MANA_MAX, Math.max(1, tag.contains("ManaMax") ? tag.getInt("ManaMax") : MANA_MAX_DEFAULT));
+        this.entityData.set(MANA, bounded(tag.contains("Mana") ? tag.getInt("Mana") : getManaMax(), getManaMax()));
         syncPersonalityToData();
         // reset tracking anchors post-load
         this.lastTrackX = this.getX();
@@ -1225,6 +2462,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.lastTrackZ = this.getZ();
         // Backfill missing flavor data for pre-journal companions
         rollMissingFlavorData();
+        if (entityData.get(FAVORITE_FOOD).isBlank()) {
+            assignFavoriteFood();
+        }
         if (tag.contains("patrol_pos")) {
             int[] positions = tag.getIntArray("patrol_pos");
             setPatrolPos(new BlockPos(positions[0], positions[1], positions[2]));
@@ -1235,12 +2475,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.goalSelector.addGoal(3, moveBackGoal);
             this.goalSelector.addGoal(3, patrolGoal);
         }
-        this.setItemSlot(EquipmentSlot.FEET, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.CHEST, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
-        this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         checkArmor();
+        if (!this.level().isClientSide() && this.level() instanceof ServerLevel serverLevel) {
+            refreshDeliveryChunkTicket(serverLevel);
+        }
         if (tag.contains("Strength")) {
             setStrength(tag.getInt("Strength"));
             setDexterity(tag.getInt("Dexterity"));
@@ -1297,7 +2535,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (this.tickCount % 2 == 0 && isPickupEnabled() && this.isTame()) {
                 collectNearbyItems();
             }
+            boostWaterMovement();
             updateSprintState();
+            tickCompanionResources();
+            if (this.tickCount % 20 == 0) consumeUsefulCompanionPotion();
             tickBondAndMorale();
             if (this.tickCount % 10 == 0) {
                 checkStats();
@@ -1310,6 +2551,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             }
             trackDistanceNearOwner();
             tickAging();
+            tickCommittedSwim();
+            if (isPatrolling()) {
+                equipJobToolIfNeeded();
+            }
         }
         boolean equipmentChanged = recomputeEquipmentAttributeBonuses();
         if (equipmentChanged) {
@@ -1334,7 +2579,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         boolean wantsSprint = isSprintEnabled() && !this.isOrderedToSit();
         boolean movingOrFighting = (this.getNavigation() != null && !this.getNavigation().isDone())
                 || this.getTarget() != null;
-        if (wantsSprint && movingOrFighting) {
+        boolean staminaReady = !isStaminaEnabled()
+                || (this.isSprinting() ? getStamina() > 0 : getStamina() >= SPRINT_RESUME_STAMINA);
+        if (wantsSprint && movingOrFighting && staminaReady) {
             this.setSprinting(true);
         } else {
             this.setSprinting(false);
@@ -1368,6 +2615,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         personality.setMorale(0.0F);
         syncPersonalityToData();
         assignFoodRequirements();
+        assignFavoriteFood();
 
         if (ModConfig.safeGet(ModConfig.SPAWN_ARMOR)) {
             for (int i = 0; i < 4; i++) {
@@ -1425,20 +2673,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (hasTrait("trait_quickstep")) base += 0.05D;
         if (hasTrait("trait_cautious")) base -= 0.05D;
         return Math.max(1.05D, base);
-    }
-
-    private float followStartDistance() {
-        float start = 8.0F;
-        if (hasTrait("trait_cautious")) start = 10.0F;
-        if (hasTrait("trait_guardian")) start = 7.0F;
-        return start;
-    }
-
-    private float followStopDistance() {
-        float stop = 2.5F;
-        if (hasTrait("trait_cautious")) stop = 3.5F;
-        if (hasTrait("trait_brave") || hasTrait("trait_guardian")) stop = 2.0F;
-        return stop;
     }
 
     public void release() {
@@ -1558,15 +2792,107 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return super.hurt(source, adjusted);
     }
 
+    /** Server-authoritative recovery: combat slows it, then grace accelerates it. */
+    private void tickCompanionResources() {
+        LivingEntity target = getTarget();
+        boolean inCombat = target != null && target.isAlive();
+        combatGraceTicks = inCombat ? 0 : Math.min(combatGraceTicks + 1, 100);
+        boolean staminaEnabled = isStaminaEnabled();
+        if (!staminaEnabled) {
+            this.entityData.set(STAMINA, getStaminaMax());
+        } else if (isSprinting()) {
+            this.entityData.set(STAMINA, CompanionResourceRules.spend(getStamina(), sprintStaminaCost(), getStaminaMax()));
+        }
+        int interval = CompanionResourceRules.regenInterval(inCombat, combatGraceTicks, hasEffect(MobEffects.REGENERATION));
+        if (this.tickCount % interval == 0) {
+            if (staminaEnabled) restoreStamina(1);
+            restoreMana(1);
+        }
+    }
+
+
+    private void consumeUsefulCompanionPotion() {
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (stack.getItem() instanceof CompanionPotionItem potion && potion.isUsefulFor(this)) {
+                ItemStack consumed = stack.copyWithCount(1);
+                stack.shrink(1);
+                playConsumptionEffects(consumed);
+                potion.applyTo(this);
+                storeOrDrop(potion.emptyVessel());
+                return;
+            }
+        }
+    }
+
+    /** Shared PvE/PvP and villager safety gate for every target source. */
+    public boolean canHarm(Entity entity) {
+        // Owner and same-owner companions stay allies even when PvP is enabled.
+        if (entity == this.getOwner()) {
+            return false;
+        }
+        if (entity instanceof Villager && !canHarmVillagers()) {
+            return false;
+        }
+        if (entity instanceof Player) {
+            return canHarmPlayers();
+        }
+        if (entity instanceof TamableAnimal tame && tame.isTame()) {
+            if (this.getOwnerUUID() != null && this.getOwnerUUID().equals(tame.getOwnerUUID())) {
+                return false;
+            }
+            return canHarmPlayers();
+        }
+        return true;
+    }
+
+    @Override
+    public void setTarget(@Nullable LivingEntity target) {
+        super.setTarget(target != null && !canHarm(target) ? null : target);
+    }
+
     @Override
     public void die(DamageSource source) {
         if (!this.level().isClientSide()) {
+            clearNegativeEffectsBeforeResurrectionSave();
             if (this instanceof Beastmaster beastmaster) {
                 beastmaster.forceDespawnPet();
             }
             dropResurrectionScroll();
         }
         super.die(source);
+    }
+
+    /** Prevent death-invalid harmful state from being copied into a resurrection scroll. */
+    private void clearNegativeEffectsBeforeResurrectionSave() {
+        for (MobEffectInstance effect : List.copyOf(this.getActiveEffects())) {
+            if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
+                this.removeEffect(effect.getEffect());
+            }
+        }
+
+        // Mekanism stores radiation as an optional entity capability instead of a MobEffect.
+        if (!net.neoforged.fml.ModList.get().isLoaded("mekanism")) return;
+        try {
+            Class<?> capabilities = Class.forName("mekanism.common.capabilities.Capabilities");
+            Object radiationCapability = capabilities.getField("RADIATION_ENTITY").get(null);
+            Object radiation = Entity.class
+                    .getMethod("getCapability", radiationCapability.getClass())
+                    .invoke(this, radiationCapability);
+            if (radiation != null) {
+                radiation.getClass().getMethod("set", double.class).invoke(radiation, 0.0D);
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            // Keep Mekanism optional; an unavailable compatibility API must not block death.
+        }
+    }
+
+    @Override
+    public void onRemovedFromLevel() {
+        if (!this.level().isClientSide() && this.level() instanceof ServerLevel server) {
+            releaseDeliveryChunkTicket(server);
+        }
+        super.onRemovedFromLevel();
     }
 
     public void hurtArmor(DamageSource source, float amount) {
@@ -1602,17 +2928,33 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     @Override
     public boolean doHurtTarget(Entity entity) {
+        if (!canHarm(entity)) {
+            return false;
+        }
+        boolean staminaEnabled = isStaminaEnabled();
+        int meleeCost = meleeStaminaCost();
+        if (!this.level().isClientSide && staminaEnabled && meleeCost > 0 && getStamina() <= 0
+                && this.tickCount - lastExhaustedMeleeTick < 20) {
+            return false; // Exhaustion slows shared melee cadence without disabling defense.
+        }
         forceSwingAnimation(InteractionHand.MAIN_HAND);
         ItemStack itemstack = this.getMainHandItem();
         if (!this.level().isClientSide && !itemstack.isEmpty() && entity instanceof LivingEntity) {
             itemstack.hurtAndBreak(1, this, EquipmentSlot.MAINHAND);
             if (this.getMainHandItem().isEmpty() && this.isTame() && this.getOwner() != null) {
-                Component broken = Component.literal("My weapon broke!");
+                Component broken = Component.translatable("message.modern_companions.weapon_broke");
                 this.getOwner()
                         .sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), broken));
             }
         }
-        return super.doHurtTarget(entity);
+        boolean hit = super.doHurtTarget(entity);
+        if (!this.level().isClientSide) {
+            if (staminaEnabled && hit) {
+                this.entityData.set(STAMINA, CompanionResourceRules.spend(getStamina(), meleeCost, getStaminaMax()));
+            }
+            if (staminaEnabled && meleeCost > 0 && getStamina() <= 0) lastExhaustedMeleeTick = this.tickCount;
+        }
+        return hit;
     }
 
     /**
@@ -1642,19 +2984,23 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (itemstack.getItem() instanceof ArmorItem armorItem) {
                 switch (armorItem.getEquipmentSlot()) {
                     case HEAD -> {
-                        if (head.isEmpty() || CompanionData.isBetterArmor(itemstack, head))
+                        if (!hasDedicatedEquipment(EquipmentSlot.HEAD)
+                                && (head.isEmpty() || CompanionData.isBetterArmor(itemstack, head)))
                             setItemSlot(EquipmentSlot.HEAD, itemstack);
                     }
                     case CHEST -> {
-                        if (chest.isEmpty() || CompanionData.isBetterArmor(itemstack, chest))
+                        if (!hasDedicatedEquipment(EquipmentSlot.CHEST)
+                                && (chest.isEmpty() || CompanionData.isBetterArmor(itemstack, chest)))
                             setItemSlot(EquipmentSlot.CHEST, itemstack);
                     }
                     case LEGS -> {
-                        if (legs.isEmpty() || CompanionData.isBetterArmor(itemstack, legs))
+                        if (!hasDedicatedEquipment(EquipmentSlot.LEGS)
+                                && (legs.isEmpty() || CompanionData.isBetterArmor(itemstack, legs)))
                             setItemSlot(EquipmentSlot.LEGS, itemstack);
                     }
                     case FEET -> {
-                        if (feet.isEmpty() || CompanionData.isBetterArmor(itemstack, feet))
+                        if (!hasDedicatedEquipment(EquipmentSlot.FEET)
+                                && (feet.isEmpty() || CompanionData.isBetterArmor(itemstack, feet)))
                             setItemSlot(EquipmentSlot.FEET, itemstack);
                     }
                 }
@@ -1669,8 +3015,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     /* ---------- Network-driven flag setters ---------- */
     public void applyFlag(String flag, boolean value) {
         switch (flag) {
-            case "follow" -> setFollowing(value);
+            case "follow" -> {
+                if (value && getJob().isWorker()) setWorkEnabled(false);
+                setFollowing(value);
+                if (value) {
+                    setPatrolling(false);
+                    setGuarding(false);
+                }
+            }
             case "patrol" -> {
+                if (value && getJob().isWorker()) setWorkEnabled(false);
                 setPatrolling(value);
                 setFollowing(!value);
                 setGuarding(false);
@@ -1678,16 +3032,20 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                     setPatrolPos(blockPosition());
             }
             case "guard" -> {
+                if (value && getJob().isWorker()) setWorkEnabled(false);
                 setGuarding(value);
                 setPatrolling(false);
                 setFollowing(!value);
                 if (value)
                     setPatrolPos(blockPosition());
             }
+            case "work" -> setWorkEnabled(value);
             case "hunt" -> setHunting(value);
             case "alert" -> setAlert(value);
             case "sprint" -> setSprintEnabled(value);
             case "pickup" -> setPickupEnabled(value);
+            case "villagers" -> setCanHarmVillagers(value);
+            case "players" -> setCanHarmPlayers(value);
             default -> {
             }
         }
@@ -1698,10 +3056,13 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             case "follow" -> isFollowing();
             case "patrol" -> isPatrolling();
             case "guard" -> isGuarding();
+            case "work" -> isWorkEnabled();
             case "hunt" -> isHunting();
             case "alert" -> isAlert();
             case "sprint" -> isSprintEnabled();
             case "pickup" -> isPickupEnabled();
+            case "villagers" -> canHarmVillagers();
+            case "players" -> canHarmPlayers();
             default -> false;
         };
     }
@@ -2058,8 +3419,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private boolean shouldRequestFood() {
-        return this.isTame()
-                && this.getHealth() < this.getMaxHealth() - 0.5F
+        return ModConfig.safeGet(ModConfig.LOW_HEALTH_FOOD)
+                && this.isTame()
+                && this.getHealth() <= this.getMaxHealth() * ModConfig.safeGet(ModConfig.LOW_HEALTH_FOOD_THRESHOLD).floatValue()
                 && !hasFoodInInventory()
                 && this.tickCount - lastFoodRequestTick > FOOD_REQUEST_COOLDOWN_TICKS;
     }
@@ -2071,7 +3433,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             return;
         lastFoodRequestTick = this.tickCount;
         if (this.getOwner() instanceof ServerPlayer player) {
-            Component text = Component.literal(randomFoodRequestLine());
+            Component text = randomFoodRequestLine();
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         }
     }
@@ -2162,92 +3524,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         syncPersonalityToData();
     }
 
-    private String randomFoodRequestLine() {
-        String[] lines = new String[] {
-                "I'm hurt—please give me some food!",
-                "Ouch. Could really use a snack right now.",
-                "Low on health here. Got anything edible?",
-                "One more hit might drop me. Food, please!",
-                "Feeling woozy, little food would help.",
-                "Bandages? Nah. Bread? Yes, please.",
-                "My stomach says 'ow'. Do you have rations?",
-                "If you feed me, I can keep fighting.",
-                "Let's trade: I keep you safe; you keep me fed.",
-                "Healing would be faster with a bite to eat.",
-                "Health bar's looking pretty red over here...",
-                "I can see the respawn screen from here. Food?",
-                "If I fall over, that's on you and your lack of snacks.",
-                "I fight better when I'm not dying of hunger, just saying.",
-                "This would be a great moment for a snack break.",
-                "I’m not saying I’m dramatic, but I might faint without food.",
-                "Ow. That hurt. Got anything tasty and healing?",
-                "Pretty sure a sandwich could fix at least half of this.",
-                "Food now, heroics later. Deal?",
-                "I’d complain more, but I’m too hungry.",
-                "If you feed me, I promise to stop yelling about it… for a bit.",
-                "We’re in the danger zone. Apply food directly to companion.",
-                "I think my HP fell out somewhere back there. Got food?",
-                "Your loyal companion requires immediate snacks.",
-                "I can tank hits, not starvation. Help.",
-                "I’m one bad decision away from dropping. Food might help.",
-                "I’d love to keep protecting you, but my health disagrees.",
-                "Everything hurts except my appetite.",
-                "I’m not mad, I’m just hungry and almost dead.",
-                "I can bite enemies or I can bite food. Your choice.",
-                "Pretty sure food is super effective against 'almost dead'.",
-                
-                // +50 new lines
-                "Okay, I admit it, I need a snack and a hug.",
-                "My armor's cracked and so am I. Food?",
-                "Warning: companion integrity at 12%. Apply food.",
-                "Pretty sure my spleen just rage quit. Got stew?",
-                "If you toss food, I promise to catch it. Probably.",
-                "I'd walk it off, but I can barely stand. Rations?",
-                "Is it normal to hear boss music and my stomach growling?",
-                "Low health, high anxiety, zero snacks. Bad combo.",
-                "If you have bread, now’s the time for a miracle.",
-                "Potion, salve, drumstick.. I’m not picky.",
-                "If I drop, loot my body for regrets and crumbs.",
-                "I'll stop complaining the second I start chewing.",
-                "Your inventory looks heavy. Let me lighten it—via snacks.",
-                "Can't parry death on an empty stomach.",
-                "My survival strategy currently involves you feeding me.",
-                "Health potions are nice, but have you tried soup?",
-                "Help, I appear to be leaking. Send food.",
-                "Doctor's orders: more food, less getting stabbed.",
-                "If you feed me, I’ll pretend this was all part of the plan.",
-                "I'm fine. Totally fine. Just kidding, please feed me.",
-                "Imagine how epic I'd be at full health and full belly.",
-                "New quest: Restore companion. Objective: Provide snacks.",
-                "Pretty sure my HP bar qualifies as a horror story.",
-                "If hunger doesn’t get me, that last hit will.",
-                "I'm one sneeze away from collapsing.",
-                "I can tank monsters, not skipping meals.",
-                "Food now would really boost company morale. My morale.",
-                "This feels like a 'eat first, fight later' situation.",
-                "On the bright side, at least I still have my appetite.",
-                "If you hear a thud, that was me. Bring food.",
-                "My inner monologue is just 'ow' and 'snacks' on repeat.",
-                "Good news: I'm loyal. Bad news: I'm starving.",
-                "Let’s not make my tombstone read 'died snackless.'",
-                "I could really go for something that isn’t floor right now.",
-                "If I had more food, I’d have less dying.",
-                "Tell my story… unless you have food, then save me instead.",
-                "Reminder: companions run better on calories.",
-                "Critical condition achieved. Time for critical snacks.",
-                "Half of my health is gone and so is all the jerky.",
-                "My HP is lower than your standards. Fix that with food.",
-                "Do we have a combat medic or a combat sandwich?",
-                "My body says 'rest' but my stomach says 'buffet.'",
-                "I’ve had better days and more snacks.",
-                "If 'nearly dead' had a flavor, it would be 'no food.'",
-                "I swear I dodge better after a good meal.",
-                "Low health has entered the chat. Please respond with food.",
-                "Your companion is buffering… need food to continue.",
-                "Consider this a polite pre-death snack request.",
-                "I'm holding the line, but I'd rather be holding a sandwich.",
-                "If reinforcements aren't coming, at least let the snacks arrive."
-        };
-        return lines[rand.nextInt(lines.length)];
+    private Component randomFoodRequestLine() {
+        return Component.translatable("dialogue.modern_companions.food_request." + this.random.nextInt(322));
     }
 }

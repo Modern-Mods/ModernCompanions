@@ -14,10 +14,10 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
 ![Inventory/Curio](https://i.imgur.com/NRLqCWk.gif)
 
 - **Finding companions:** Companion houses generate across the Overworld in houses/buildings (spacing is config-driven, default ~20 chunks). Residents spawn untamed with random name, sex, skin, base health variance, and RPG stats (STR/DEX/INT/END; a rare “specialist” rolls +5 in one stat).
-- **Taming & upkeep:** Right-click an untamed companion with the exact items they request (two food/resource stacks chosen at spawn); once both reach zero they tame, follow, and unlock their GUI. Tamed companions heal with a wide pantry — cooked foods, veggies, fruits, enchanted golden foods, honey, and beneficial potions (regen/instant health, etc.), applying the effects and returning empty bottles when possible—plus they still ping the owner for food when low.
-- **Commands & stances:** Shift + right-click toggles sit. Right-click opens the companion screen: follow/patrol/guard cycle, alert (hostile blacklist focus), hunt (farm animals), **sprint toggle** (on = sprint with you; off = normal run), auto-pickup toggle, clear target, release back to the wild, and patrol-radius +/- (2–32, saved per companion). Patrol/guard anchor at your current block.
+- **Taming & upkeep:** Right-click an untamed companion with the exact items they request (two food/resource stacks; the resource tier is finalized on first interaction using the player’s Nether/ocean progress); once both reach zero they tame, follow, and unlock their GUI. Resource tiers are 70% common, 25% uncommon, and 5% rare. Tamed companions heal with a wide pantry — cooked foods, veggies, fruits, enchanted golden foods, honey, and beneficial potions (regen/instant health, etc.), applying the effects and returning empty bottles when possible—plus they still ping the owner for food when low.
+- **Commands & stances:** Shift + right-click toggles sit. Right-click opens the companion screen: follow/patrol/guard cycle, alert (hostile blacklist focus), hunt (farm animals), **sprint toggle** (on = sprint with you; off = normal run), auto-pickup toggle, clear target, release back to the wild, and radius +/- (2–128, saved per companion). Following companions wander within that radius around you; patrol/guard use it around your current anchor block.
 - **Staying close:** Follow AI now mirrors vanilla pet recall—companions on the same dimension teleport to the nearest safe spot around you when they drift ~35 blocks away, with navigation fallback if no space is open.
-- **Inventory & gear:** 6×9 personal inventory, item-magnet pickup when enabled, automatic best-armor selection, and class-aware weapon selection each tick. Friendly-fire and fall damage respect config toggles.
+- **Inventory & gear:** 7×9 personal inventory plus six equipment slots, item-magnet pickup when enabled, automatic best-armor selection, and class-aware weapon selection each tick. Friendly-fire and fall damage respect config toggles.
 - **Progression:** Companions earn XP from kills; an MMO-style curve gates levels. Health scales with level and END; STR boosts damage/knockback, DEX boosts move/attack speed + light KB resist, INT speeds XP gain, END adds health + physical reduction. Kill count and XP bar show in the GUI.
 - **Progression:** Companions earn XP from kills; an MMO-style curve gates levels. Health scales with level and END; STR boosts damage/knockback, DEX boosts move/attack speed + light KB resist, INT speeds XP gain, END adds health + physical reduction. Kill count and XP bar show in the GUI.
 - **Limits:** There is **no level cap** and **no hard party-size limit**—you can keep leveling companions and control as many as you can recruit; practical limits are only your hardware/server performance.
@@ -27,6 +27,16 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
 - **Custom Skins:** You can assign specific companions any skin you want! Using the command `/companionskin "NAME" URL` you can assign skins to your companions like so; `/companionskin "Daniel George" https://i.imgur.com/FWADR65.png`
 
 ## Curio / Backpack Support
+
+## Worker Jobs
+
+- Bind a chest with Assignment Wand, assign Miner, Fisher, Lumberjack, Chef, or Hunter, then enable `Work`. The chest is the work center and Radius is the work boundary. Selecting `None` restores normal behavior and the prior combat weapon.
+- Workers only act from a dry, two-block-high, path-reachable standing position with line of sight and interaction range. Blocked, protected, unloaded, or full-inventory work stays queued for retry instead of being discarded.
+- Lumberjacks and Miners search from their assigned chest outward through the full companion Radius, up to 128 blocks. Miner columns cover the matching vertical work volume; planned excavation opens each adjacent two-block tunnel step in visible order, retains its support floor, then walks into the opening. Routes stop at fluids, fire, magma, unsafe terrain, or missing ore. Lumberjacks preserve lower-log priority and never discard an uncut log after a path stall. Couriers report inaccessible chests and never clear a route.
+- Fishers use reachable shoreline/water pairs, cast toward valid water, and reel only after a server-side bobber bite. Chefs require a reachable heat-source stand; furnaces/smokers use their inventory contract and campfires cook only while standing at a valid site.
+
+Manual dev-world checks remain required for modded protection hooks, complex cave return paths, and multi-miner tick cost.
+
 - **Curios (optional)**: If Curios is installed, companions expose Curio slots and a render toggle so you can hide/show equipped curios per companion. Metadata marks Curios as optional; the mod runs fine without it.
 - **Sophisticated Backpacks (optional)**: When a companion wears a sophisticated backpack in the Curios back slot, all picked-up items are inserted into the backpack before the companion’s own 6×9 inventory (uses SB’s backpack IO wrapper with capability fallback).
 
@@ -61,6 +71,7 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
   - Morale descriptor and Bond level/XP.
   - Journey stats: kills, major kills, resurrections, distance traveled with owner, first hired day.
   - Age: rolled 18–35 at spawn; ages +1 year every ~90 in-game days (visual only).
+- The journal's top-right edit control opens Name, Age, Bio, and Skin forms. Press Enter or `Done` to save; editable ages are 1–120, and skin URLs use the same HTTP(S) requirement as `/companionskin`.
 - Legacy companions (zero traits) are backfilled **once** on load with traits/backstory/age—no rerolls after the initial backfill.
 
 ## Worldgen & Spawns
@@ -152,10 +163,41 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
 
 **Availability:** Custom-textured enchanted books live on the Modern Companions creative tab and can drop from dungeon/mineshaft/stronghold library/temple/buried treasure/shipwreck loot tables.
 
+## Companion Resources & Potions
+Every companion has 100 persistent Stamina. Successful melee hits and actual sprinting spend it; at zero, sprinting pauses and melee remains available at a slower cadence. Stamina recovers slowly in combat, normally out of combat, then quickly after five seconds safe. Magic companions also have 100 persistent Mana. Basic, utility, and heavy spells cost 10, 20, and 35 Mana only after a cast succeeds.
+
+Five reusable glass vessels craft into round, rectangle, pyramid, hexagon, and droplet shapes. In a brewing stand, combine an empty vessel with a water bottle, add nether wart, then use the shown reagent path: glistering melon for Health; ghast tear for Regeneration; sugar then rabbit's foot for Stamina; amethyst then lapis for Mana; ghast tear then amethyst for Rejuvenation; turtle scute then iron for Shield. Drinking returns its matching vessel.
+
+Health restores immediately, Regeneration heals over time, Stamina and Mana restore their matching companion pool, Rejuvenation recovers all three over time, and Shield gives temporary armor. Companions drink only a useful potion from their own inventory. Loot is conservatively added to normal chest tables; Lootr runs those same tables per player, and normal datapack recipes/tags (`companion_potions`, `companion_empty_vessels`, and family tags) stay replaceable from KubeJS. Jade shows compact Stamina and, for mages, Mana bars.
+
 ## Config & Packmaker Notes
 - Friendly fire, fall damage, spawn armor/weapon, and house spacing are configurable.
+- Set `companion.lowHealthFoodThreshold` from `0.0` to `1.0` to control when a companion eats or asks for food; the default `0.5` means half health. `lowHealthFood` still enables or disables both behaviors.
+- Set `companion.staminaEnabled` to `false` to disable companion Stamina completely; sprinting and melee attacks no longer drain or throttle, Stamina stays full, and Jade hides the Stamina bar.
+- Set `companion.sprintStaminaCost` to control Stamina spent per sprinting tick (default `1`) and `companion.meleeStaminaCost` to control Stamina spent per successful melee hit (default `8`); both accept `0` through `100`, and `0` disables that individual drain.
+- All bundled 64x64 male and female companion textures under `textures/entities` are included in the random birth-skin pools.
+- Companion inventory includes owner-only Villager and PvP safety controls. Both default to safe: companions cannot target or damage villagers or other players until explicitly enabled.
+- With Curios and Sophisticated Backpacks installed, equip a Sophisticated Backpack in the companion's back slot. It renders on the companion and the optional Backpack button opens its storage. A companion's Bio records its randomly selected favorite food; feeding it doubles Bond XP and morale gain.
+- The Backpack button opens Sophisticated Backpacks' native storage container, so its upgrades and settings tabs work exactly as they do for a player-worn backpack.
+- TacZ firearms are optional: companions equip a supplied gun, aim at a valid target, shoot, reload from their own inventory, and notify their owner after an ammo failure.
+- All seven TacZ firearm specialist variants receive the same Curios slots and rendering support when Curios is installed.
+- When TacZ is installed, structure residents can be replaced by rare firearm specialists. Each specialist is permanently assigned to Pistol, SMG, Rifle, Shotgun, Sniper, Machine Gun, or Heavy and only equips guns in that TacZ category; Sniper and Heavy rolls are intentionally very rare.
+- TacZ supplies one matching summon gem for each specialist category; these seven gems reuse the existing gem art and are not registered or shown when TacZ is absent.
+- Their inventory class labels use the preferred firearm name (for example, Pistol Specialist, MG Specialist, or Sniper) instead of the generic Firearm Specialist label.
+- Equipped TacZ guns remain in the companion's equipment slot when captured and redeployed; ammunition remains in cargo for native TacZ reloads.
 - Data pack uses pack_format 48; loot injections use NeoForge global loot modifiers for compatibility.
 - Better Combat detected: reach modifiers are skipped to avoid stacking with that mod’s reach.
+
+## Living Jobs
+Assign a non-`NONE` job in Jobs, bind its chest with Assignment Wand, then use main inventory's `Work` button to start or pause profession. Green Work is primary: Follow, Patrol, and Guard turn off; selecting one turns Work off. Jobs search and act only inside the configured Radius around bound chest. `Currently` panel shows job and short live state without changing supplied texture.
+
+The companion inventory hides its experimental Jobs button by default. Set `jobs.showJobsButton = true` in the common config to restore it; Journal, Curios, and Pack automatically move down when the Jobs row is enabled.
+
+Jobs share safe work-site checks, temporary target reservations, persisted target/phase checkpoints, and assigned-chest delivery. Workers only edit blocks after reaching approved stand; blocked, protected, unloaded, full-inventory, or full-chest work stays queued. Assignment Wand binds job companion to vanilla or item-handler container. Workers bulk-deliver every two minutes or at dusk, whichever comes first, while retaining all edible food, potions, equipment, job tools, and Lumberjack saplings. Chefs first visit the assigned chest to collect one tagged raw ingredient when their inventory has none.
+
+Lumberjacks claim cardinally connected trees, keep a running path to a safe stump-side stand, clear leaves only after that approach stalls, keep failed logs queued, reject over-limit trees, and replant only matching log-family saplings. Fishers accept compatible fishing rods, face their farther validated surface-water cast target, and use a durable bite window. Hunters use one job target path for adult wild Animals; packs can deny entity types with `modern_companions:hunter_denied` or add animal-like entities with `modern_companions:hunter_allowed`. Chefs use `modern_companions:raw_meat` tag plus vanilla cooking recipes, furnaces, smokers, and campfires; pack makers can add tagged meats and native recipes.
+
+Manual dev-world verification still required: each job's navigation, combat/unload interruption, chest retry, two-worker reservations, campfire/furnace ownership, tree footprint/replant backlog, miner route hazards, and GUI text clipping.
 
 ## Requirements
 - Java 21 (JDK 21)
@@ -178,7 +220,7 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
 - **Resurrection:** Activation is purely item logic (nether star off-hand). Auto-loot blacklist prevents companions from grabbing their own scroll.
 - **XP & health scaling:** Companions gain XP when they land killing blows (server-side event). INT raises XP gain (≈ +3% per INT over 4). A superlinear curve governs level costs: XP needed ≈ 20 + 10·(level+1)^1.35. Each level raises max health by +⅓ heart (via attribute modifier), and END grants +1 HP per point above 4, plus up to 35% physical mitigation via END-based reduction. Current health is clamped to new max on level-up; the GUI shows level, XP bar, and kills.
 - **Beastmaster pets:** Pets are permanently bound, inherit STR/DEX/END scaling, and automatically respawn after a short timer if they die or unload. Respawn is suppressed while the Beastmaster is dying/dropped to a scroll to prevent dupes. Pets also avoid friendly fire from their master.
-- **Random names:** Companions roll from a large male/female name pool on spawn, and Beastmaster pets get their own sizable pet-name list. Names are saved, shown on hover (not always-on), and carried through resurrection/pet respawn.
+- **Random names:** Companions roll from expanded male/female first-name and surname pools, including medieval and fantasy-flavored names, while Beastmaster pets get their own sizable pet-name list. Names are saved, shown on hover (not always-on), and carried through resurrection/pet respawn.
 
 ## Credits
 - Original mod: Human Companions by justinwon777.

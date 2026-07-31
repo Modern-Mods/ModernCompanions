@@ -60,19 +60,18 @@ public final class ModCommands {
     private static int setCompanionSkin(CommandSourceStack source, String name, String url) {
         ServerPlayer player = Objects.requireNonNull(source.getPlayer());
         if (!isHttpUrl(url)) {
-            source.sendFailure(Component.literal("Skin URL must start with http:// or https://"));
+            source.sendFailure(Component.translatable("command.modern_companions.skin.invalid_url"));
             return 0;
         }
 
         AbstractHumanCompanionEntity companion = findOwnedCompanion(source, player, name);
         if (companion == null) {
-            source.sendFailure(Component.literal("No owned companion named \"" + name + "\" was found."));
+            source.sendFailure(Component.translatable("command.modern_companions.skin.not_found", name));
             return 0;
         }
 
         companion.setCustomSkinUrl(url);
-        source.sendSuccess(() -> Component.literal(
-                "Updated skin for " + companion.getName().getString() + " using " + url), false);
+        source.sendSuccess(() -> Component.translatable("command.modern_companions.skin.updated", companion.getName(), url), false);
         return 1;
     }
 

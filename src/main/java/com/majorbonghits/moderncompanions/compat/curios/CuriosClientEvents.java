@@ -35,13 +35,27 @@ public final class CuriosClientEvents {
         addCuriosLayer(event, ctx, ModEntityTypes.VANGUARD.get());
         addCuriosLayer(event, ctx, ModEntityTypes.BERSERKER.get());
         addCuriosLayer(event, ctx, ModEntityTypes.BEASTMASTER.get());
-        addCuriosLayer(event, ctx, ModEntityTypes.CLERIC.get());
+        addCuriosLayer(event, ctx, ModEntityTypes.CLERIC);
         addCuriosLayer(event, ctx, ModEntityTypes.ALCHEMIST.get());
         addCuriosLayer(event, ctx, ModEntityTypes.SCOUT.get());
         addCuriosLayer(event, ctx, ModEntityTypes.STORMCALLER.get());
-        addCuriosLayer(event, ctx, ModEntityTypes.FIRE_MAGE.get());
-        addCuriosLayer(event, ctx, ModEntityTypes.LIGHTNING_MAGE.get());
-        addCuriosLayer(event, ctx, ModEntityTypes.NECROMANCER.get());
+        addCuriosLayer(event, ctx, ModEntityTypes.FIREARM_SPECIALIST);
+        addCuriosLayer(event, ctx, ModEntityTypes.FIRE_MAGE);
+        addCuriosLayer(event, ctx, ModEntityTypes.LIGHTNING_MAGE);
+        addCuriosLayer(event, ctx, ModEntityTypes.NECROMANCER);
+        addCuriosLayer(event, ctx, ModEntityTypes.WIZARD);
+        addCuriosLayer(event, ctx, ModEntityTypes.SORCERER);
+        addCuriosLayer(event, ctx, ModEntityTypes.WARLOCK);
+        addCuriosLayer(event, ctx, ModEntityTypes.WITCH);
+        addCuriosLayer(event, ctx, ModEntityTypes.HAG);
+        addCuriosLayer(event, ctx, ModEntityTypes.CRYOMANCER);
+        addCuriosLayer(event, ctx, ModEntityTypes.DRUID);
+        addCuriosLayer(event, ctx, ModEntityTypes.ILLUSIONIST);
+        addCuriosLayer(event, ctx, ModEntityTypes.BATTLEMAGE);
+    }
+
+    private static void addCuriosLayer(EntityRenderersEvent.AddLayers event, EntityRendererProvider.Context ctx, net.neoforged.neoforge.registries.DeferredHolder<EntityType<?>, ? extends EntityType<?>> type) {
+        if (type != null) addCuriosLayer(event, ctx, type.get());
     }
 
     private static void addCuriosLayer(EntityRenderersEvent.AddLayers event, EntityRendererProvider.Context ctx, EntityType<?> type) {

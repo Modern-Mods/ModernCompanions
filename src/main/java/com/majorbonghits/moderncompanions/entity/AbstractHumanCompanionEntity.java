@@ -2041,10 +2041,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                     player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
                             CompanionData.notTamed[this.random.nextInt(CompanionData.notTamed.length)]));
                 } else if (foodRequirements.containsKey(held.getItem())) {
-                    int remaining = foodRequirements.get(held.getItem());
+                    Item fedItem = held.getItem();
+                    int remaining = foodRequirements.get(fedItem);
                     if (remaining > 0) {
                         held.shrink(1);
-                        foodRequirements.put(held.getItem(), remaining - 1);
+                        foodRequirements.put(fedItem, remaining - 1);
                         syncFoodRequirements();
                         if (foodRequirements.values().stream().allMatch(v -> v <= 0)) {
                             this.tame(player);
@@ -2061,7 +2062,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                                 patrolGoal.radius = 4;
                             if (moveBackGoal != null)
                                 moveBackGoal.radius = 4;
-                        } else if (foodRequirements.get(held.getItem()) == 0) {
+                        } else if (foodRequirements.get(fedItem) == 0) {
                             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
                                     CompanionData.ENOUGH_FOOD[this.random
                                             .nextInt(CompanionData.ENOUGH_FOOD.length)]));

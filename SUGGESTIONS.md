@@ -274,3 +274,6 @@
 
 ## 2026-07-31 (player-facing localization)
 - Keep new UI, dialogue, job-status, command, and optional-integration copy in the language files; add translated locale values when translation support is expanded beyond the English fallback.
+
+## 2026-07-31 (configurable stamina costs and toggle)
+- Keep the three values in the common companion config; add per-class or per-attack stamina tuning only if live balancing shows the shared sprint/melee costs are insufficient.

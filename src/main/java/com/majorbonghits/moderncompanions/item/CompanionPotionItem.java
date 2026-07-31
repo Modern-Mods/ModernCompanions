@@ -35,7 +35,8 @@ public final class CompanionPotionItem extends Item {
     public boolean isUsefulFor(AbstractHumanCompanionEntity companion) {
         return switch (kind) {
             case HEALTH, REGENERATION -> companion.getHealth() < companion.getMaxHealth() - 1.0F;
-            case STAMINA -> (companion.isSprintEnabled() || companion.getTarget() != null) && companion.getStamina() < 15;
+            case STAMINA -> companion.isStaminaEnabled()
+                    && (companion.isSprintEnabled() || companion.getTarget() != null) && companion.getStamina() < 15;
             case MANA -> companion.hasMana() && companion.getTarget() != null && companion.getMana() < 10;
             case REJUVENATION -> depletedResources(companion) >= 2 || companion.getHealth() * 3.0F < companion.getMaxHealth();
             case SHIELD -> companion.getTarget() != null && !companion.hasEffect(ModEffects.COMPANION_SHIELD);
@@ -44,7 +45,7 @@ public final class CompanionPotionItem extends Item {
 
     private static int depletedResources(AbstractHumanCompanionEntity companion) {
         int depleted = companion.getHealth() < companion.getMaxHealth() - 4.0F ? 1 : 0;
-        if (companion.getStamina() < companion.getStaminaMax() - 25) depleted++;
+        if (companion.isStaminaEnabled() && companion.getStamina() < companion.getStaminaMax() - 25) depleted++;
         if (companion.hasMana() && companion.getMana() < companion.getManaMax() - 25) depleted++;
         return depleted;
     }

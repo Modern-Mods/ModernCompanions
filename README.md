@@ -173,6 +173,8 @@ Health restores immediately, Regeneration heals over time, Stamina and Mana rest
 ## Config & Packmaker Notes
 - Friendly fire, fall damage, spawn armor/weapon, and house spacing are configurable.
 - Set `companion.lowHealthFoodThreshold` from `0.0` to `1.0` to control when a companion eats or asks for food; the default `0.5` means half health. `lowHealthFood` still enables or disables both behaviors.
+- Set `companion.staminaEnabled` to `false` to disable companion Stamina completely; sprinting and melee attacks no longer drain or throttle, Stamina stays full, and Jade hides the Stamina bar.
+- Set `companion.sprintStaminaCost` to control Stamina spent per sprinting tick (default `1`) and `companion.meleeStaminaCost` to control Stamina spent per successful melee hit (default `8`); both accept `0` through `100`, and `0` disables that individual drain.
 - All bundled 64x64 male and female companion textures under `textures/entities` are included in the random birth-skin pools.
 - Companion inventory includes owner-only Villager and PvP safety controls. Both default to safe: companions cannot target or damage villagers or other players until explicitly enabled.
 - With Curios and Sophisticated Backpacks installed, equip a Sophisticated Backpack in the companion's back slot. It renders on the companion and the optional Backpack button opens its storage. A companion's Bio records its randomly selected favorite food; feeding it doubles Bond XP and morale gain.

@@ -246,8 +246,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final int STAMINA_MAX_DEFAULT = 100;
     private static final int MANA_MAX_DEFAULT = 100;
     private static final int SPRINT_RESUME_STAMINA = 15;
-    private static final int MELEE_STAMINA_COST = 8;
-    private static final int SPRINT_STAMINA_COST = 1;
 
     // Seven visible rows in the companion menu; saved inventories keep their existing slot indices.
     protected final SimpleContainer inventory = new SimpleContainer(63);
@@ -2188,11 +2186,20 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public int getStamina() { return this.entityData.get(STAMINA); }
     public int getStaminaMax() { return this.entityData.get(STAMINA_MAX); }
+    public boolean isStaminaEnabled() { return ModConfig.safeGet(ModConfig.STAMINA_ENABLED); }
+    private int sprintStaminaCost() { return ModConfig.safeGet(ModConfig.STAMINA_SPRINT_COST); }
+    private int meleeStaminaCost() { return ModConfig.safeGet(ModConfig.STAMINA_MELEE_COST); }
     public int getMana() { return this.entityData.get(MANA); }
     public int getManaMax() { return this.entityData.get(MANA_MAX); }
     public boolean hasMana() { return this instanceof AbstractMageCompanion; }
     public boolean canSpendMana(int amount) { return hasMana() && getMana() >= amount; }
-    public void restoreStamina(int amount) { this.entityData.set(STAMINA, bounded(getStamina() + amount, getStaminaMax())); }
+    public void restoreStamina(int amount) {
+        if (!isStaminaEnabled()) {
+            this.entityData.set(STAMINA, getStaminaMax());
+            return;
+        }
+        this.entityData.set(STAMINA, bounded(getStamina() + amount, getStaminaMax()));
+    }
     public void restoreMana(int amount) { if (hasMana()) this.entityData.set(MANA, bounded(getMana() + amount, getManaMax())); }
     public boolean spendMana(int amount) {
         if (!canSpendMana(amount)) return false;
@@ -2572,7 +2579,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         boolean wantsSprint = isSprintEnabled() && !this.isOrderedToSit();
         boolean movingOrFighting = (this.getNavigation() != null && !this.getNavigation().isDone())
                 || this.getTarget() != null;
-        boolean staminaReady = this.isSprinting() ? getStamina() > 0 : getStamina() >= SPRINT_RESUME_STAMINA;
+        boolean staminaReady = !isStaminaEnabled()
+                || (this.isSprinting() ? getStamina() > 0 : getStamina() >= SPRINT_RESUME_STAMINA);
         if (wantsSprint && movingOrFighting && staminaReady) {
             this.setSprinting(true);
         } else {
@@ -2789,10 +2797,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         LivingEntity target = getTarget();
         boolean inCombat = target != null && target.isAlive();
         combatGraceTicks = inCombat ? 0 : Math.min(combatGraceTicks + 1, 100);
-        if (isSprinting()) this.entityData.set(STAMINA, bounded(getStamina() - SPRINT_STAMINA_COST, getStaminaMax()));
+        boolean staminaEnabled = isStaminaEnabled();
+        if (!staminaEnabled) {
+            this.entityData.set(STAMINA, getStaminaMax());
+        } else if (isSprinting()) {
+            this.entityData.set(STAMINA, CompanionResourceRules.spend(getStamina(), sprintStaminaCost(), getStaminaMax()));
+        }
         int interval = CompanionResourceRules.regenInterval(inCombat, combatGraceTicks, hasEffect(MobEffects.REGENERATION));
         if (this.tickCount % interval == 0) {
-            restoreStamina(1);
+            if (staminaEnabled) restoreStamina(1);
             restoreMana(1);
         }
     }
@@ -2918,7 +2931,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (!canHarm(entity)) {
             return false;
         }
-        if (!this.level().isClientSide && getStamina() <= 0 && this.tickCount - lastExhaustedMeleeTick < 20) {
+        boolean staminaEnabled = isStaminaEnabled();
+        int meleeCost = meleeStaminaCost();
+        if (!this.level().isClientSide && staminaEnabled && meleeCost > 0 && getStamina() <= 0
+                && this.tickCount - lastExhaustedMeleeTick < 20) {
             return false; // Exhaustion slows shared melee cadence without disabling defense.
         }
         forceSwingAnimation(InteractionHand.MAIN_HAND);
@@ -2933,8 +2949,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         boolean hit = super.doHurtTarget(entity);
         if (!this.level().isClientSide) {
-            if (hit) this.entityData.set(STAMINA, bounded(getStamina() - MELEE_STAMINA_COST, getStaminaMax()));
-            if (getStamina() <= 0) lastExhaustedMeleeTick = this.tickCount;
+            if (staminaEnabled && hit) {
+                this.entityData.set(STAMINA, CompanionResourceRules.spend(getStamina(), meleeCost, getStaminaMax()));
+            }
+            if (staminaEnabled && meleeCost > 0 && getStamina() <= 0) lastExhaustedMeleeTick = this.tickCount;
         }
         return hit;
     }

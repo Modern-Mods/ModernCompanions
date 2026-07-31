@@ -21,6 +21,9 @@ public final class ModConfig {
     public static ModConfigSpec.IntValue BASE_HEALTH;
     public static ModConfigSpec.BooleanValue LOW_HEALTH_FOOD;
     public static ModConfigSpec.DoubleValue LOW_HEALTH_FOOD_THRESHOLD;
+    public static ModConfigSpec.BooleanValue STAMINA_ENABLED;
+    public static ModConfigSpec.IntValue STAMINA_SPRINT_COST;
+    public static ModConfigSpec.IntValue STAMINA_MELEE_COST;
     public static ModConfigSpec.BooleanValue CREEPER_WARNING;
     public static ModConfigSpec.BooleanValue TRAITS_ENABLED;
     public static ModConfigSpec.IntValue SECONDARY_TRAIT_CHANCE;
@@ -96,6 +99,15 @@ public final class ModConfig {
         LOW_HEALTH_FOOD_THRESHOLD = builder
                 .comment("Health fraction at or below which companions eat or ask for food; 0.5 means half health")
                 .defineInRange("lowHealthFoodThreshold", 0.5D, 0.0D, 1.0D);
+        STAMINA_ENABLED = builder
+                .comment("Enable the companion Stamina system")
+                .define("staminaEnabled", true);
+        STAMINA_SPRINT_COST = builder
+                .comment("Stamina spent per game tick while sprinting; 0 disables sprint drain")
+                .defineInRange("sprintStaminaCost", 1, 0, 100);
+        STAMINA_MELEE_COST = builder
+                .comment("Stamina spent after a successful melee attack; 0 disables melee drain")
+                .defineInRange("meleeStaminaCost", 8, 0, 100);
         CREEPER_WARNING = builder
                 .comment("If true, companions warn the player about nearby creepers")
                 .define("creeperWarning", true);

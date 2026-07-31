@@ -2382,3 +2382,9 @@
 - Steps: Replaced the flat resource pool with weighted tiers, tracked Nether/ocean milestones in player persistent data from server ticks, safely generated provisional spawn requirements, resolved them once on first untamed interaction, persisted the resolution state, updated README/SUGGESTIONS, and bumped version to 1.2.91.
 - Rationale: Companions are born before they have an owner, so provisional requirements avoid inaccessible materials; first interaction supplies the player context without rerolling tamed or partially progressed companions.
 - Build/Test: Java 21 `check`/`build` and `git diff --check` passed; in-game taming/progression smoke remains required.
+
+## 2026-07-31 (configurable Stamina costs and system toggle)
+- Prompt/task: Make Stamina spent by sprinting and successful melee attacks configurable, with a toggle to disable the Stamina system.
+- Steps: Added common `companion.staminaEnabled`, `companion.sprintStaminaCost`, and `companion.meleeStaminaCost` settings; routed both drains through the shared resource helper; bypassed sprint exhaustion and melee throttling when disabled; kept disabled companions at full Stamina; suppressed autonomous Stamina-potion use and the Jade Stamina bar when disabled; updated README/SUGGESTIONS; and bumped version to 3.1.
+- Rationale: The existing shared entity path owns every Stamina drain and exhaustion decision, so one config boundary keeps sprinting, melee, recovery, potion use, and presentation consistent without affecting Mana.
+- Build/Test: Java 21 `companionResourcesCheck` and `build --console=plain --no-daemon` passed, including `test`, `workerSafetyCheck`, and `firearmCategoryCheck`; `git diff --check` passed. Live config reload and sprint/melee runtime smoke remain required.

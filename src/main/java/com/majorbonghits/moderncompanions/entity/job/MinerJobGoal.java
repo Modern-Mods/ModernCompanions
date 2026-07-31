@@ -92,10 +92,10 @@ public class MinerJobGoal extends ResumableJobGoal {
         if (!isActiveJob()) return false;
         if (!digQueue.isEmpty()) {
             if (targetOre != null && !reserve("ore:" + targetOre.asLong())) {
-                waiting("Ore reserved");
+                waiting("job_status.modern_companions.ore_reserved");
                 return false;
             }
-            phase(JobPhase.TRAVELLING, "Travelling", digQueue.peekFirst() == null ? targetOre : digQueue.peekFirst().pos());
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling", digQueue.peekFirst() == null ? targetOre : digQueue.peekFirst().pos());
             return true;
         }
         if (searchCooldown > 0) {
@@ -106,10 +106,10 @@ public class MinerJobGoal extends ResumableJobGoal {
         boolean planned = tryPlanNextOre();
         searchCooldown = surveyInProgress ? 0 : SEARCH_COOLDOWN;
         if (planned && targetOre != null && !reserve("ore:" + targetOre.asLong())) {
-            waiting("Ore reserved");
+            waiting("job_status.modern_companions.ore_reserved");
             return false;
         }
-        if (planned && targetOre != null) phase(JobPhase.TRAVELLING, "Travelling", targetOre);
+        if (planned && targetOre != null) phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling", targetOre);
         return planned;
     }
 
@@ -165,12 +165,12 @@ public class MinerJobGoal extends ResumableJobGoal {
                 progressStallTicks = 0;
                 moveToCurrentDigPos();
             } else {
-                phase(JobPhase.TRAVELLING, "Advancing tunnel", current);
+                phase(JobPhase.TRAVELLING, "job_status.modern_companions.advancing_tunnel", current);
                 if (companion.getNavigation().isDone()) moveToCurrentDigPos();
                 if (companion.position().distanceToSqr(lastProgressPos) < 0.04D) {
                     if (++progressStallTicks > 100) {
                         progressStallTicks = 0;
-                        if (!planPathToOre(targetOre)) companion.setJobStatus("Route blocked");
+                        if (!planPathToOre(targetOre)) companion.setJobStatus("job_status.modern_companions.route_blocked");
                     }
                 } else {
                     lastProgressPos = companion.position();
@@ -214,7 +214,7 @@ public class MinerJobGoal extends ResumableJobGoal {
                 progressStallTicks = 0;
                 info("Movement stall at %s (ore=%s digQueue=%d)", fmt(companion.blockPosition()), fmt(targetOre), digQueue.size());
                 if (!planPathToOre(targetOre)) {
-                    companion.setJobStatus("Route blocked");
+                    companion.setJobStatus("job_status.modern_companions.route_blocked");
                 }
                 return;
             }
@@ -225,13 +225,13 @@ public class MinerJobGoal extends ResumableJobGoal {
 
         if (currentDigStand(current) == null) {
             breakTicksRemaining = 0;
-            companion.setJobStatus("Route blocked");
+            companion.setJobStatus("job_status.modern_companions.route_blocked");
             return;
         }
 
         // Break timing: swing, then decrement.
         if (breakTicksRemaining <= 0) {
-            phase(JobPhase.WORKING, "Mining", current);
+            phase(JobPhase.WORKING, "job_status.modern_companions.mining", current);
             breakTicksRemaining = computeBreakTicks(current);
             swingCooldown = 0;
         }
@@ -253,7 +253,7 @@ public class MinerJobGoal extends ResumableJobGoal {
                     moveToCurrentDigPos();
                     return;
                 }
-                companion.setJobStatus(result == WorkerActionResult.INVENTORY_FULL ? "Inventory full" : "Mining blocked");
+                companion.setJobStatus(result == WorkerActionResult.INVENTORY_FULL ? "job_status.modern_companions.inventory_full" : "job_status.modern_companions.mining_blocked");
                 breakTicksRemaining = 0;
                 moveToCurrentDigPos();
                 return;
@@ -808,7 +808,7 @@ public class MinerJobGoal extends ResumableJobGoal {
         BlockPos current = step.pos();
         if (step.action() == RouteAction.WALK) {
             if (!WorkerSite.isSafeStand(companion.level(), current)) {
-                companion.setJobStatus("Route blocked");
+                companion.setJobStatus("job_status.modern_companions.route_blocked");
                 return;
             }
             companion.getNavigation().moveTo(current.getX() + 0.5D, current.getY(), current.getZ() + 0.5D, 1.05D);
@@ -817,7 +817,7 @@ public class MinerJobGoal extends ResumableJobGoal {
         BlockPos stand = currentDigStand(current);
         if (stand == null) {
             // Preserve ore and route for retry after a transient obstruction/path update.
-            companion.setJobStatus("Route blocked");
+            companion.setJobStatus("job_status.modern_companions.route_blocked");
             return;
         }
         debug("Navigating toward dig target %s (stand at %s)", fmt(current), fmt(stand));
@@ -895,8 +895,8 @@ public class MinerJobGoal extends ResumableJobGoal {
         if (companion.getJob() != CompanionJob.MINER) return false;
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (!(companion.getMainHandItem().getItem() instanceof PickaxeItem)) { companion.setJobStatus("No pickaxe"); return false; }
-        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        if (!(companion.getMainHandItem().getItem() instanceof PickaxeItem)) { companion.setJobStatus("job_status.modern_companions.no_pickaxe"); return false; }
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
 

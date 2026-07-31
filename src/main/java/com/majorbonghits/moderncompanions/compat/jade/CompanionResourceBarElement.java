@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.compat.jade;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
 import snownee.jade.api.ui.Element;
@@ -11,12 +12,12 @@ final class CompanionResourceBarElement extends Element {
     private static final int WIDTH = 100;
     private static final int HEIGHT = 13;
 
-    private final String text;
+    private final Component text;
     private final int filled;
     private final int color;
 
-    CompanionResourceBarElement(String name, int current, int max, int color) {
-        text = name + " " + current + "/" + max;
+    CompanionResourceBarElement(Component name, int current, int max, int color) {
+        text = Component.translatable("tooltip.modern_companions.resource", name, current, max);
         filled = max <= 0 ? 0 : Mth.clamp(Math.round((WIDTH - 2) * current / (float) max), 0, WIDTH - 2);
         this.color = color;
     }

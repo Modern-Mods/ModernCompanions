@@ -26,7 +26,7 @@ public enum BeastmasterPetJadeProvider implements IEntityComponentProvider, ISer
         CompoundTag data = accessor.getServerData();
         String owner = data.getString(BeastmasterPetHudUtil.KEY_OWNER_NAME);
         if (!owner.isEmpty()) {
-            tooltip.add(Component.literal("Owner: " + owner));
+            tooltip.add(Component.translatable("tooltip.modern_companions.owner", owner));
         }
     }
 

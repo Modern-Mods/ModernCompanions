@@ -61,7 +61,7 @@ public final class SophisticatedBackpackCompat {
                     .getConstructor(int.class, Player.class, contextClass);
             Method writeContext = contextClass.getMethod("toBuffer", FriendlyByteBuf.class);
             player.openMenu(new SimpleMenuProvider((id, inventory, menuPlayer) -> newContainer(container, id, menuPlayer, context),
-                    Component.literal("Backpack - " + companion.getName().getString())), buffer -> writeContext(writeContext, context, buffer));
+                    Component.translatable("container.modern_companions.backpack", companion.getName())), buffer -> writeContext(writeContext, context, buffer));
             return true;
         } catch (ReflectiveOperationException exception) {
             Constants.LOG.warn("Could not open Sophisticated Backpack for companion {}", companion.getId(), exception);

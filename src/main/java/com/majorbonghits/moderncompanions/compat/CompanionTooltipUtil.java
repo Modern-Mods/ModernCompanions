@@ -29,7 +29,7 @@ public final class CompanionTooltipUtil {
     }
 
     public static Component buildAttributesLine(int strength, int dexterity, int intelligence, int endurance) {
-        return Component.literal(String.format("S:%d | D:%d | I:%d | E:%d", strength, dexterity, intelligence, endurance));
+        return Component.translatable("tooltip.modern_companions.attributes", strength, dexterity, intelligence, endurance);
     }
 
     public static int readOrFallback(CompoundTag tag, String key, int fallback) {

@@ -74,8 +74,7 @@ public final class ModNetwork {
                     case "deliver_now" -> companion.requestImmediateDelivery(serverPlayer);
                     case "release" -> {
                         companion.release();
-                        serverPlayer.sendSystemMessage(Component.literal(companion.getDisplayName().getString().split(" ")[0] +
-                                " is no longer your companion."));
+                        serverPlayer.sendSystemMessage(Component.translatable("message.modern_companions.companion_released", companion.getDisplayName()));
                     }
                     default -> {}
                 }

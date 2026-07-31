@@ -271,3 +271,6 @@
 
 ## 2026-07-31 (progression-gated taming resources)
 - Keep progression flags on the player’s persistent data; move resource tiers to datapack/config content only if server-specific taming rules are requested.
+
+## 2026-07-31 (player-facing localization)
+- Keep new UI, dialogue, job-status, command, and optional-integration copy in the language files; add translated locale values when translation support is expanded beyond the English fallback.

@@ -54,10 +54,10 @@ public class ChefJobGoal extends ResumableJobGoal {
         if (!isActiveJob()) return false;
         if (findFirstRawIngredient().isEmpty()) {
             if (prepareSupply()) {
-                phase(JobPhase.TRAVELLING, "Getting raw meat", supplyChest);
+                phase(JobPhase.TRAVELLING, "job_status.modern_companions.getting_raw_meat", supplyChest);
                 return true;
             }
-            waiting("No raw meat");
+            waiting("job_status.modern_companions.no_raw_meat");
             return false;
         }
         if (heatSource == null) {
@@ -68,7 +68,7 @@ public class ChefJobGoal extends ResumableJobGoal {
         }
         if (heatSource == null || heatStand == null || !isHeatSource(heatSource)) heatSource = findHeatSource();
         if (heatSource != null && heatStand != null && !reserve("workstation:" + heatSource.asLong())) {
-            waiting("Workstation reserved");
+            waiting("job_status.modern_companions.workstation_reserved");
             return false;
         }
         return heatSource != null && heatStand != null;
@@ -109,16 +109,16 @@ public class ChefJobGoal extends ResumableJobGoal {
         }
         double dist = companion.distanceToSqr(heatStand.getX() + 0.5D, heatStand.getY(), heatStand.getZ() + 0.5D);
         if (dist > 2.25D) {
-            phase(JobPhase.TRAVELLING, "Travelling to heat", heatSource);
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling_to_heat", heatSource);
             if (companion.getNavigation().isDone()) moveToHeat();
             return;
         }
         if (!WorkerSite.canActFromStand(companion, heatSource, heatStand, WorkerSite.INTERACT_RANGE_SQR)) {
-            waiting("Heat blocked");
+            waiting("job_status.modern_companions.heat_blocked");
             return;
         }
         if (cooldown-- > 0) return;
-        phase(JobPhase.WORKING, "Cooking", heatSource);
+        phase(JobPhase.WORKING, "job_status.modern_companions.cooking", heatSource);
         cooldown = COOK_COOLDOWN;
         cookOneItem();
     }
@@ -228,23 +228,23 @@ public class ChefJobGoal extends ResumableJobGoal {
     private void serviceSupplyChest() {
         if (!(companion.level() instanceof ServerLevel server) || supplyStand == null) return;
         if (companion.distanceToSqr(supplyStand.getX() + 0.5D, supplyStand.getY(), supplyStand.getZ() + 0.5D) > 2.25D) {
-            phase(JobPhase.TRAVELLING, "Getting raw meat", supplyChest);
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.getting_raw_meat", supplyChest);
             if (companion.getNavigation().isDone()) moveToSupply();
             return;
         }
         if (!WorkerSite.canActFromStand(companion, supplyChest, supplyStand, WorkerSite.INTERACT_RANGE_SQR)) {
-            waiting("Chest blocked");
+            waiting("job_status.modern_companions.chest_blocked");
             return;
         }
         ItemStack raw = companion.withdrawOneFromChest(server, supplyChest, this::cookable);
         supplyChest = null;
         supplyStand = null;
         if (raw.isEmpty()) {
-            waiting("No raw meat");
+            waiting("job_status.modern_companions.no_raw_meat");
             return;
         }
         companion.getInventory().addItem(raw);
-        phase(JobPhase.SEARCHING, "Cooking");
+        phase(JobPhase.SEARCHING, "job_status.modern_companions.cooking");
     }
 
     private boolean cookable(ItemStack stack) {
@@ -299,7 +299,7 @@ public class ChefJobGoal extends ResumableJobGoal {
         if (companion.getJob() != CompanionJob.CHEF) return false;
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
 

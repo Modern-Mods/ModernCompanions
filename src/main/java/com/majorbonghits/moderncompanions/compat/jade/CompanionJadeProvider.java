@@ -33,9 +33,9 @@ public enum CompanionJadeProvider implements IEntityComponentProvider, IServerDa
         int end = CompanionTooltipUtil.readOrFallback(data, CompanionTooltipUtil.KEY_END, companion.getEndurance());
         Component line = CompanionTooltipUtil.buildAttributesLine(str, dex, intel, end);
         tooltip.add(line);
-        tooltip.add(new CompanionResourceBarElement("Stamina", companion.getStamina(), companion.getStaminaMax(), 0xFF59B84B));
+        tooltip.add(new CompanionResourceBarElement(Component.translatable("gui.modern_companions.resource.stamina"), companion.getStamina(), companion.getStaminaMax(), 0xFF59B84B));
         if (companion.hasMana()) {
-            tooltip.add(new CompanionResourceBarElement("Mana", companion.getMana(), companion.getManaMax(), 0xFF5A7EEA));
+            tooltip.add(new CompanionResourceBarElement(Component.translatable("gui.modern_companions.resource.mana"), companion.getMana(), companion.getManaMax(), 0xFF5A7EEA));
         }
     }
 

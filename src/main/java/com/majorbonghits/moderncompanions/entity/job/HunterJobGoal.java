@@ -58,18 +58,18 @@ public class HunterJobGoal extends ResumableJobGoal {
         if (tickDown-- > 0) return;
         tickDown = CHECK_INTERVAL;
         if (companion.getTarget() != null && validTarget(companion.getTarget())) {
-            phase(JobPhase.WORKING, "Hunting", companion.getTarget().blockPosition());
+            phase(JobPhase.WORKING, "job_status.modern_companions.hunting", companion.getTarget().blockPosition());
             return;
         }
         companion.setTarget(null);
         LivingEntity target = findTarget();
         if (target != null && reserve("animal:" + target.getUUID())) {
             companion.setTarget(target);
-            phase(JobPhase.TRAVELLING, "Hunting", target.blockPosition());
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.hunting", target.blockPosition());
         } else if (target != null) {
-            waiting("Animal reserved");
+            waiting("job_status.modern_companions.animal_reserved");
         } else {
-            phase(JobPhase.SEARCHING, "No prey");
+            phase(JobPhase.SEARCHING, "job_status.modern_companions.no_prey");
         }
     }
 
@@ -106,7 +106,7 @@ public class HunterJobGoal extends ResumableJobGoal {
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
         if (!hasWeapon()) return false;
-        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
 

@@ -45,20 +45,20 @@ public class DeliverToChestGoal extends Goal {
         if (chest.isEmpty() || dimension.isEmpty() || !server.dimension().equals(dimension.get())) return false;
         targetChest = chest.get();
         if (!JobReservations.claim(server, "chest:" + targetChest.asLong(), companion.getUUID(), server.getGameTime(), 20L * 30L)) {
-            companion.setJobStatus("Chest reserved");
+            companion.setJobStatus("job_status.modern_companions.chest_reserved");
             return false;
         }
         companion.refreshDeliveryChunkTicket(server);
         if (!server.isLoaded(targetChest)) {
             companion.alertChestUnloaded();
-            companion.setJobStatus("Chest unloaded");
+            companion.setJobStatus("job_status.modern_companions.chest_unloaded");
             return false;
         }
         chestStand = WorkerSite.findApproachStand(companion, targetChest, 2);
         // Navigation probes can reject an open chest-side tile before movement begins.
         if (chestStand == null) chestStand = WorkerSite.findSafeApproachStand(companion, targetChest, 2);
         if (chestStand == null) {
-            companion.setJobStatus("Chest unreachable");
+            companion.setJobStatus("job_status.modern_companions.chest_unreachable");
             reportStuck();
             return false;
         }
@@ -96,7 +96,7 @@ public class DeliverToChestGoal extends Goal {
         }
         double distance = companion.distanceToSqr(Vec3.atCenterOf(chestStand));
         if (distance > 2.25D) {
-            companion.setJobStatus("Delivering");
+            companion.setJobStatus("job_status.modern_companions.delivering");
             companion.checkpointJob(JobPhase.DELIVERING, companion.getJobCheckpointTarget().orElse(targetChest));
             if (distance + 0.04D < lastDistance) {
                 lastDistance = distance;
@@ -113,22 +113,22 @@ public class DeliverToChestGoal extends Goal {
         }
         if (!WorkerSite.canActFromStand(companion, targetChest, chestStand, WorkerSite.INTERACT_RANGE_SQR)) {
             reportStuck();
-            companion.setJobStatus("Chest blocked");
+            companion.setJobStatus("job_status.modern_companions.chest_blocked");
             stop();
             return;
         }
         switch (companion.deliverInventoryToChest(server, targetChest)) {
             case FULL -> {
-                companion.setJobStatus("Chest full");
+                companion.setJobStatus("job_status.modern_companions.chest_full");
                 companion.notifyCourierOwnerText(net.minecraft.network.chat.Component.translatable("message.modern_companions.courier.full"));
             }
             case MISSING -> {
-                companion.setJobStatus("Chest missing");
+                companion.setJobStatus("job_status.modern_companions.chest_missing");
                 companion.notifyCourierOwnerText(net.minecraft.network.chat.Component.translatable("message.modern_companions.courier.missing"));
             }
             case SUCCESS -> {
                 companion.checkpointJob(JobPhase.RETURNING, companion.getJobCheckpointTarget().orElse(targetChest));
-                companion.setJobStatus("Returning");
+                companion.setJobStatus("job_status.modern_companions.returning");
             }
         }
         stop();

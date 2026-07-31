@@ -35,7 +35,7 @@ public final class CuriosNetwork {
             Entity entity = serverPlayer.level().getEntity(payload.entityId());
             if (entity instanceof AbstractHumanCompanionEntity companion && companion.isOwnedBy(serverPlayer)) {
                 if (!SophisticatedBackpackCompat.open(serverPlayer, companion)) {
-                    serverPlayer.displayClientMessage(Component.literal("This companion has no Sophisticated Backpack equipped."), true);
+                    serverPlayer.displayClientMessage(Component.translatable("message.modern_companions.no_backpack"), true);
                 }
             }
         });
@@ -51,9 +51,9 @@ public final class CuriosNetwork {
                 CuriosApi.getCuriosInventory(companion).ifPresentOrElse(handler -> {
                     serverPlayer.openMenu(new SimpleMenuProvider(
                                     (id, inv, player) -> new CompanionCuriosMenu(id, inv, companion),
-                                    Component.literal("Curios - " + companion.getName().getString())),
+                                    Component.translatable("container.modern_companions.curios", companion.getName())),
                             buf -> buf.writeVarInt(companion.getId()));
-                }, () -> serverPlayer.displayClientMessage(Component.literal("This companion has no curio slots."), true));
+                }, () -> serverPlayer.displayClientMessage(Component.translatable("message.modern_companions.no_curio_slots"), true));
             }
         });
     }

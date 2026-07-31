@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.entity;
 import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -40,8 +41,8 @@ public class FirearmSpecialist extends AbstractHumanCompanionEntity {
     }
 
     @Override
-    public String getClassDisplayName() {
-        return getFirearmSpecialty().displayName();
+    public Component getClassDisplayName() {
+        return Component.translatable(getFirearmSpecialty().displayNameKey());
     }
 
     public void setFirearmSpecialty(FirearmSupport.Specialty specialty) {

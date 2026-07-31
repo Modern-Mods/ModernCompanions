@@ -58,7 +58,7 @@ public final class FirearmAttackGoal extends Goal {
                 FirearmSupport.reloadTacZ(companion);
             } else if (companion.tickCount - lastAmmoNotice >= 200 && companion.getOwner() != null) {
                 lastAmmoNotice = companion.tickCount;
-                companion.getOwner().sendSystemMessage(Component.literal(companion.getName().getString() + " needs firearm ammo."));
+                companion.getOwner().sendSystemMessage(Component.translatable("message.modern_companions.needs_firearm_ammo", companion.getName()));
             }
         }
     }

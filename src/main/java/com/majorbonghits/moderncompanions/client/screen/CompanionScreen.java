@@ -56,36 +56,38 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         super.init();
         int buttonX = leftPos + BUTTON_X;
         int buttonY = topPos + BUTTON_Y;
-        addRenderableWidget(new TexturedButton("Alert", buttonX, buttonY,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.alert"), buttonX, buttonY,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isAlert).orElse(false),
                 () -> sendToggle("alert")));
-        addRenderableWidget(new TexturedButton("Hunting", buttonX, buttonY + 17,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.hunting"), buttonX, buttonY + 17,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isHunting).orElse(false),
                 () -> sendToggle("hunt")));
-        addRenderableWidget(new TexturedButton("Patrol", buttonX, buttonY + 34,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.patrol"), buttonX, buttonY + 34,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isPatrolling).orElse(false),
                 () -> sendOrder("patrol")));
-        addRenderableWidget(new TexturedButton("Guard", buttonX, buttonY + 51,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.guard"), buttonX, buttonY + 51,
                 () -> safeCompanion().map(companion -> companion.getJob().isWorker() ? companion.isWorkEnabled() : companion.isGuarding()).orElse(false),
                 () -> safeCompanion().ifPresent(companion -> {
                     if (companion.getJob().isWorker()) sendToggle("work"); else sendOrder("guard");
                 })) {
             @Override
             public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-                setMessage(safeCompanion().map(companion -> companion.getJob().isWorker() ? Component.literal("Work") : Component.literal("Guard"))
-                        .orElse(Component.literal("Guard")));
+                setMessage(safeCompanion().map(companion -> companion.getJob().isWorker()
+                        ? Component.translatable("button.modern_companions.work")
+                        : Component.translatable("button.modern_companions.guard"))
+                        .orElse(Component.translatable("button.modern_companions.guard")));
                 super.renderWidget(gfx, mouseX, mouseY, partialTick);
             }
         });
-        addRenderableWidget(new TexturedButton("Follow", buttonX, buttonY + 68,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.follow"), buttonX, buttonY + 68,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isFollowing).orElse(false),
                 () -> sendOrder("follow")));
-        addRenderableWidget(new TexturedButton("Sprint", buttonX, buttonY + 85,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.sprint"), buttonX, buttonY + 85,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isSprintEnabled).orElse(false),
                 () -> sendToggle("sprint")));
-        addRenderableWidget(new TexturedButton("Clear", buttonX, buttonY + 102, () -> false,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.clear"), buttonX, buttonY + 102, () -> false,
                 () -> sendAction("clear_target")));
-        addRenderableWidget(new TexturedButton("Pickup", buttonX, buttonY + 119,
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.pickup"), buttonX, buttonY + 119,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::isPickupEnabled).orElse(false),
                 () -> sendToggle("pickup")));
 
@@ -98,19 +100,19 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
         int lowerButtonY = topPos + 174;
         if (ModConfig.safeGet(ModConfig.SHOW_JOBS_BUTTON)) {
-            addRenderableWidget(new TexturedButton("Jobs", buttonX, lowerButtonY, () -> false, this::openJobInfo));
+            addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.jobs"), buttonX, lowerButtonY, () -> false, this::openJobInfo));
             lowerButtonY += 18;
         }
         addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.journal"),
                 buttonX, lowerButtonY, () -> false, this::openJournal));
         lowerButtonY += 18;
         if (ModList.get().isLoaded("curios")) {
-            addRenderableWidget(new TexturedButton("Curios", buttonX, lowerButtonY, () -> false, this::openCurios));
+            addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.curios"), buttonX, lowerButtonY, () -> false, this::openCurios));
             lowerButtonY += 18;
         }
         if (ModList.get().isLoaded("sophisticatedbackpacks") && ModList.get().isLoaded("curios")
                 && safeCompanion().map(SophisticatedBackpackCompat::hasBackpack).orElse(false)) {
-            addRenderableWidget(new TexturedButton("Pack", buttonX, lowerButtonY, () -> false, this::openBackpack));
+            addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.pack"), buttonX, lowerButtonY, () -> false, this::openBackpack));
         }
         addRenderableWidget(new ModeButton(leftPos + 82, topPos + 147,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmVillagers).orElse(false),
@@ -118,7 +120,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         addRenderableWidget(new ModeButton(leftPos + 82, topPos + 175,
                 () -> safeCompanion().map(AbstractHumanCompanionEntity::canHarmPlayers).orElse(false),
                 () -> sendToggle("players")));
-        addRenderableWidget(new TexturedButton("Release", leftPos + CONTENT_X_OFFSET + 301, topPos + 232, () -> false, () -> {
+        addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.release"), leftPos + CONTENT_X_OFFSET + 301, topPos + 232, () -> false, () -> {
             sendAction("release");
             onClose();
         }, true));
@@ -162,31 +164,31 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private void renderCompanionInfo(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
         int x = CONTENT_X_OFFSET + 238;
         gfx.drawString(font, companion.getClassDisplayName(), x, 55, TEXT_COLOR, false);
-        gfx.drawString(font, "Health: %.1f / %d".formatted(companion.getHealth(), (int) companion.getMaxHealth()),
+        gfx.drawString(font, Component.translatable("gui.modern_companions.health", companion.getHealth(), (int) companion.getMaxHealth()),
                 x, 65, TEXT_COLOR, false);
 
         float xpFraction = companion.getExperienceProgress();
         int xpNeeded = companion.getXpNeededForNextLevel();
         int xpHave = Math.round(xpFraction * xpNeeded);
-        gfx.drawString(font, "Level " + companion.getExpLvl(), x, 75, TEXT_COLOR, false);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.level", companion.getExpLvl()), x, 75, TEXT_COLOR, false);
         gfx.fill(x, 86, x + 100, 92, 0xFF777777);
         gfx.fill(x + 1, 87, x + 1 + (int) (98 * xpFraction), 91, 0xFF55AA55);
-        gfx.drawString(font, xpHave + "/" + xpNeeded, x, 93, TEXT_COLOR, false);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.xp_progress", xpHave, xpNeeded), x, 93, TEXT_COLOR, false);
         // The taller Companion panel leaves room for the final status line below the XP readout.
-        gfx.drawString(font, "Kills: " + companion.getKillCount(), x, 105, TEXT_COLOR, false);
-        gfx.drawString(font, "Radius: " + companion.getPatrolRadius(), x + 45, 105, TEXT_COLOR, false);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.kills", companion.getKillCount()), x, 105, TEXT_COLOR, false);
+        gfx.drawString(font, Component.translatable("gui.modern_companions.radius", companion.getPatrolRadius()), x + 45, 105, TEXT_COLOR, false);
     }
 
     private void renderAttributes(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
         int x = CONTENT_X_OFFSET + 246;
-        drawStatLine(gfx, x, 138, "Strength", companion.getStrength(), isSpecialist(companion, 0));
-        drawStatLine(gfx, x, 148, "Dexterity", companion.getDexterity(), isSpecialist(companion, 1));
-        drawStatLine(gfx, x, 158, "Intelligence", companion.getIntelligence(), isSpecialist(companion, 2));
-        drawStatLine(gfx, x, 168, "Endurance", companion.getEndurance(), isSpecialist(companion, 3));
+        drawStatLine(gfx, x, 138, Component.translatable("gui.modern_companions.attribute.strength"), companion.getStrength(), isSpecialist(companion, 0));
+        drawStatLine(gfx, x, 148, Component.translatable("gui.modern_companions.attribute.dexterity"), companion.getDexterity(), isSpecialist(companion, 1));
+        drawStatLine(gfx, x, 158, Component.translatable("gui.modern_companions.attribute.intelligence"), companion.getIntelligence(), isSpecialist(companion, 2));
+        drawStatLine(gfx, x, 168, Component.translatable("gui.modern_companions.attribute.endurance"), companion.getEndurance(), isSpecialist(companion, 3));
     }
 
-    private void drawStatLine(GuiGraphics gfx, int x, int y, String name, int value, boolean highlight) {
-        gfx.drawString(font, name + ": " + value + (highlight ? " ★" : ""), x, y,
+    private void drawStatLine(GuiGraphics gfx, int x, int y, Component name, int value, boolean highlight) {
+        gfx.drawString(font, Component.translatable("gui.modern_companions.attribute.value", name, value, highlight ? " ★" : ""), x, y,
                 highlight ? 0xFFFFD54F : TEXT_COLOR, false);
     }
 
@@ -195,12 +197,12 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     }
 
     private void renderWantedFood(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
-        String food = companion.getFoodStatusForGui();
-        if (food.isEmpty()) {
-            food = "Not Hungry";
+        Component food = companion.getFoodStatusForGui();
+        if (food.getString().isEmpty()) {
+            food = Component.translatable("gui.modern_companions.food.not_hungry");
         }
         int y = 204;
-        for (FormattedCharSequence line : font.split(Component.literal(food), 106)) {
+        for (FormattedCharSequence line : font.split(food, 106)) {
             gfx.drawString(font, line, CONTENT_X_OFFSET + 247, y, TEXT_COLOR, false);
             y += 10;
             if (y > 224) {
@@ -215,7 +217,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         gfx.enableScissor(leftPos + 4, topPos + 205, leftPos + 100, topPos + 239);
         // renderLabels already translates to the GUI origin; using leftPos here drew off-panel.
         gfx.drawString(font, font.plainSubstrByWidth(companion.getJob().displayName().getString(), 90), 7, 216, TEXT_COLOR, false);
-        gfx.drawString(font, font.plainSubstrByWidth(companion.getJobStatus(), 90), 7, 227, TEXT_COLOR, false);
+        gfx.drawString(font, font.plainSubstrByWidth(companion.getJobStatusComponent().getString(), 90), 7, 227, TEXT_COLOR, false);
         gfx.disableScissor();
     }
 

@@ -391,7 +391,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(LAST_SWING_TICK, 0);
         builder.define(JOB_ID, CompanionJob.NONE.id());
         builder.define(WORK_ENABLED, false);
-        builder.define(JOB_STATUS, "Idle");
+        builder.define(JOB_STATUS, "job_status.modern_companions.idle");
         builder.define(MINER_ORES_COUNTED, 0);
         builder.define(MINER_ORES_MINED, 0);
         builder.define(MINER_ORES_LIFETIME, 0);
@@ -517,7 +517,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(JOB_ID, safeJob.id());
         if (safeJob == CompanionJob.NONE) {
             this.entityData.set(WORK_ENABLED, false);
-            this.entityData.set(JOB_STATUS, "Idle");
+            this.entityData.set(JOB_STATUS, "job_status.modern_companions.idle");
         }
     }
 
@@ -534,12 +534,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             setFollowing(false);
             setPatrolling(false);
             setGuarding(false);
-            setJobStatus(getWorkCenter().isPresent() ? "Searching" : "Assign chest");
+            setJobStatus(getWorkCenter().isPresent() ? "job_status.modern_companions.searching" : "job_status.modern_companions.assign_chest");
         } else if (getJob() != CompanionJob.NONE) {
             this.getNavigation().stop();
             if (getJob() == CompanionJob.HUNTER) setHunting(false);
             checkpointJob(JobPhase.PAUSED, jobCheckpointTarget);
-            setJobStatus("Paused");
+            setJobStatus("job_status.modern_companions.paused");
         }
     }
 
@@ -579,7 +579,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     public void setJobStatus(String status) {
-        this.entityData.set(JOB_STATUS, status == null || status.isBlank() ? "Idle" : status.substring(0, Math.min(48, status.length())));
+        this.entityData.set(JOB_STATUS, status == null || status.isBlank()
+                ? "job_status.modern_companions.idle"
+                : status.substring(0, Math.min(128, status.length())));
+    }
+
+    public Component getJobStatusComponent() {
+        String status = getJobStatus();
+        return status.startsWith("job_status.") ? Component.translatable(status) : Component.translatable("job_status.modern_companions.idle");
     }
 
     /**
@@ -602,7 +609,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             setPatrolling(false);
             setFollowing(false);
             equipJobToolIfNeeded();
-            if (!isWorkEnabled()) setJobStatus("Paused");
+            if (!isWorkEnabled()) setJobStatus("job_status.modern_companions.paused");
         }
         if (job != CompanionJob.HUNTER && isHunting()) {
             setHunting(false);
@@ -1130,18 +1137,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     /**
      * Human-readable class label derived from the entity registry name.
      */
-    public String getClassDisplayName() {
+    public Component getClassDisplayName() {
         var key = BuiltInRegistries.ENTITY_TYPE.getKey(this.getType());
         if (key == null)
-            return "Companion";
-        String path = key.getPath().replace('_', ' ');
-        StringBuilder builder = new StringBuilder();
-        for (String part : path.split(" ")) {
-            if (part.isEmpty())
-                continue;
-            builder.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1)).append(' ');
-        }
-        return builder.toString().trim();
+            return Component.translatable("entity.modern_companions.companion");
+        return Component.translatable("entity." + key.getNamespace() + "." + key.getPath());
     }
 
     public void setPatrolRadius(int radius) {
@@ -1159,26 +1159,28 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         setPatrolRadius(4);
     }
 
-    public String getFoodStatus() {
-        String f1 = entityData.get(FOOD1_AMT) > 0 ? entityData.get(FOOD1_AMT) + "x " + entityData.get(FOOD1) : "done";
-        String f2 = entityData.get(FOOD2_AMT) > 0 ? entityData.get(FOOD2_AMT) + "x " + entityData.get(FOOD2) : "done";
-        return "Wants: " + f1 + " and " + f2;
+    public Component getFoodStatus() {
+        Component f1 = foodRequirementComponent(entityData.get(FOOD1), entityData.get(FOOD1_AMT));
+        Component f2 = foodRequirementComponent(entityData.get(FOOD2), entityData.get(FOOD2_AMT));
+        return Component.translatable("food.modern_companions.wants", f1, f2);
     }
 
-    public String getFoodStatusForGui() {
+    public Component getFoodStatusForGui() {
         if (!this.isTame()) {
             return getWantedFoodsCompact();
         }
         if (this.getHealth() < this.getMaxHealth() - 0.5F) {
-            return hasFoodInInventory() ? "Healing..." : "Needs food to heal";
+            return hasFoodInInventory()
+                    ? Component.translatable("gui.modern_companions.food.healing")
+                    : Component.translatable("gui.modern_companions.food.needs_heal");
         }
-        return "";
+        return Component.empty();
     }
 
-    public String getFavoriteFoodName() {
+    public Component getFavoriteFoodName() {
         String id = this.entityData.get(FAVORITE_FOOD);
         ResourceLocation key = ResourceLocation.tryParse(id);
-        return key == null ? "Unknown" : BuiltInRegistries.ITEM.get(key).getDescription().getString();
+        return key == null ? Component.translatable("gui.modern_companions.memory.unknown") : BuiltInRegistries.ITEM.get(key).getDescription();
     }
 
     public boolean isFavoriteFood(ItemStack stack) {
@@ -1190,18 +1192,28 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(FAVORITE_FOOD, BuiltInRegistries.ITEM.getKey(favorite).toString());
     }
 
-    public String getWantedFoodsCompact() {
+    public Component getWantedFoodsCompact() {
         int amt1 = entityData.get(FOOD1_AMT);
         int amt2 = entityData.get(FOOD2_AMT);
         String id1 = entityData.get(FOOD1);
         String id2 = entityData.get(FOOD2);
-        String first = amt1 > 0 ? amt1 + "x " + prettyItemName(id1) : "";
-        String second = amt2 > 0 ? amt2 + "x " + prettyItemName(id2) : "";
-        if (first.isEmpty() && second.isEmpty())
-            return "";
-        if (!first.isEmpty() && !second.isEmpty())
-            return first + ", " + second;
-        return first + second;
+        Component first = foodRequirementComponent(id1, amt1);
+        Component second = foodRequirementComponent(id2, amt2);
+        if (amt1 <= 0 && amt2 <= 0) return Component.empty();
+        if (amt1 > 0 && amt2 > 0) return Component.translatable("food.modern_companions.compact.both", first, second);
+        return amt1 > 0 ? first : second;
+    }
+
+    private Component foodRequirementComponent(String id, int amount) {
+        return amount > 0
+                ? Component.translatable("food.modern_companions.item_amount", amount, prettyItemComponent(id))
+                : Component.translatable("food.modern_companions.done");
+    }
+
+    private Component prettyItemComponent(String id) {
+        ResourceLocation resource = ResourceLocation.tryParse(id);
+        if (resource == null) return Component.literal(id);
+        return BuiltInRegistries.ITEM.get(resource).getDescription();
     }
 
     public SimpleContainer getInventory() {
@@ -2041,8 +2053,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                             setFirstTamedGameTime(this.level().getGameTime());
                             syncPersonalityToData();
                             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
-                                    Component.literal("Thanks!")));
-                            player.sendSystemMessage(Component.literal("Companion added"));
+                                    Component.translatable("dialogue.modern_companions.tamed.thanks")));
+                            player.sendSystemMessage(Component.translatable("message.modern_companions.companion_added"));
                             setPatrolPos(null);
                             setPatrolling(false);
                             setFollowing(true);
@@ -2066,7 +2078,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 } else {
                     player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
                             CompanionData.WRONG_FOOD[this.random.nextInt(CompanionData.WRONG_FOOD.length)]));
-                    player.sendSystemMessage(Component.literal(getFoodStatus()));
+                    player.sendSystemMessage(getFoodStatus());
                 }
                 return InteractionResult.sidedSuccess(this.level().isClientSide);
             } else {
@@ -2114,11 +2126,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private void toggleSit(ServerPlayer player) {
         if (!this.isOrderedToSit()) {
             this.setOrderedToSit(true);
-            Component text = Component.literal("I'll stand here.");
+            Component text = Component.translatable("message.modern_companions.sit.stand_here");
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         } else {
             this.setOrderedToSit(false);
-            Component text = Component.literal("I'll move around.");
+            Component text = Component.translatable("message.modern_companions.sit.move_around");
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         }
     }
@@ -2914,7 +2926,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (!this.level().isClientSide && !itemstack.isEmpty() && entity instanceof LivingEntity) {
             itemstack.hurtAndBreak(1, this, EquipmentSlot.MAINHAND);
             if (this.getMainHandItem().isEmpty() && this.isTame() && this.getOwner() != null) {
-                Component broken = Component.literal("My weapon broke!");
+                Component broken = Component.translatable("message.modern_companions.weapon_broke");
                 this.getOwner()
                         .sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), broken));
             }
@@ -3403,7 +3415,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             return;
         lastFoodRequestTick = this.tickCount;
         if (this.getOwner() instanceof ServerPlayer player) {
-            Component text = Component.literal(randomFoodRequestLine());
+            Component text = randomFoodRequestLine();
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         }
     }
@@ -3494,346 +3506,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         syncPersonalityToData();
     }
 
-    private String randomFoodRequestLine() {
-    String[] lines = new String[]{
-            "Hey... I'm hurting pretty bad over here.",
-            "Could you spare some food? I really need it.",
-            "That last hit took a lot out of me.",
-            "I'm trying to stay standing here. Food?",
-            "I could really use something to eat.",
-            "Not to worry you, but I'm feeling a little faint.",
-            "Please tell me you packed snacks.",
-            "I need a bite before we keep going.",
-            "I'm hurt, hungry, and trying not to complain.",
-            "Could we stop for food before I fall over?",
-            "I don't think I can take another hit like that.",
-            "A little food would go a long way right now.",
-            "I'm still with you. Barely, but I'm here.",
-            "Help me patch this up with something edible.",
-            "I need food more than I need another fight.",
-            "Can we take a quick snack break?",
-            "I'm doing my best, but I need some help.",
-            "Got anything that might put me back on my feet?",
-            "I'm not feeling so good. Food might help.",
-            "I could use a meal and maybe a minute.",
-            "That one really hurt. Please feed me.",
-            "I hate to ask, but I need food.",
-            "I'm running on loyalty and very little else.",
-            "Could you toss me something before we move on?",
-            "I'm starting to see double. That's probably bad.",
-            "I can keep going, but not like this.",
-            "Please don't make me fight on an empty stomach.",
-            "My legs are getting a little shaky.",
-            "I'm hurt enough to admit I need help.",
-            "Something warm to eat would be amazing right now.",
-            "I could use food, rest, and several fewer enemies.",
-            "I'm hanging in there, but only just.",
-            "That was unpleasant. Do we have snacks?",
-            "Food first. Then I'll go back to being brave.",
-            "I'm trying very hard not to collapse dramatically.",
-            "Could you help me out before the next fight?",
-            "I don't need much. Just enough to keep going.",
-            "I'm starting to regret skipping breakfast.",
-            "Please tell me there's food in that inventory.",
-            "I'm tough, but I'm not invincible.",
-            "A snack would make this situation much less terrible.",
-            "I'm hurt. You're holding food. Let's solve both problems.",
-            "I'd rather eat now than respawn later.",
-            "Can you feed me before something else bites me?",
-            "I'm one bad hit away from becoming a cautionary tale.",
-            "I could really use a little kindness and a lot of food.",
-            "My stomach is growling louder than the monsters.",
-            "I'm still ready to fight. My body disagrees.",
-            "I'd feel much safer with something in my stomach.",
-            "This is me politely asking not to die hungry.",
-            "I'm hurting, but a meal might turn things around.",
-            "I'm not being dramatic. This time.",
-            "Could we handle the food problem before the monster problem?",
-            "I need something edible and preferably soon.",
-            "My confidence is high. My health is not.",
-            "I'm trying to walk this off, but it isn't working.",
-            "I'll be much more useful after a snack.",
-            "I'm loyal enough to stay. Please keep me alive.",
-            "Do you have food, or should I start saying my goodbyes?",
-            "I'm feeling a little too close to the ground.",
-            "I would love to continue not being dead.",
-            "A meal would really improve my chances here.",
-            "I'm holding together through sheer determination.",
-            "I can't protect you if I'm face-down in the dirt.",
-            "I need food before courage stops being enough.",
-            "Could you spare a bite for your injured friend?",
-            "I'm wounded, not picky. What do you have?",
-            "This would be a perfect time to share your food.",
-            "I promise I'll complain less once I'm chewing.",
-            "I'm going to need more than positive thinking here.",
-            "Everything hurts, but at least I'm still hungry.",
-            "I'd like to survive this adventure, personally.",
-            "My health is getting a little embarrassing.",
-            "Feed me now and I'll pretend I had this handled.",
-            "I'm starting to think the floor looks comfortable.",
-            "I need a snack before my knees decide for me.",
-            "I'm not giving up. I am asking for lunch.",
-            "Please help before I become scenery.",
-            "I'm barely holding it together over here.",
-            "I could use some food and fewer sharp objects.",
-            "Whatever you've got, now would be a good time.",
-            "I'm still breathing. Let's keep it that way.",
-            "A little food could save us both a lot of trouble.",
-            "I need something to eat before we keep adventuring.",
-            "Don't worry, I'm fine. Actually, worry a little.",
-            "I fought bravely. Now I would like a snack.",
-            "Can we pause the heroics until after I eat?",
-            "I'm injured enough to lower my standards.",
-            "I could really use one of those emergency snacks.",
-            "This is less of a request and more of a plea.",
-            "Help me out and I'll be right back beside you.",
-            "I don't want to alarm you, but I might fall over.",
-            "You brought food for both of us... right?",
-            "I'm trying to look brave. Is it working?",
-            "I need food before the next disaster finds us.",
-            "A full stomach would make the pain easier to ignore.",
-            "I'm not ready to quit. Just ready to eat.",
-            "Please feed me before I start chewing on my armor.",
-            "I'm hurt, exhausted, and thinking about dinner.",
-            "I can keep protecting you if you help me recover.",
-            "Could I trouble you for a life-saving snack?",
-            "One meal now, heroic comeback shortly after.",
-
-            // More urgent and vulnerable
-            "I really don't feel good. Can you help?",
-            "I'm trying to keep up, but I'm fading.",
-            "Could we stop? Just for a bite?",
-            "I don't want to slow you down, but I need food.",
-            "That fight left me in rough shape.",
-            "I'm still here. Please help me stay that way.",
-            "I need a little help getting back on my feet.",
-            "My legs don't feel particularly reliable right now.",
-            "I'm trying not to worry, but this hurts.",
-            "Could you check your pack for something edible?",
-            "I don't think ignoring this is working anymore.",
-            "I'm having a hard time standing.",
-            "Please don't wander too far. I need help.",
-            "I think I pushed myself too far.",
-            "I'm not asking for much. Just enough to recover.",
-            "I could use one quiet moment and something to eat.",
-            "I'm trying to be brave, but I'm really hurting.",
-            "I don't want to be left behind.",
-            "Can you stay with me while I eat?",
-            "I need to catch my breath and have a snack.",
-            "I'm not ready for another fight yet.",
-            "Please give me something before we move.",
-            "That hurt more than I expected.",
-            "I might need you to look after me for a minute.",
-            "I'm doing everything I can to stay awake.",
-            "Food would help. Your company does too.",
-            "I know we need to keep moving, but I need a bite.",
-            "I'm scared the next hit will be the last one.",
-            "Could you help me before this gets worse?",
-            "I don't feel nearly as tough as I look.",
-
-            // Playful and sarcastic
-            "Remember when I had health? Good times.",
-            "Excellent fight. Terrible outcome. Food?",
-            "I have survived, but only in the technical sense.",
-            "I'm fine if your definition of fine is nearly unconscious.",
-            "Nothing a snack and several bandages couldn't fix.",
-            "Adventure is fun. Bleeding is less fun.",
-            "Great news, I'm alive. Let's reinforce that.",
-            "You know what pairs nicely with severe pain? Bread.",
-            "I'm currently held together by optimism.",
-            "This armor is doing a fantastic impression of decoration.",
-            "Could I interest you in preventing my tragic demise?",
-            "I hope your emergency plan involves feeding me.",
-            "I'm beginning to suspect getting hit is unhealthy.",
-            "That enemy made several excellent points with its weapon.",
-            "I regret to report that my bones have opinions.",
-            "I would like to unsubscribe from taking damage.",
-            "My health has packed its bags and left.",
-            "I'm one breeze away from becoming horizontal.",
-            "Apparently courage is not a substitute for dinner.",
-            "The good news is I found the enemy. The bad news is everything else.",
-            "I blocked most of that attack with my entire body.",
-            "I think the monster won that round.",
-            "I'm starting to understand why people carry shields.",
-            "My current battle strategy is eating and hoping.",
-            "I could use a snack before gravity claims me.",
-            "Please insert food to continue companion service.",
-            "I'm operating at approximately three crumbs.",
-            "My heroic stance is becoming more of a heroic lean.",
-            "I have made several mistakes and would now like lunch.",
-            "That went well, assuming the goal was to injure me.",
-            "I'm alive through a clerical error. Food?",
-            "I'm running low on health and witty remarks.",
-            "I need food before I become an inconvenient pile.",
-            "Could we put survival back on today's schedule?",
-            "I miss the version of me from before that fight.",
-            "My body is requesting an immediate change of plans.",
-            "I've seen healthier zombies.",
-            "I am bravely resisting the urge to lie down forever.",
-            "I fought the danger. The danger fought back.",
-            "I think my health bar is trying to leave the screen.",
-
-            // Fantasy and adventure themed
-            "A traveler needs provisions, especially an injured one.",
-            "Our journey isn't over, but I need food first.",
-            "Even heroes have to stop and eat.",
-            "Could you spare some rations for the road?",
-            "I don't think courage alone will carry me farther.",
-            "The road ahead looks long. I need strength.",
-            "A warm meal would restore more than my spirits.",
-            "We've come too far for me to fall here.",
-            "I need provisions before we face what comes next.",
-            "Let's make camp for a moment. I need food.",
-            "My sword arm is fine. The rest of me needs lunch.",
-            "The next battle can wait until after supper.",
-            "Every grand adventure needs a meal break.",
-            "I could use some rations before night falls.",
-            "Give me a bite and I'll be ready for the road again.",
-            "My strength is fading. Do we have provisions?",
-            "We should tend our wounds before pressing onward.",
-            "I need food if I'm going to see this journey through.",
-            "The monsters can wait. My stomach cannot.",
-            "A little bread might keep this tale from ending early.",
-            "I'd rather our story not end in this cave.",
-            "This adventure still needs both of us.",
-            "I need enough strength to reach the next camp.",
-            "Let's rest before fate takes another swing at me.",
-            "A feast would be ideal. A snack will do.",
-            "I could use a meal worthy of a wounded warrior.",
-            "We've earned a moment to eat, haven't we?",
-            "I'm no use to you without a little strength left.",
-            "Hand me some food and point me toward the next danger.",
-            "My spirit is willing. My stomach demands provisions.",
-
-            // Loyal companion style
-            "I want to keep helping. I just need food.",
-            "Don't worry, I'm not leaving your side.",
-            "Feed me and I'll be ready to protect you again.",
-            "I'm still with you, even if I'm limping.",
-            "You take care of me, and I'll take care of you.",
-            "I can keep watch after I've eaten.",
-            "I'm not done fighting beside you yet.",
-            "A snack now means more adventures together later.",
-            "I won't let a few wounds stop me. Hunger might.",
-            "Help me recover and we'll keep moving together.",
-            "I promised to follow you. I didn't promise to do it hungry.",
-            "I'm staying right here. Preferably with food.",
-            "I still have your back. Mine just hurts.",
-            "I'm loyal, not indestructible.",
-            "I want to keep you safe. Help me get strong again.",
-            "We're a team, right? Teams share snacks.",
-            "I followed you into that mess. You owe me lunch.",
-            "I'll keep up. Just give me a moment to eat.",
-            "You wouldn't let your favorite companion starve, would you?",
-            "I trust you. I also trust you have food.",
-            "I'll be ready when you are, after a quick meal.",
-            "I'm not going anywhere. Mostly because walking hurts.",
-            "Take care of me now and I'll return the favor.",
-            "I can still fight for you. Just not on empty.",
-            "I need you this time. And maybe some bread.",
-            "I'll stand beside you as soon as I can stand.",
-            "I don't want this adventure to continue without me.",
-            "We still have places to go. Help me recover.",
-            "I want to see what we find next.",
-            "Keep me fed and I'll keep following you anywhere.",
-
-            // Hungry and dramatic
-            "I can practically hear my stomach begging.",
-            "I haven't stopped thinking about food since that fight.",
-            "I'm hungry enough to eat almost anything.",
-            "My stomach is making threats now.",
-            "I need food before my appetite becomes the real enemy.",
-            "I'm injured and absolutely starving.",
-            "Is now a bad time to mention I missed lunch?",
-            "My stomach has officially joined the battle.",
-            "Every step is making me hungrier.",
-            "I need food before I start eyeing the livestock.",
-            "I could eat an entire chest of supplies.",
-            "My appetite survived the fight better than I did.",
-            "I'm too hungry to pretend I'm okay.",
-            "I could really destroy a loaf of bread right now.",
-            "Please tell me that smell is food.",
-            "I'm wounded, weary, and ready for dinner.",
-            "The hunger is somehow louder than the pain.",
-            "I need something filling before we continue.",
-            "I don't care what it is as long as it's edible.",
-            "My stomach is demanding immediate negotiations.",
-            "I'm about three bites away from feeling human again.",
-            "The monsters took my health. Hunger took the rest.",
-            "I'll take food, leftovers, crumbs, anything.",
-            "I need a meal with heroic urgency.",
-            "My stomach believes this is an emergency.",
-            "I'm dangerously close to calling raw potatoes delicious.",
-            "I would do questionable things for a cooked meal.",
-            "My standards are dropping with my health.",
-            "I could eat first and ask questions later.",
-            "Whatever food you have, I already love it.",
-
-            // Dry humor
-            "This seems medically significant.",
-            "I have assessed the situation. It hurts.",
-            "My professional opinion is that I need food.",
-            "I appear to have misplaced most of my health.",
-            "I would like to formally request one meal.",
-            "Current status: alive, hungry, unconvinced.",
-            "I believe the technical term is 'not doing great.'",
-            "The damage report says snacks.",
-            "I have reviewed my options. Food wins.",
-            "Let's address this before it becomes paperwork.",
-            "My condition has deteriorated to 'please feed me.'",
-            "I'm filing an urgent complaint with your inventory.",
-            "I would like to speak to whoever packed our supplies.",
-            "This expedition has inadequate snack coverage.",
-            "I require immediate edible assistance.",
-            "For legal reasons, you should probably feed me.",
-            "I am requesting food in an entirely calm manner.",
-            "Please ignore the panic in my voice and hand me lunch.",
-            "My health situation has become deeply inconvenient.",
-            "I'm beginning to question our workplace safety policies.",
-            "This is why every team needs a designated snack carrier.",
-            "I feel this could have been avoided with better catering.",
-            "Our current food distribution system needs improvement.",
-            "I have completed the danger portion. Now comes lunch.",
-            "I am experiencing an unexpected shortage of wellness.",
-            "Please resolve my condition using available provisions.",
-            "I have reached the food-requesting stage of injury.",
-            "This is an excellent opportunity to demonstrate leadership.",
-            "Consider feeding me an investment in future survival.",
-            "I remain cautiously optimistic about your snack supply.",
-
-            // Very short and punchy
-            "Food. Please. Quickly.",
-            "Snack first. Questions later.",
-            "I'm hurt. Help?",
-            "Got food?",
-            "I need something. Now.",
-            "Please feed me.",
-            "I'm fading here.",
-            "Quick, something edible.",
-            "I need a bite.",
-            "Help me stay standing.",
-            "Food would be lovely.",
-            "I'm in rough shape.",
-            "I need provisions.",
-            "Could use a hand.",
-            "I'm not doing great.",
-            "Save me a snack.",
-            "A meal, please?",
-            "I'm barely upright.",
-            "Food might save me.",
-            "This really hurts.",
-            "I need strength.",
-            "Please check your inventory.",
-            "I could use lunch.",
-            "Anything edible?",
-            "I'm running out of steam.",
-            "I need a quick meal.",
-            "Help me recover.",
-            "I'm getting dizzy.",
-            "Please don't wait.",
-            "Snack emergency."
-        };
-
-        return lines[rand.nextInt(lines.length)];
+    private Component randomFoodRequestLine() {
+        return Component.translatable("dialogue.modern_companions.food_request." + this.random.nextInt(322));
     }
 }

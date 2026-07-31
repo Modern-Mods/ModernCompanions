@@ -21,22 +21,20 @@ public final class FirearmSupport {
 
     /** Matches TacZ's index type strings without making TacZ a compile dependency. */
     public enum Specialty {
-        UNASSIGNED("unassigned", "Firearm Specialist", 0),
-        PISTOL("pistol", "Pistol Specialist", 30),
-        SMG("smg", "SMG Specialist", 20),
-        RIFLE("rifle", "Rifle Specialist", 25),
-        SHOTGUN("shotgun", "Shotgun Specialist", 15),
-        SNIPER("sniper", "Sniper", 4),
-        MACHINE_GUN("machine_gun", "MG Specialist", 5),
-        HEAVY("heavy", "Heavy Specialist", 1);
+        UNASSIGNED("unassigned", 0),
+        PISTOL("pistol", 30),
+        SMG("smg", 20),
+        RIFLE("rifle", 25),
+        SHOTGUN("shotgun", 15),
+        SNIPER("sniper", 4),
+        MACHINE_GUN("machine_gun", 5),
+        HEAVY("heavy", 1);
 
         private final String id;
-        private final String displayName;
         private final int weight;
 
-        Specialty(String id, String displayName, int weight) {
+        Specialty(String id, int weight) {
             this.id = id;
-            this.displayName = displayName;
             this.weight = weight;
         }
 
@@ -48,8 +46,8 @@ public final class FirearmSupport {
             return weight;
         }
 
-        public String displayName() {
-            return displayName;
+        public String displayNameKey() {
+            return "entity.modern_companions.firearm_specialist." + id;
         }
 
         public static Specialty fromId(String id) {

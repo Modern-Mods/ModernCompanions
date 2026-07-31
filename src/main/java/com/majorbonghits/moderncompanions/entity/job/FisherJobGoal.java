@@ -70,18 +70,18 @@ public class FisherJobGoal extends ResumableJobGoal {
         if (!isActiveJob()) return false;
         if (waterSpot != null && standPos != null && isFishableWater(waterSpot) && isStandValid(standPos)
                 && !isRejected(waterSpot)) {
-            phase(JobPhase.TRAVELLING, "Travelling to shore", waterSpot);
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling_to_shore", waterSpot);
             return reserve("shore:" + waterSpot.asLong());
         }
         if (searchCooldown-- > 0) return false;
         boolean found = findWaterAndStand();
         searchCooldown = SEARCH_COOLDOWN;
         if (found && !reserve("shore:" + waterSpot.asLong())) {
-            waiting("Shore reserved");
+            waiting("job_status.modern_companions.shore_reserved");
             return false;
         }
         if (found) {
-            phase(JobPhase.TRAVELLING, "Travelling to shore", waterSpot);
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling_to_shore", waterSpot);
             moveToStand();
         }
         return found;
@@ -144,7 +144,7 @@ public class FisherJobGoal extends ResumableJobGoal {
         if (dist <= 2.25D && !hasLineCast()) {
             // Only cast once we are close enough to the shoreline stand position.
             if (recastCooldown-- <= 0) {
-                phase(JobPhase.WORKING, "Fishing", waterSpot);
+                phase(JobPhase.WORKING, "job_status.modern_companions.fishing", waterSpot);
                 BlockPos castTarget = selectCastTarget();
                 faceWater(castTarget);
                 castLine(castTarget);
@@ -164,7 +164,7 @@ public class FisherJobGoal extends ResumableJobGoal {
             return;
         }
         if (!activeHook.isBiting()) return;
-        phase(JobPhase.COLLECTING, "Reeling in", waterSpot);
+        phase(JobPhase.COLLECTING, "job_status.modern_companions.reeling_in", waterSpot);
         faceWater();
         companion.swing(net.minecraft.world.InteractionHand.MAIN_HAND, true);
         reelIn();
@@ -412,8 +412,8 @@ public class FisherJobGoal extends ResumableJobGoal {
         if (companion.getJob() != CompanionJob.FISHER) return false;
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (!hasRod()) { companion.setJobStatus("No rod"); return false; }
-        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        if (!hasRod()) { companion.setJobStatus("job_status.modern_companions.no_rod"); return false; }
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
 

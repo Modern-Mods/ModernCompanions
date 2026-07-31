@@ -81,10 +81,10 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         }
         if (targetLog != null || !pendingLogs.isEmpty()) {
             if (stumpPos != null && !reserve("tree:" + stumpPos.asLong())) {
-                waiting("Tree reserved");
+                waiting("job_status.modern_companions.tree_reserved");
                 return false;
             }
-            phase(JobPhase.TRAVELLING, "Travelling", targetLog == null ? pendingLogs.peek() : targetLog);
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling", targetLog == null ? pendingLogs.peek() : targetLog);
             return true;
         }
         if (searchCooldown > 0) {
@@ -101,11 +101,11 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         replantedThisTree = false;
         searchCooldown = SEARCH_COOLDOWN_TICKS;
         if (stumpPos == null || !reserve("tree:" + stumpPos.asLong())) {
-            waiting("Tree reserved");
+            waiting("job_status.modern_companions.tree_reserved");
             return false;
         }
         logDebug("start", "target", targetLog, "pending", pendingLogs.size());
-        phase(JobPhase.TRAVELLING, "Travelling", targetLog);
+        phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling", targetLog);
         return targetLog != null;
     }
 
@@ -160,7 +160,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             targetLog = nextLogTarget();
         }
         if (targetLog == null) {
-            phase(JobPhase.COLLECTING, "Collecting", stumpPos);
+            phase(JobPhase.COLLECTING, "job_status.modern_companions.collecting", stumpPos);
             if (!replantedThisTree) {
                 tryReplantSapling();
                 replantedThisTree = true;
@@ -173,7 +173,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         }
         double horizDist = companion.distanceToSqr(Vec3.atCenterOf(standPos));
         if (horizDist > 2.25D) {
-            companion.setJobStatus("Travelling");
+            companion.setJobStatus("job_status.modern_companions.travelling");
             // Reissuing moveTo every tick resets path progress and leaves workers travelling forever.
             if (companion.getNavigation().isDone()) moveToTarget();
             // Clear the leaf directly blocking a failed route before abandoning this tree.
@@ -197,7 +197,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             return;
         }
         if (breakTicksRemaining <= 0) {
-            phase(JobPhase.WORKING, "Chopping", targetLog);
+            phase(JobPhase.WORKING, "job_status.modern_companions.chopping", targetLog);
             breakTicksRemaining = computeBreakTicks(targetLog);
             swingCooldown = 0;
             logDebug("begin_break", "pos", targetLog, "ticks", breakTicksRemaining);
@@ -213,7 +213,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
                 logDebug("chopped", "pos", targetLog, "queue", pendingLogs.size());
                 targetLog = nextLogTarget();
                 if (targetLog == null && !replantedThisTree) {
-                    phase(JobPhase.COLLECTING, "Collecting", stumpPos);
+                    phase(JobPhase.COLLECTING, "job_status.modern_companions.collecting", stumpPos);
                     tryReplantSapling();
                     replantedThisTree = true;
                 }
@@ -231,8 +231,8 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         if (companion.getJob() != CompanionJob.LUMBERJACK) return false;
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (!hasAxe()) { companion.setJobStatus("No axe"); return false; }
-        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("Assign chest"); return false; }
+        if (!hasAxe()) { companion.setJobStatus("job_status.modern_companions.no_axe"); return false; }
+        if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
 
@@ -292,7 +292,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
                         if (Math.abs(adj.getX() - stumpPos.getX()) > 7 || Math.abs(adj.getZ() - stumpPos.getZ()) > 7
                                 || adj.getY() - stumpPos.getY() > 32) {
                             pendingLogs.clear();
-                            companion.setJobStatus("Tree too large");
+                            companion.setJobStatus("job_status.modern_companions.tree_too_large");
                             return false;
                         }
                         visited.add(adj.immutable());
@@ -303,7 +303,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         }
         if (!frontier.isEmpty()) {
             pendingLogs.clear();
-            companion.setJobStatus("Tree too large");
+            companion.setJobStatus("job_status.modern_companions.tree_too_large");
             return false;
         }
 
@@ -343,7 +343,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         if (scanColumn >= total) {
             scanColumn = 0;
             searchCooldown = SEARCH_COOLDOWN_TICKS;
-            companion.setJobStatus("No mature trees");
+            companion.setJobStatus("job_status.modern_companions.no_mature_trees");
         }
         return null;
     }
@@ -431,7 +431,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             BlockState state = level.getBlockState(leafPos);
             if (state.is(BlockTags.LEAVES)) {
                 if (WorkerBlockActions.breakBlock(companion, leafPos, actionStand, TREE_FELL_RANGE_SQR)) {
-                    companion.setJobStatus("Clearing leaves");
+                    companion.setJobStatus("job_status.modern_companions.clearing_leaves");
                     return;
                 }
             }
@@ -448,7 +448,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             stuckTicks = 0;
             idleNavTicks = 0;
             // Keep the log: a blocked route is not proof that this tree changed.
-            companion.setJobStatus("Route blocked");
+            companion.setJobStatus("job_status.modern_companions.route_blocked");
             logDebug("stall_wait", "target", targetLog);
         }
     }
@@ -533,7 +533,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             }
         }
         if (sapling.isEmpty()) {
-            companion.setJobStatus("Needs sapling");
+            companion.setJobStatus("job_status.modern_companions.needs_sapling");
             return false;
         }
         BlockItem bi = (BlockItem) sapling.getItem();

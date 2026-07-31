@@ -17,9 +17,9 @@ abstract class ResumableJobGoal extends Goal {
 
     protected final boolean workActive(boolean enabled) {
         if (!enabled || worker.getJob() != job || !worker.isWorkEnabled()) {
-            lifecycle.pause("Paused");
+            lifecycle.pause("job_status.modern_companions.paused");
             worker.checkpointJob(JobPhase.PAUSED, worker.getJobCheckpointTarget().orElse(null));
-            if (worker.getJob() == job) worker.setJobStatus("Paused");
+            if (worker.getJob() == job) worker.setJobStatus("job_status.modern_companions.paused");
             return false;
         }
         if (lifecycle.phase() == JobPhase.PAUSED || lifecycle.phase() == JobPhase.WAITING) lifecycle.resume();

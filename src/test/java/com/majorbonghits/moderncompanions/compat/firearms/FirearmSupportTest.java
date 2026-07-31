@@ -14,9 +14,9 @@ public final class FirearmSupportTest {
         assert FirearmSupport.Specialty.fromTacZType("rpg").orElseThrow()
                 == FirearmSupport.Specialty.HEAVY;
         assert FirearmSupport.Specialty.fromTacZType("launcher").isEmpty();
-        assert FirearmSupport.Specialty.PISTOL.displayName().equals("Pistol Specialist");
-        assert FirearmSupport.Specialty.MACHINE_GUN.displayName().equals("MG Specialist");
-        assert FirearmSupport.Specialty.SNIPER.displayName().equals("Sniper");
+        assert FirearmSupport.Specialty.PISTOL.displayNameKey().equals("entity.modern_companions.firearm_specialist.pistol");
+        assert FirearmSupport.Specialty.MACHINE_GUN.displayNameKey().equals("entity.modern_companions.firearm_specialist.machine_gun");
+        assert FirearmSupport.Specialty.SNIPER.displayNameKey().equals("entity.modern_companions.firearm_specialist.sniper");
         assert FirearmSupport.Specialty.PISTOL.weight()
                 + FirearmSupport.Specialty.SMG.weight()
                 + FirearmSupport.Specialty.RIFLE.weight()

@@ -1,3 +1,5 @@
+- 2026-07-30: Add a Curios dev-world smoke check for each firearm specialist gem to confirm the shared specialist type opens slots and renders equipped curios.
+- 2026-07-30: Add a small dev-world regression checklist for equipment: replace worn armor with shift-click, extract it from both cargo/equipment views, capture/redeploy a pistol-only companion, and verify no pistol enters an armor slot.
 - 2025-11-18: Next, port original Human Companions content into the new NeoForge 1.21.1 scaffolding—migrate registries (entities/items/structures), networking, configs, and assets under `modern_companions`, then add README and run a full Gradle build once the code is in place.
 - 2025-11-18 (later): Finish porting gameplay logic (entities/AI, networking, GUIs, structure placement) onto the new registries; add data-driven assets under the new namespace once binary inclusion is allowed, then verify with a Gradle build.
 - 2025-11-18 (further): Next still to-do—port GUI toggle controls and networking for patrol/alert/hunt/stationary flags, migrate companion house worldgen data/logic, and run a full Gradle build/validation once core behaviors are complete.
@@ -231,3 +233,23 @@
 
 ## 2026-07-30 (journal age editing smoke)
 - Set an Age at each boundary (1 and 120) and reject empty, non-numeric, zero, and 121 values; confirm valid ages update the journal and survive relog.
+
+## 2026-07-30 (TacZ firearm specialists)
+- Keep the TacZ category mapping tied to `CommonGunIndex.getType()`; add a data/config override only if a future TacZ pack exposes a category that does not identify itself through that index.
+- Keep specialist loadout diversity and spawn weights fixed until a live-world pass shows a balance problem; the current Heavy 1% and Sniper 4% specialty weights satisfy the requested rarity without adding config noise.
+
+## 2026-07-30 (TacZ specialist summon gems)
+- Keep the seven specialist gems on the shared `gem_9` art until a player-facing visual pass shows that category-specific art materially improves recognition; separate texture assets are unnecessary for the current request.
+
+## 2026-07-30 (TacZ specialist display names)
+- Keep the labels tied to the specialty enum until localization is requested; add translated display keys only when the project standardizes these class labels across languages.
+
+## 2026-07-30 (TacZ firearm capture restore)
+- Keep the load-time preservation guard tied to TacZ classification availability; add explicit serialized firearm migration only if a future TacZ version changes its item-stack schema rather than merely delaying its resource index.
+
+## 2026-07-30 (journal local skin removal)
+- Keep skin editing HTTP(S)-only; revisit local skins only with an explicit upload and synchronization design.
+
+## 2026-07-30 (death effect cleanup)
+- Keep the death/resurrection smoke test covering a vanilla harmful effect and Mekanism radiation; add other optional
+  capability-specific cleanup only when a mod demonstrates death-persistent harmful state.

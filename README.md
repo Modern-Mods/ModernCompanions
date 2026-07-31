@@ -17,7 +17,7 @@ Modern Companions is a NeoForge 1.21.1 port and rebrand of the Human Companions 
 - **Taming & upkeep:** Right-click an untamed companion with the exact items they request (two food/resource stacks chosen at spawn); once both reach zero they tame, follow, and unlock their GUI. Tamed companions heal with a wide pantry — cooked foods, veggies, fruits, enchanted golden foods, honey, and beneficial potions (regen/instant health, etc.), applying the effects and returning empty bottles when possible—plus they still ping the owner for food when low.
 - **Commands & stances:** Shift + right-click toggles sit. Right-click opens the companion screen: follow/patrol/guard cycle, alert (hostile blacklist focus), hunt (farm animals), **sprint toggle** (on = sprint with you; off = normal run), auto-pickup toggle, clear target, release back to the wild, and radius +/- (2–128, saved per companion). Following companions wander within that radius around you; patrol/guard use it around your current anchor block.
 - **Staying close:** Follow AI now mirrors vanilla pet recall—companions on the same dimension teleport to the nearest safe spot around you when they drift ~35 blocks away, with navigation fallback if no space is open.
-- **Inventory & gear:** 6×9 personal inventory, item-magnet pickup when enabled, automatic best-armor selection, and class-aware weapon selection each tick. Friendly-fire and fall damage respect config toggles.
+- **Inventory & gear:** 7×9 personal inventory plus six equipment slots, item-magnet pickup when enabled, automatic best-armor selection, and class-aware weapon selection each tick. Friendly-fire and fall damage respect config toggles.
 - **Progression:** Companions earn XP from kills; an MMO-style curve gates levels. Health scales with level and END; STR boosts damage/knockback, DEX boosts move/attack speed + light KB resist, INT speeds XP gain, END adds health + physical reduction. Kill count and XP bar show in the GUI.
 - **Progression:** Companions earn XP from kills; an MMO-style curve gates levels. Health scales with level and END; STR boosts damage/knockback, DEX boosts move/attack speed + light KB resist, INT speeds XP gain, END adds health + physical reduction. Kill count and XP bar show in the GUI.
 - **Limits:** There is **no level cap** and **no hard party-size limit**—you can keep leveling companions and control as many as you can recruit; practical limits are only your hardware/server performance.
@@ -71,7 +71,7 @@ Manual dev-world checks remain required for modded protection hooks, complex cav
   - Morale descriptor and Bond level/XP.
   - Journey stats: kills, major kills, resurrections, distance traveled with owner, first hired day.
   - Age: rolled 18–35 at spawn; ages +1 year every ~90 in-game days (visual only).
-- The journal's top-right edit control opens Name, Age, Bio, and Skin forms. Press Enter to save; editable ages are 1–120, and skin URLs use the same HTTP(S) requirement as `/companionskin`.
+- The journal's top-right edit control opens Name, Age, Bio, and Skin forms. Press Enter or `Done` to save; editable ages are 1–120, and skin URLs use the same HTTP(S) requirement as `/companionskin`.
 - Legacy companions (zero traits) are backfilled **once** on load with traits/backstory/age—no rerolls after the initial backfill.
 
 ## Worldgen & Spawns
@@ -176,6 +176,11 @@ Health restores immediately, Regeneration heals over time, Stamina and Mana rest
 - With Curios and Sophisticated Backpacks installed, equip a Sophisticated Backpack in the companion's back slot. It renders on the companion and the optional Backpack button opens its storage. A companion's Bio records its randomly selected favorite food; feeding it doubles Bond XP and morale gain.
 - The Backpack button opens Sophisticated Backpacks' native storage container, so its upgrades and settings tabs work exactly as they do for a player-worn backpack.
 - TacZ firearms are optional: companions equip a supplied gun, aim at a valid target, shoot, reload from their own inventory, and notify their owner after an ammo failure.
+- All seven TacZ firearm specialist variants receive the same Curios slots and rendering support when Curios is installed.
+- When TacZ is installed, structure residents can be replaced by rare firearm specialists. Each specialist is permanently assigned to Pistol, SMG, Rifle, Shotgun, Sniper, Machine Gun, or Heavy and only equips guns in that TacZ category; Sniper and Heavy rolls are intentionally very rare.
+- TacZ supplies one matching summon gem for each specialist category; these seven gems reuse the existing gem art and are not registered or shown when TacZ is absent.
+- Their inventory class labels use the preferred firearm name (for example, Pistol Specialist, MG Specialist, or Sniper) instead of the generic Firearm Specialist label.
+- Equipped TacZ guns remain in the companion's equipment slot when captured and redeployed; ammunition remains in cargo for native TacZ reloads.
 - Data pack uses pack_format 48; loot injections use NeoForge global loot modifiers for compatibility.
 - Better Combat detected: reach modifiers are skipped to avoid stacking with that mod’s reach.
 

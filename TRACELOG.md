@@ -1,3 +1,22 @@
+## 2026-07-30 (firearm specialist Curios registration)
+- Prompt/task: Ensure all new firearm specialists receive Curios slots when Curios is present.
+- Steps:
+  - Compared the optional `firearm_specialist` entity registration and client Curios layer hook with the Curios entity allowlist.
+  - Added `modern_companions:firearm_specialist` to the Curios entity data; all seven specialist gems share this entity type.
+  - Bumped the project version to 1.2.80 and documented the optional integration.
+- Rationale: Curios grants slots by entity type, so one allowlist entry enables slots for Pistol, SMG, Rifle, Shotgun, Sniper, Machine Gun, and Heavy specialists without duplicating data.
+- Build: Java 21 build/check validation pending.
+
+## 2026-07-30 (equipment duplication fix)
+- Prompt/task: "Big bug with companions; inventory/equipment converting to items and back" — stop shift-click and stored-companion equipment duplication, including pistols appearing in armor slots.
+- Steps:
+  - Traced `CompanionMenu`, `AbstractHumanCompanionEntity`, and `StoredCompanionItem` through shift-click, live equipment updates, save/load, and gem redeployment.
+  - Removed the second mutable equipment container; menu equipment slots now read, remove, and write the entity's vanilla equipment slots directly.
+  - Kept manual equipment lock flags, added a temporary offhand backup for eating, and retained a typed migration reader for the previous `DedicatedEquipment` tag without writing that duplicate store again.
+  - Bumped the project version to 1.2.79 and updated player-facing equipment documentation.
+- Rationale: One live equipment source prevents cargo, rendered equipment, and stored NBT from diverging or exposing the same stack through two slots. Invalid legacy stacks are ignored by slot validation, preventing guns from being restored as armor.
+- Build: `compileJava` passed; full Java 21 build and in-game shift-click/capture/redeploy smoke tests remain part of final validation.
+
 ## 2025-11-18
 - Prompt/task: "Continue with the logical next steps."
 - Steps:
@@ -2273,3 +2292,57 @@
 - Prompt/task: Add Age to the journal edit menu alongside Name, Bio, and Skin.
 - Steps: Reused the native text-entry screen and existing synchronized age setter; accepted only whole-number ages from 1 through 120, moved Back beneath the fourth action, and bumped version to 1.2.73.
 - Rationale: Age was already persistent companion state, so one validated payload branch avoids duplicate storage or a separate editor.
+
+## 2026-07-30 (TacZ firearm specialists)
+- Prompt/task: Add rare TacZ firearm-specific companions that only use their assigned firearm category, with especially rare Sniper and Heavy specialists.
+- Steps: Added one optional persisted Firearm Specialist entity; classify TacZ guns through its native gun index; enforce specialty-only main-hand selection through shared equipment paths; expose the existing companion inventory as TacZ's entity item-handler; create native TacZ gun/ammo spawn loadouts; and replace selected structure residents at an 8% rate with weighted specialty rolls (Pistol 30, SMG 20, Rifle 25, Shotgun 15, Sniper 4, Machine Gun 5, Heavy 1). Bumped version to 1.2.74.
+- Rationale: A single entity with persistent specialty data avoids seven duplicated companions while keeping the category source aligned with TacZ's active gun definitions and preserving optional-mod startup safety.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; TacZ dev-world specialist spawn, category enforcement, native firing/reload, ammo consumption, and TacZ-absent startup smoke remain required.
+
+## 2026-07-30 (TacZ specialist summon gems)
+- Prompt/task: Give each TacZ firearm-specialist class its own summon gem and keep all TacZ-specific content absent without TacZ.
+- Steps: Replaced the generic specialist gem with seven TacZ-gated gems for Pistol, SMG, Rifle, Shotgun, Sniper, Machine Gun, and Heavy; reused `gem_9` for every model; and made each gem assign its fixed specialty and rebuild the matching native TacZ loadout after spawning. Bumped version to 1.2.75.
+- Rationale: The existing entity can remain a single persisted implementation while each player-facing gem still produces the requested fixed class, and registration gating keeps the entire specialist item surface optional.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; manual TacZ gem-use, specialty, and TacZ-absent startup smoke remain required.
+
+## 2026-07-30 (TacZ specialist display names)
+- Prompt/task: Show each firearm specialist's preferred firearm in the companion inventory class field instead of `Firearm Specialist`.
+- Steps: Added specialty display labels and overrode the shared class-name hook for firearm specialists; Pistol, SMG, Rifle, Shotgun, and Heavy use the `Specialist` suffix, Machine Gun displays as `MG Specialist`, and Sniper displays as `Sniper`. Bumped version to 1.2.76.
+- Rationale: Both the main inventory and Curios inventory already consume the shared class-name hook, so one entity-level override keeps the UI consistent without duplicating screen logic.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` remain required after the final version/documentation update; manual inventory and Curios label smoke remains required.
+
+## 2026-07-30 (TacZ firearm capture restore)
+- Prompt/task: Restore TacZ firearms when a tamed firearm specialist is captured with Companion Mover and redeployed from its stored gem.
+- Steps: Kept the existing dedicated-equipment serialization boundary, but changed specialist normalization to preserve a serialized TacZ gun while TacZ's resource index is temporarily unavailable during entity load; the next server tick retries normal classification, while known incompatible categories and non-firearm hand contents remain rejected. Bumped version to 1.2.77.
+- Rationale: Equipped firearms are stored separately from cargo ammo, so deleting an unresolved hand stack during load loses the gun even though the ammunition survives in the normal inventory.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` remain required after the final version/documentation update; manual capture/redeploy, gun firing, and ammo reload smoke remain required.
+
+## 2026-07-30 (journal Done buttons and local skin picker)
+- Prompt/task: Use `newbuttons.png` for journal edit controls, add `Done` to each field screen, and add a `Local` system file picker beside `Done` on Skin.
+- Steps: Reused the inventory button sprite for the edit menu and native field actions; added a client-only native PNG picker with 64×32/64×64 validation and dynamic texture registration keyed by companion UUID; bumped version to 1.2.81.
+- Rationale: The shared sprite keeps the journal aligned with the inventory UI, while a client-local texture avoids sending filesystem paths to the server or claiming multiplayer persistence that was not implemented.
+- Build/Test: Java 21 build and in-game checks for Done, cancel, local 64×32/64×64 skins, invalid PNG rejection, and session-only behavior remain required.
+
+## 2026-07-30 (journal button text and picker fix)
+- Prompt/task: Correct the journal button text appearance and make the Local skin control open the system picker reliably.
+- Steps: Matched the inventory button renderer's no-shadow text path and created the native AWT file dialog on the AWT event queue; bumped version to 1.2.82.
+- Rationale: The inventory's plain text draw avoids doubled/shadowed glyphs, and AWT owns native dialog creation on its event thread.
+- Build/Test: Java 21 build and interactive menu/picker smoke remain required.
+
+## 2026-07-30 (journal Local no-op follow-up)
+- Prompt/task: Make Local respond when the companion is temporarily not found and provide a visible file-picker fallback.
+- Steps: Open the picker independently of the initial companion lookup, resolve the companion again after selection, and fall back from native AWT to `JFileChooser` on picker creation failure; bumped version to 1.2.83.
+- Rationale: A missing client entity must not turn the button into a silent no-op, while both chooser paths remain client-only and feed the same validated PNG loader.
+- Build/Test: Java 21 build and interactive Local-picker smoke remain required.
+
+## 2026-07-30 (remove local skin picker)
+- Prompt/task: Remove the Local skin button and its functionality.
+- Steps: Removed the Local journal control, AWT/Swing picker code, client-local dynamic texture cache, renderer override, localization key, and current README references; retained HTTP(S) skin URLs and bumped version to 1.2.84.
+- Rationale: Skin editing now has one supported path, the existing owner-checked HTTP(S) journal update.
+- Build/Test: Java 21 build and journal HTTP(S) skin editing smoke remain required.
+
+## 2026-07-30 (death effect cleanup)
+- Prompt/task: Clear negative companion effects on death so resurrection does not immediately repeat the same fatal effect, including Mekanism radiation poisoning.
+- Steps: Removed harmful MobEffects before serializing the resurrection scroll; cleared Mekanism's optional radiation entity capability through reflection; bumped version to 1.2.85.
+- Rationale: The resurrection scroll is created from the live entity before `super.die`, so death-invalid harmful state was being copied into the revived entity. Mekanism radiation is capability state rather than a MobEffect and needs its own optional cleanup.
+- Build/Test: Java 21 `gradlew.bat compileJava --no-daemon` and `gradlew.bat check --no-daemon` passed; vanilla harmful-effect and Mekanism radiation death/resurrection smoke remain required.

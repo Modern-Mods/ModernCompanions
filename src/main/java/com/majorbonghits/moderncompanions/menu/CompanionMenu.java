@@ -42,8 +42,8 @@ public class CompanionMenu extends AbstractContainerMenu {
         checkContainerSize(container, COMPANION_SLOT_COUNT);
         container.startOpen(playerInv.player);
 
-        // The dedicated equipment store keeps worn items out of the cargo inventory.
-        Container equipment = companion == null ? new SimpleContainer(EQUIPMENT_SLOT_COUNT) : companion.getEquipmentInventory();
+        // Equipment slots delegate to the entity's vanilla equipment; the dummy container is client-safe fallback state.
+        Container equipment = new SimpleContainer(EQUIPMENT_SLOT_COUNT);
         this.addSlot(new CompanionEquipmentSlot(equipment, 0, 9, 37, EquipmentSlot.HEAD, companion, "empty_armor_slot_helmet"));
         this.addSlot(new CompanionEquipmentSlot(equipment, 1, 9, 56, EquipmentSlot.CHEST, companion, "empty_armor_slot_chestplate"));
         this.addSlot(new CompanionEquipmentSlot(equipment, 2, 9, 73, EquipmentSlot.LEGS, companion, "empty_armor_slot_leggings"));
@@ -121,7 +121,7 @@ public class CompanionMenu extends AbstractContainerMenu {
         return null;
     }
 
-    /** Equipment slots sync their persistent backing store to the companion's live render state. */
+    /** Equipment slots are views over the companion's live equipment, so menu extraction cannot fork a stack. */
     private static class CompanionEquipmentSlot extends Slot {
         private final EquipmentSlot equipmentSlot;
         private final AbstractHumanCompanionEntity companion;
@@ -142,6 +142,16 @@ public class CompanionMenu extends AbstractContainerMenu {
         }
 
         @Override
+        public ItemStack getItem() {
+            return companion == null ? super.getItem() : companion.getItemBySlot(equipmentSlot);
+        }
+
+        @Override
+        public boolean hasItem() {
+            return !getItem().isEmpty();
+        }
+
+        @Override
         public void set(ItemStack stack) {
             if (companion != null) {
                 companion.setManualEquipment(equipmentSlot, stack);
@@ -152,11 +162,7 @@ public class CompanionMenu extends AbstractContainerMenu {
 
         @Override
         public ItemStack remove(int amount) {
-            ItemStack removed = super.remove(amount);
-            if (companion != null) {
-                companion.setManualEquipment(equipmentSlot, getItem());
-            }
-            return removed;
+            return companion == null ? super.remove(amount) : companion.removeEquipment(equipmentSlot, amount);
         }
     }
 }

@@ -43,6 +43,7 @@ public final class ModClientEvents {
         event.registerEntityRenderer(ModEntityTypes.ALCHEMIST.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.SCOUT.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.STORMCALLER.get(), CompanionRenderer::new);
+        magic(event, ModEntityTypes.FIREARM_SPECIALIST);
         magic(event, ModEntityTypes.FIRE_MAGE);
         magic(event, ModEntityTypes.LIGHTNING_MAGE);
         magic(event, ModEntityTypes.NECROMANCER);
@@ -97,4 +98,5 @@ public final class ModClientEvents {
     private static <T extends com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity> void magic(EntityRenderersEvent.RegisterRenderers event, net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.entity.EntityType<?>, net.minecraft.world.entity.EntityType<T>> type) {
         if (type != null) event.registerEntityRenderer(type.get(), CompanionRenderer::new);
     }
+
 }

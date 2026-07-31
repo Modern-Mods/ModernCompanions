@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.TamableAnimal;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -73,6 +74,10 @@ public final class ModEntityTypes {
                     .sized(0.6F, 1.8F)
                     .build(id("stormcaller")));
 
+    /** The implementation is TacZ-free; the entity itself is omitted when TacZ is absent. */
+    public static final DeferredHolder<EntityType<?>, EntityType<FirearmSpecialist>> FIREARM_SPECIALIST =
+            optional("firearm_specialist", FirearmSpecialist::new);
+
     public static final DeferredHolder<EntityType<?>, EntityType<FireMage>> FIRE_MAGE = magic("fire_mage", FireMage::new);
     public static final DeferredHolder<EntityType<?>, EntityType<LightningMage>> LIGHTNING_MAGE = magic("lightning_mage", LightningMage::new);
     public static final DeferredHolder<EntityType<?>, EntityType<Necromancer>> NECROMANCER = magic("necromancer", Necromancer::new);
@@ -99,5 +104,12 @@ public final class ModEntityTypes {
     private static <T extends TamableAnimal> DeferredHolder<EntityType<?>, EntityType<T>> magic(String id, EntityType.EntityFactory<T> factory) {
         return MagicCastingCompat.available() ? ENTITY_TYPES.register(id, () -> EntityType.Builder.of(factory, MobCategory.AMBIENT)
                 .sized(0.6F, 1.8F).build(id(id))) : null;
+    }
+
+    private static <T extends TamableAnimal> DeferredHolder<EntityType<?>, EntityType<T>> optional(String path,
+                                                                                                    EntityType.EntityFactory<T> factory) {
+        return ModList.get().isLoaded("tacz") ? ENTITY_TYPES.register(path,
+                () -> EntityType.Builder.of(factory, MobCategory.AMBIENT)
+                        .sized(0.6F, 1.8F).build(id(path))) : null;
     }
 }

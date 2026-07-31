@@ -39,6 +39,7 @@ public final class CuriosClientEvents {
         addCuriosLayer(event, ctx, ModEntityTypes.ALCHEMIST.get());
         addCuriosLayer(event, ctx, ModEntityTypes.SCOUT.get());
         addCuriosLayer(event, ctx, ModEntityTypes.STORMCALLER.get());
+        addCuriosLayer(event, ctx, ModEntityTypes.FIREARM_SPECIALIST);
         addCuriosLayer(event, ctx, ModEntityTypes.FIRE_MAGE);
         addCuriosLayer(event, ctx, ModEntityTypes.LIGHTNING_MAGE);
         addCuriosLayer(event, ctx, ModEntityTypes.NECROMANCER);

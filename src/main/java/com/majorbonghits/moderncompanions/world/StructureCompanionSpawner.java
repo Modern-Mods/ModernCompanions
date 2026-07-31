@@ -38,6 +38,15 @@ import java.util.function.Supplier;
 public final class StructureCompanionSpawner {
     private StructureCompanionSpawner() {}
 
+    private static final float FIREARM_SPECIALIST_CHANCE = 0.08F;
+    private static final Set<ResourceLocation> FIREARM_STRUCTURE_POOL = Set.of(
+            Constants.id("berserker_house"), Constants.id("scout_house"), Constants.id("stormcaller_house"),
+            Constants.id("vanguard_house"), Constants.id("smith"), Constants.id("house"),
+            Constants.id("largehouse"), Constants.id("largehouse2"), Constants.id("largehouse3"),
+            Constants.id("lumber"), Constants.id("windmill"), Constants.id("oak_house"),
+            Constants.id("oak_birch_house"), Constants.id("birch_house"), Constants.id("acacia_house"),
+            Constants.id("dark_oak_house"), Constants.id("sandstone_house"), Constants.id("terracotta_house"));
+
     /** Map structure id -> companion entity choices (supports multiple per structure). */
     private static final Map<ResourceLocation, List<Supplier<? extends EntityType<? extends PathfinderMob>>>> STRUCTURE_TO_ENTITIES = Map.ofEntries(
             Map.entry(Constants.id("alchemist_house"), choices(ModEntityTypes.ALCHEMIST, ModEntityTypes.WITCH, ModEntityTypes.DRUID)),
@@ -89,7 +98,7 @@ public final class StructureCompanionSpawner {
 
             BlockPos center = start.getBoundingBox().getCenter();
             String key = id + "|" + center.getX() + "," + center.getY() + "," + center.getZ();
-            pending.add(new SpawnRequest(center, key, choices));
+            pending.add(new SpawnRequest(id, center, key, choices));
         });
 
         if (pending.isEmpty()) return;
@@ -98,14 +107,20 @@ public final class StructureCompanionSpawner {
             StructureSpawnTracker tracker = StructureSpawnTracker.get(serverLevel);
             for (SpawnRequest req : pending) {
                 if (!tracker.markIfNew(req.key())) continue;
-                EntityType<? extends PathfinderMob> type = pickEntityFor(serverLevel.random, req.typeSuppliers());
+                EntityType<? extends PathfinderMob> type = pickEntityFor(serverLevel.random, req.structureId(), req.typeSuppliers());
                 type.spawn(serverLevel, req.center(), MobSpawnType.STRUCTURE);
             }
         });
     }
 
-    private static EntityType<? extends PathfinderMob> pickEntityFor(RandomSource random, List<Supplier<? extends EntityType<? extends PathfinderMob>>> choices) {
+    private static EntityType<? extends PathfinderMob> pickEntityFor(RandomSource random, ResourceLocation structureId,
+                                                                       List<Supplier<? extends EntityType<? extends PathfinderMob>>> choices) {
         if (choices.isEmpty()) throw new IllegalStateException("No entity choices for structure spawn");
+        if (ModEntityTypes.FIREARM_SPECIALIST != null
+                && FIREARM_STRUCTURE_POOL.contains(structureId)
+                && random.nextFloat() < FIREARM_SPECIALIST_CHANCE) {
+            return ModEntityTypes.FIREARM_SPECIALIST.get();
+        }
         Supplier<? extends EntityType<? extends PathfinderMob>> supplier = choices.size() == 1
                 ? choices.getFirst()
                 : choices.get(random.nextInt(choices.size()));
@@ -117,7 +132,7 @@ public final class StructureCompanionSpawner {
         return Arrays.stream(entries).filter(Objects::nonNull).toList();
     }
 
-    private record SpawnRequest(BlockPos center, String key,
+    private record SpawnRequest(ResourceLocation structureId, BlockPos center, String key,
                                 List<Supplier<? extends EntityType<? extends PathfinderMob>>> typeSuppliers) {}
 
     /**

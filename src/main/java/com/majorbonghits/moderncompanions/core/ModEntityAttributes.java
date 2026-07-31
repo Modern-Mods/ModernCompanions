@@ -22,6 +22,7 @@ public final class ModEntityAttributes {
         event.put(ModEntityTypes.ALCHEMIST.get(), attrs);
         event.put(ModEntityTypes.SCOUT.get(), attrs);
         event.put(ModEntityTypes.STORMCALLER.get(), attrs);
+        magic(event, ModEntityTypes.FIREARM_SPECIALIST, attrs);
         magic(event, ModEntityTypes.FIRE_MAGE, attrs);
         magic(event, ModEntityTypes.LIGHTNING_MAGE, attrs);
         magic(event, ModEntityTypes.NECROMANCER, attrs);
@@ -40,4 +41,5 @@ public final class ModEntityAttributes {
     private static <T extends AbstractHumanCompanionEntity> void magic(EntityAttributeCreationEvent event, net.neoforged.neoforge.registries.DeferredHolder<net.minecraft.world.entity.EntityType<?>, net.minecraft.world.entity.EntityType<T>> type, net.minecraft.world.entity.ai.attributes.AttributeSupplier attrs) {
         if (type != null) event.put(type.get(), attrs);
     }
+
 }

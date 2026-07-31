@@ -47,6 +47,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ArmorItem;
@@ -250,9 +251,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     // Seven visible rows in the companion menu; saved inventories keep their existing slot indices.
     protected final SimpleContainer inventory = new SimpleContainer(63);
-    // Six dedicated equipment slots stay separate from the companion's 63 cargo slots.
-    private final SimpleContainer equipmentInventory = new SimpleContainer(6);
+    // Vanilla LivingEntity equipment is the single source of truth; only manual locks need extra state.
     private final boolean[] manuallyEquipped = new boolean[6];
+    private ItemStack savedOffhand = ItemStack.EMPTY;
     protected final Map<Item, Integer> foodRequirements = new HashMap<>();
     protected final Random rand = new Random();
 
@@ -1206,13 +1207,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return inventory;
     }
 
-    public SimpleContainer getEquipmentInventory() {
-        return equipmentInventory;
-    }
-
     private boolean hasDedicatedEquipment(EquipmentSlot slot) {
         int index = dedicatedEquipmentIndex(slot);
-        return manuallyEquipped[index] && !equipmentInventory.getItem(index).isEmpty();
+        return manuallyEquipped[index] && !super.getItemBySlot(slot).isEmpty();
     }
 
     private int dedicatedEquipmentIndex(EquipmentSlot slot) {
@@ -1227,19 +1224,33 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         };
     }
 
-    /** Manual slots are locks; automatic equipment continues to use the same persistent store. */
+    /** Manual slots are locks; automatic equipment continues to use the live entity slot. */
     public void setManualEquipment(EquipmentSlot slot, ItemStack stack) {
         if (!canEquipInSlot(slot, stack)) return;
         int index = dedicatedEquipmentIndex(slot);
-        equipmentInventory.setItem(index, stack);
         manuallyEquipped[index] = !stack.isEmpty();
-        super.setItemSlot(slot, stack);
+        super.setItemSlot(slot, stack.copy());
+    }
+
+    /** Removes gear through the same live slot used by rendering and vanilla NBT. */
+    public ItemStack removeEquipment(EquipmentSlot slot, int amount) {
+        ItemStack current = super.getItemBySlot(slot);
+        if (current.isEmpty()) return ItemStack.EMPTY;
+        ItemStack removed = current.split(amount);
+        super.setItemSlot(slot, current);
+        if (current.isEmpty()) manuallyEquipped[dedicatedEquipmentIndex(slot)] = false;
+        return removed;
     }
 
     /** Food is held only for the existing eat animation, then the saved offhand returns. */
     public void setTemporaryOffhandItem(ItemStack stack) {
-        super.setItemSlot(EquipmentSlot.OFFHAND,
-                stack.isEmpty() ? equipmentInventory.getItem(dedicatedEquipmentIndex(EquipmentSlot.OFFHAND)) : stack);
+        if (stack.isEmpty()) {
+            super.setItemSlot(EquipmentSlot.OFFHAND, savedOffhand);
+            savedOffhand = ItemStack.EMPTY;
+        } else {
+            if (savedOffhand.isEmpty()) savedOffhand = super.getItemBySlot(EquipmentSlot.OFFHAND).copy();
+            super.setItemSlot(EquipmentSlot.OFFHAND, stack);
+        }
     }
 
     /** Hand slots only accept usable gear; cargo and consumables stay in the companion inventory. */
@@ -1249,7 +1260,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             return stack.getItem() instanceof ArmorItem armor && armor.getEquipmentSlot() == slot;
         }
         return switch (slot) {
-            case MAINHAND -> isMainHandEquipment(stack);
+            case MAINHAND -> isMainHandEquipment(stack) && (!FirearmSupport.isFirearm(stack) || isFirearmAllowed(stack));
             case OFFHAND -> isShieldItem(stack) || stack.getItem() instanceof BlockItem blockItem
                     && (blockItem.getBlock() instanceof TorchBlock || blockItem.getBlock() instanceof LanternBlock);
             default -> false;
@@ -1273,7 +1284,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             stack = fallback.isEmpty() ? (isMainHandEquipment(stack) ? stack : ItemStack.EMPTY) : fallback;
         }
         int index = dedicatedEquipmentIndex(slot);
-        ItemStack manual = equipmentInventory.getItem(index);
+        ItemStack manual = super.getItemBySlot(slot);
         if (manuallyEquipped[index] && !manual.isEmpty()) {
             if (!ItemStack.isSameItemSameComponents(manual, stack)) return;
         } else {
@@ -1307,6 +1318,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         ItemStack tool = ItemStack.EMPTY;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack candidate = inventory.getItem(i);
+            if (!isAutomaticMainHandCandidate(candidate)) continue;
             if (isMainHandWeapon(candidate)) return candidate;
             if (tool.isEmpty() && isMainHandEquipment(candidate)) tool = candidate;
         }
@@ -1335,7 +1347,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         ItemStack equipped = sourceSlot < 0 ? stack : inventory.removeItem(sourceSlot, 1);
         if (equipped.isEmpty() && !stack.isEmpty()) return false;
         if (!unchanged && !current.isEmpty() && !insertIntoContainer(inventory, current.copy()).isEmpty()) return false;
-        equipmentInventory.setItem(dedicatedEquipmentIndex(slot), equipped);
         super.setItemSlot(slot, equipped);
         return true;
     }
@@ -1378,12 +1389,22 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     /** Firearms take precedence over class weapons so per-tick selectors cannot unequip them. */
     protected ItemStack getEquippedOrInventoryFirearm() {
-        if (FirearmSupport.isFirearm(getMainHandItem())) return getMainHandItem();
+        if (FirearmSupport.isAllowedFirearm(this, getMainHandItem())) return getMainHandItem();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack stack = inventory.getItem(slot);
-            if (FirearmSupport.isFirearm(stack)) return stack;
+            if (FirearmSupport.isAllowedFirearm(this, stack)) return stack;
         }
         return ItemStack.EMPTY;
+    }
+
+    /** Normal companions accept every TacZ firearm; specialists narrow this hook. */
+    public boolean isFirearmAllowed(ItemStack stack) {
+        return true;
+    }
+
+    /** Controls automatic main-hand selection without changing manual inventory storage. */
+    protected boolean isAutomaticMainHandCandidate(ItemStack stack) {
+        return true;
     }
 
     public Map<Item, Integer> getFoodRequirements() {
@@ -2167,7 +2188,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
-        tag.put("DedicatedEquipment", this.equipmentInventory.createTag(this.registryAccess()));
         byte[] manualSlots = new byte[manuallyEquipped.length];
         for (int i = 0; i < manualSlots.length; i++) manualSlots[i] = (byte) (manuallyEquipped[i] ? 1 : 0);
         tag.putByteArray("DedicatedEquipmentManual", manualSlots);
@@ -2373,8 +2393,18 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (tag.contains("Inventory", 9)) {
             this.inventory.fromTag(tag.getList("Inventory", 10), this.registryAccess());
         }
+        // Migrate the short-lived duplicate equipment store from the previous release.
+        SimpleContainer legacyEquipment = new SimpleContainer(manuallyEquipped.length);
         if (tag.contains("DedicatedEquipment", 9)) {
-            this.equipmentInventory.fromTag(tag.getList("DedicatedEquipment", 10), this.registryAccess());
+            legacyEquipment.fromTag(tag.getList("DedicatedEquipment", 10), this.registryAccess());
+        }
+        for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS,
+                EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
+            int index = dedicatedEquipmentIndex(slot);
+            ItemStack legacy = legacyEquipment.getItem(index);
+            if (!legacy.isEmpty() && canEquipInSlot(slot, legacy)) {
+                super.setItemSlot(slot, legacy.copy());
+            }
         }
         Arrays.fill(manuallyEquipped, false);
         byte[] manualSlots = tag.getByteArray("DedicatedEquipmentManual");
@@ -2382,7 +2412,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             for (int i = 0; i < manuallyEquipped.length; i++) manuallyEquipped[i] = manualSlots[i] != 0;
         } else {
             // Equipment saved before manual-lock metadata was introduced was all player placed.
-            for (int i = 0; i < manuallyEquipped.length; i++) manuallyEquipped[i] = !equipmentInventory.getItem(i).isEmpty();
+            for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS,
+                    EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
+                manuallyEquipped[dedicatedEquipmentIndex(slot)] = !super.getItemBySlot(slot).isEmpty();
+            }
         }
         this.entityData.set(STAMINA_MAX, Math.max(1, tag.contains("StaminaMax") ? tag.getInt("StaminaMax") : STAMINA_MAX_DEFAULT));
         this.entityData.set(STAMINA, bounded(tag.contains("Stamina") ? tag.getInt("Stamina") : getStaminaMax(), getStaminaMax()));
@@ -2407,11 +2440,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             moveBackGoal = new MoveBackToPatrolGoal(this, tag.getInt("radius"));
             this.goalSelector.addGoal(3, moveBackGoal);
             this.goalSelector.addGoal(3, patrolGoal);
-        }
-        for (EquipmentSlot slot : new EquipmentSlot[] {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS,
-                EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
-            // Restore by semantic slot, never by serialized list position.
-            super.setItemSlot(slot, equipmentInventory.getItem(dedicatedEquipmentIndex(slot)));
         }
         checkArmor();
         if (!this.level().isClientSide() && this.level() instanceof ServerLevel serverLevel) {
@@ -2786,12 +2814,37 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Override
     public void die(DamageSource source) {
         if (!this.level().isClientSide()) {
+            clearNegativeEffectsBeforeResurrectionSave();
             if (this instanceof Beastmaster beastmaster) {
                 beastmaster.forceDespawnPet();
             }
             dropResurrectionScroll();
         }
         super.die(source);
+    }
+
+    /** Prevent death-invalid harmful state from being copied into a resurrection scroll. */
+    private void clearNegativeEffectsBeforeResurrectionSave() {
+        for (MobEffectInstance effect : List.copyOf(this.getActiveEffects())) {
+            if (effect.getEffect().value().getCategory() == MobEffectCategory.HARMFUL) {
+                this.removeEffect(effect.getEffect());
+            }
+        }
+
+        // Mekanism stores radiation as an optional entity capability instead of a MobEffect.
+        if (!net.neoforged.fml.ModList.get().isLoaded("mekanism")) return;
+        try {
+            Class<?> capabilities = Class.forName("mekanism.common.capabilities.Capabilities");
+            Object radiationCapability = capabilities.getField("RADIATION_ENTITY").get(null);
+            Object radiation = Entity.class
+                    .getMethod("getCapability", radiationCapability.getClass())
+                    .invoke(this, radiationCapability);
+            if (radiation != null) {
+                radiation.getClass().getMethod("set", double.class).invoke(radiation, 0.0D);
+            }
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            // Keep Mekanism optional; an unavailable compatibility API must not block death.
+        }
     }
 
     @Override

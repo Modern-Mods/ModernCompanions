@@ -35,6 +35,8 @@ public class CompanionJournalTextEditScreen extends Screen {
             case "skin" -> companion.getCustomSkinUrl().orElse("");
             default -> "";
         }));
+        addRenderableWidget(new CompanionJournalEditScreen.JournalTexturedButton(
+                Component.translatable("gui.done"), width / 2 - 24, height / 2 + 18, this::submit));
         setInitialFocus(input);
     }
 

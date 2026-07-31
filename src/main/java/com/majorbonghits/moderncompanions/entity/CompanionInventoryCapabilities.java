@@ -27,6 +27,7 @@ public final class CompanionInventoryCapabilities {
         register(event, ModEntityTypes.ALCHEMIST.get());
         register(event, ModEntityTypes.SCOUT.get());
         register(event, ModEntityTypes.STORMCALLER.get());
+        register(event, ModEntityTypes.FIREARM_SPECIALIST);
         register(event, ModEntityTypes.FIRE_MAGE);
         register(event, ModEntityTypes.LIGHTNING_MAGE);
         register(event, ModEntityTypes.NECROMANCER);

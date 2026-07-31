@@ -8,11 +8,14 @@ import com.majorbonghits.moderncompanions.item.ResurrectionScrollItem;
 import com.majorbonghits.moderncompanions.item.SummoningWandItem;
 import com.majorbonghits.moderncompanions.item.StoredCompanionItem;
 import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
+import com.majorbonghits.moderncompanions.item.FirearmSpecialistSummonGemItem;
+import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -97,6 +100,21 @@ public final class ModItems {
     public static final DeferredHolder<Item, Item> STORMCALLER_SPAWN_EGG = ITEMS.register("stormcaller_spawn_egg",
             () -> new DeferredSpawnEggItem(ModEntityTypes.STORMCALLER, 0xB0E0FF, 0xFFD166, new Item.Properties()));
 
+    public static final DeferredHolder<Item, Item> PISTOL_SPECIALIST_SPAWN_EGG = specialistEgg(
+            "pistol_specialist_spawn_egg", FirearmSupport.Specialty.PISTOL, 0x3A3F4B, 0xD6A84F);
+    public static final DeferredHolder<Item, Item> SMG_SPECIALIST_SPAWN_EGG = specialistEgg(
+            "smg_specialist_spawn_egg", FirearmSupport.Specialty.SMG, 0x3A4F5B, 0xD6B84F);
+    public static final DeferredHolder<Item, Item> RIFLE_SPECIALIST_SPAWN_EGG = specialistEgg(
+            "rifle_specialist_spawn_egg", FirearmSupport.Specialty.RIFLE, 0x3A5F4B, 0xD6C84F);
+    public static final DeferredHolder<Item, Item> SHOTGUN_SPECIALIST_SPAWN_EGG = specialistEgg(
+            "shotgun_specialist_spawn_egg", FirearmSupport.Specialty.SHOTGUN, 0x4A3F4B, 0xE6A84F);
+    public static final DeferredHolder<Item, Item> SNIPER_SPECIALIST_SPAWN_EGG = specialistEgg(
+            "sniper_specialist_spawn_egg", FirearmSupport.Specialty.SNIPER, 0x2A3F5B, 0xB6D84F);
+    public static final DeferredHolder<Item, Item> MACHINE_GUN_SPECIALIST_SPAWN_EGG = specialistEgg(
+            "machine_gun_specialist_spawn_egg", FirearmSupport.Specialty.MACHINE_GUN, 0x2A4F4B, 0xD6A8AF);
+    public static final DeferredHolder<Item, Item> HEAVY_SPECIALIST_SPAWN_EGG = specialistEgg(
+            "heavy_specialist_spawn_egg", FirearmSupport.Specialty.HEAVY, 0x252A32, 0xD6A84F);
+
     public static final DeferredHolder<Item, Item> FIRE_MAGE_SPAWN_EGG = magicEgg("fire_mage_spawn_egg", ModEntityTypes.FIRE_MAGE, 0xFF6B3D, 0xA8320F);
     public static final DeferredHolder<Item, Item> LIGHTNING_MAGE_SPAWN_EGG = magicEgg("lightning_mage_spawn_egg", ModEntityTypes.LIGHTNING_MAGE, 0x9BD7FF, 0x3659A6);
     public static final DeferredHolder<Item, Item> NECROMANCER_SPAWN_EGG = magicEgg("necromancer_spawn_egg", ModEntityTypes.NECROMANCER, 0x5A5A5A, 0x2B1B3D);
@@ -113,6 +131,13 @@ public final class ModItems {
     private static DeferredHolder<Item, Item> magicEgg(String id, DeferredHolder<EntityType<?>, ? extends EntityType<? extends Mob>> type, int primary, int secondary) {
         return MagicCastingCompat.available() ? ITEMS.register(id,
                 () -> new DeferredSpawnEggItem(type, primary, secondary, new Item.Properties())) : null;
+    }
+
+    private static DeferredHolder<Item, Item> specialistEgg(String id, FirearmSupport.Specialty specialty,
+                                                             int primary, int secondary) {
+        return ModList.get().isLoaded("tacz") && ModEntityTypes.FIREARM_SPECIALIST != null ? ITEMS.register(id,
+                () -> new FirearmSpecialistSummonGemItem(ModEntityTypes.FIREARM_SPECIALIST,
+                        primary, secondary, specialty, new Item.Properties())) : null;
     }
 
     private static DeferredHolder<Item, Item> vessel(String id) {

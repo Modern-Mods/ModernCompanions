@@ -25,7 +25,7 @@ public final class FirearmAttackGoal extends Goal {
     public boolean canUse() {
         return companion.getTarget() != null && companion.getTarget().isAlive()
                 && companion.canHarm(companion.getTarget()) && FirearmSupport.equipFirearm(companion)
-                && FirearmSupport.isFirearm(companion.getMainHandItem());
+                && FirearmSupport.isAllowedFirearm(companion, companion.getMainHandItem());
     }
 
     @Override

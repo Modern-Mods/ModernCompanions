@@ -306,6 +306,7 @@ Configurable companion behaviors include:
 - Low-health food behavior.
 - Low-health food threshold.
 - Stamina enablement and costs.
+- Alert targeting: Alert automatically recognizes every entity registered as a Monster. `minecraft:creeper` is the one default entry in `excludedMobs`, so companions avoid Creepers out of the box; existing configurations receive this entry once on startup, and removing it lets companions fight Creepers. In single-player or as the host, open Mods → Modern Companions → Config → Alert to add registry entity IDs such as `minecraft:ender_dragon` or `example:dangerous_mob`; Java class names such as `EnderDragon.class` are not valid. Dedicated-server operators use the same server config.
 - House spacing.
 - Trait, Bond, and Morale systems.
 
@@ -321,6 +322,8 @@ Optional compatibility includes:
 - Bronze weapon materials.
 - Better Combat reach handling.
 - Epic Fight: companions use its armature renderer, movement, melee timing, hit logic, and weapon movesets while retaining their roles, stamina, equipment, and safety rules. Class-valid held weapons remain equipped instead of being swapped with cargo every tick, and equipping a melee weapon restores Epic Fight's animated attack/chase pair. A companion holding a TacZ gun temporarily uses TacZ's native pose and firearm logic, then returns to Epic Fight animations when it holds another item; a gun in cargo does not disable Epic Fight melee. Every bundled weapon family has an Epic Fight capability category for its matching moveset.
+
+Pack authors can extend `data/modern_companions/tags/entity_type/alert_unsafe.json` with unsafe entity ids. A higher-priority datapack can set `"replace": true` to supply the complete safety policy before `/reload`.
 
 TacZ companion gun poses include a companion-only adaptation of [Epic Fight x TacZ Compat](https://github.com/Ardelhite/epic-tacz) by ImperialArchitects, licensed under the MIT License. Copyright (c) 2026 ImperialArchitects. Permission is hereby granted, free of charge, to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies, subject to including that copyright notice and permission notice. The software is provided “AS IS”, without warranty of any kind.
 

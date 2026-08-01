@@ -95,6 +95,18 @@ tasks.register("firearmCategoryCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("alertTargetCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.ai.AlertTargetRulesTest"
+    jvmArgs "-ea"
+}
+
+tasks.register("alertConfigMigrationCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.core.AlertConfigDefaultsTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("structureSpawnCheck", JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.majorbonghits.moderncompanions.world.StructureCompanionSpawnerTest"
@@ -129,6 +141,8 @@ tasks.named("check") {
 tasks.named("check") {
     dependsOn tasks.named("workerSafetyCheck")
     dependsOn tasks.named("companionResourcesCheck")
+    dependsOn tasks.named("alertTargetCheck")
+    dependsOn tasks.named("alertConfigMigrationCheck")
     dependsOn tasks.named("firearmCategoryCheck")
     dependsOn tasks.named("structureSpawnCheck")
     dependsOn tasks.named("epicFightCombatAiCheck")

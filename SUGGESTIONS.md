@@ -1,3 +1,10 @@
+- 2026-08-01: Keep the one-time Creeper-default migration marker hidden from the config screen; replace it only if NeoForge adds first-class config migrations.
+- 2026-07-31: Keep Creeper as the sole editable Alert exclusion by default; add a broader default safety roster only if player feedback establishes a clear need.
+- 2026-07-31: Consider an optional entity-ID picker only if the concise registry-ID field and tooltip prove insufficient for modpack players.
+- 2026-07-31: Restore the Jobs configuration section only when the profession workflows have a complete player-facing release and smoke coverage.
+- 2026-07-31: Add translated Modern Companions configuration labels to the existing Russian, Portuguese, and Polish language files when those locales receive a review pass.
+- 2026-07-31: Add a dedicated-server smoke check confirming Mods → Modern Companions → Config shows Alert and persists an exclusion after reconnect.
+- 2026-07-31: If non-operators should manage Alert exclusions on dedicated servers, add an owner-scoped companion setting rather than exposing the server-wide safety policy through a client-only mod-menu screen.
 - 2026-07-30: Add a Curios dev-world smoke check for each firearm specialist gem to confirm the shared specialist type opens slots and renders equipped curios.
 - 2026-07-30: Add a small dev-world regression checklist for equipment: replace worn armor with shift-click, extract it from both cargo/equipment views, capture/redeploy a pistol-only companion, and verify no pistol enters an armor slot.
 - 2025-11-18: Next, port original Human Companions content into the new NeoForge 1.21.1 scaffolding—migrate registries (entities/items/structures), networking, configs, and assets under `modern_companions`, then add README and run a full Gradle build once the code is in place.

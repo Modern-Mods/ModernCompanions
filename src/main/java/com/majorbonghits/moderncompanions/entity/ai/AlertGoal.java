@@ -1,14 +1,21 @@
 package com.majorbonghits.moderncompanions.entity.ai;
 
+import com.majorbonghits.moderncompanions.ModernCompanions;
+import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
-import com.majorbonghits.moderncompanions.entity.CompanionData;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 
 /**
- * Targets hostile mobs listed in CompanionData when alert flag is active.
+ * Targets modded and vanilla monsters while honoring shared and player-configured safety exclusions.
  */
 public class AlertGoal extends NearestAttackableTargetGoal<LivingEntity> {
+    private static final TagKey<net.minecraft.world.entity.EntityType<?>> UNSAFE_ALERT_TARGETS = TagKey.create(Registries.ENTITY_TYPE,
+            ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "alert_unsafe"));
     private final AbstractHumanCompanionEntity companion;
 
     public AlertGoal(AbstractHumanCompanionEntity companion) {
@@ -17,12 +24,9 @@ public class AlertGoal extends NearestAttackableTargetGoal<LivingEntity> {
     }
 
     private static boolean isAlertTarget(LivingEntity entity) {
-        for (Class<?> c : CompanionData.alertMobs) {
-            if (c.isInstance(entity)) {
-                return true;
-            }
-        }
-        return false;
+        String id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
+        return AlertTargetRules.shouldTarget(entity.getType().getCategory() == net.minecraft.world.entity.MobCategory.MONSTER,
+                entity.getType().is(UNSAFE_ALERT_TARGETS), ModConfig.safeGet(ModConfig.ALERT_EXCLUDED_MOBS).contains(id));
     }
 
     @Override

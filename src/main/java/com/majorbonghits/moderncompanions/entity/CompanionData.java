@@ -11,14 +11,6 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.animal.*;
 import net.minecraft.world.entity.animal.goat.Goat;
-import net.minecraft.world.entity.monster.*;
-import net.minecraft.world.entity.monster.breeze.Breeze;
-import net.minecraft.world.entity.monster.hoglin.Hoglin;
-import net.minecraft.world.entity.monster.piglin.AbstractPiglin;
-import net.minecraft.world.entity.monster.warden.Warden;
-import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.raid.Raider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.alchemy.PotionContents;
@@ -267,33 +259,6 @@ public class CompanionData {
             Component.translatable("dialogue.modern_companions.enough_food.27"),
             Component.translatable("dialogue.modern_companions.enough_food.28"),
             Component.translatable("dialogue.modern_companions.enough_food.29")
-    };
-
-    public static final Class<?>[] alertMobs = new Class<?>[]{
-            Blaze.class,
-            Breeze.class,
-            EnderMan.class,
-            Endermite.class,
-            Ghast.class,
-            Giant.class,
-            Guardian.class,
-            Hoglin.class,
-            MagmaCube.class,
-            Phantom.class,
-            Shulker.class,
-            Silverfish.class,
-            Slime.class,
-            Spider.class,
-            Vex.class,
-            AbstractSkeleton.class,
-            Zoglin.class,
-            Zombie.class,
-            AbstractPiglin.class,
-            ZombifiedPiglin.class,
-            WitherBoss.class,
-            EnderDragon.class,
-            Warden.class,
-            Raider.class
     };
 
     public static final Class<?>[] huntMobs = new Class<?>[]{

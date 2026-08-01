@@ -24,6 +24,10 @@ public final class ModernCompanions {
     public ModernCompanions(IEventBus modBus) {
         // Ensure config values are registered before any entities/spawn eggs are constructed.
         ModConfig.register();
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            // Register NeoForge's native editor so common settings, including Alert exclusions, are player-visible.
+            com.majorbonghits.moderncompanions.client.ModConfigScreens.register();
+        }
 
         com.majorbonghits.moderncompanions.registry.ModItems.register(modBus); // weapons
         com.majorbonghits.moderncompanions.core.ModItems.ITEMS.register(modBus); // spawn eggs
@@ -32,6 +36,7 @@ public final class ModernCompanions {
         ModCreativeTabs.register(modBus); // dedicated creative tab
         ModEntityTypes.ENTITY_TYPES.register(modBus);
         ModMenuTypes.MENU_TYPES.register(modBus);
+        modBus.addListener(ModConfig::migrateAlertExclusions);
         modBus.addListener(ModEntityAttributes::registerAttributes);
         modBus.addListener(this::onCommonSetup);
         NeoForge.EVENT_BUS.addListener(CompanionBrewing::register);

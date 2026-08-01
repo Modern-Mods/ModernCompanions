@@ -21,6 +21,10 @@ public class AvoidCreeperGoal extends AvoidEntityGoal<Creeper> {
         if (!ModConfig.safeGet(ModConfig.CREEPER_WARNING)) {
             return false;
         }
+        // Alert owns combat intent: avoid Creepers there only when the player explicitly excluded them.
+        if (companion.isAlert() && !ModConfig.safeGet(ModConfig.ALERT_EXCLUDED_MOBS).contains("minecraft:creeper")) {
+            return false;
+        }
         return super.canUse();
     }
 

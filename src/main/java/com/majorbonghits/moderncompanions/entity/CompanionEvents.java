@@ -2,17 +2,119 @@ package com.majorbonghits.moderncompanions.entity;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.core.ModConfig;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 @EventBusSubscriber(modid = ModernCompanions.MOD_ID)
 public final class CompanionEvents {
+    private static final double DIMENSION_FOLLOW_RADIUS = 35.0D;
+    private static final Map<UUID, PendingDimensionFollow> pendingDimensionFollows = new HashMap<>();
+
     private CompanionEvents() {}
+
+    /** Capture eligible companions before the player leaves the source level. */
+    @SubscribeEvent
+    public static void captureDimensionFollowers(EntityTravelToDimensionEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !(player.level() instanceof ServerLevel source)
+                || source.dimension().equals(event.getDimension())) {
+            return;
+        }
+
+        List<UUID> companions = source.getEntitiesOfClass(AbstractHumanCompanionEntity.class,
+                        player.getBoundingBox().inflate(DIMENSION_FOLLOW_RADIUS),
+                        companion -> companion.isAlive()
+                                && companion.isTame()
+                                && player.getUUID().equals(companion.getOwnerUUID())
+                                && companion.isFollowing()
+                                && !companion.isPatrolling()
+                                && !companion.isGuarding()
+                                && !companion.isWorkEnabled()
+                                && !companion.isOrderedToSit()
+                                && companion.distanceToSqr(player) <= DIMENSION_FOLLOW_RADIUS * DIMENSION_FOLLOW_RADIUS)
+                .stream()
+                .map(Entity::getUUID)
+                .toList();
+
+        if (companions.isEmpty()) {
+            pendingDimensionFollows.remove(player.getUUID());
+        } else {
+            pendingDimensionFollows.put(player.getUUID(),
+                    new PendingDimensionFollow(source.dimension(), event.getDimension(), companions));
+        }
+    }
+
+    /** Transfer only the companions captured immediately before the player arrived. */
+    @SubscribeEvent
+    public static void moveDimensionFollowers(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+
+        PendingDimensionFollow pending = pendingDimensionFollows.remove(player.getUUID());
+        if (pending == null || !pending.from().equals(event.getFrom()) || !pending.to().equals(event.getTo())) return;
+
+        if (!(player.level() instanceof ServerLevel destination) || player.getServer() == null) return;
+        ServerLevel source = player.getServer().getLevel(pending.from());
+        if (source == null) return;
+
+        for (UUID companionId : pending.companions()) {
+            Entity entity = source.getEntity(companionId);
+            if (!(entity instanceof AbstractHumanCompanionEntity companion)
+                    || !companion.isAlive()
+                    || !companion.isTame()
+                    || !player.getUUID().equals(companion.getOwnerUUID())
+                    || !companion.isFollowing()
+                    || companion.isPatrolling()
+                    || companion.isGuarding()
+                    || companion.isWorkEnabled()
+                    || companion.isOrderedToSit()
+                    || !companion.canChangeDimensions(source, destination)) {
+                continue;
+            }
+
+            companion.getNavigation().stop();
+            Vec3 target = findSafeSpot(destination, player.position(), companion).orElse(player.position());
+            companion.teleportTo(destination, target.x(), target.y(), target.z(),
+                    java.util.Set.of(), companion.getYRot(), companion.getXRot());
+        }
+    }
+
+    private static java.util.Optional<Vec3> findSafeSpot(ServerLevel level, Vec3 center, Entity entity) {
+        BlockPos base = BlockPos.containing(center);
+        for (int attempt = 0; attempt < 12; attempt++) {
+            int dx = level.random.nextInt(5) - 2;
+            int dz = level.random.nextInt(5) - 2;
+            BlockPos candidate = base.offset(dx, 0, dz);
+            if (level.isEmptyBlock(candidate)
+                    && level.isEmptyBlock(candidate.above())
+                    && level.noCollision(entity, entity.getBoundingBox().move(
+                    candidate.getX() + 0.5D - entity.getX(),
+                    candidate.getY() - entity.getY(),
+                    candidate.getZ() + 0.5D - entity.getZ()))) {
+                return java.util.Optional.of(new Vec3(candidate.getX() + 0.5D, candidate.getY(), candidate.getZ() + 0.5D));
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    private record PendingDimensionFollow(ResourceKey<Level> from, ResourceKey<Level> to, List<UUID> companions) {}
 
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {

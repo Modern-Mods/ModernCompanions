@@ -1,3 +1,12 @@
+## 2026-08-01 (dimension-follow companion transfer)
+- Prompt/task: When a companion is near its player during a dimension traversal, transfer it only when actively set to Follow; leave Patrol, Guard, sit/stand-still, and job companions behind.
+- Steps:
+  - Added a pre-transition capture for owned, tame companions within 35 blocks that are following and not patrolling, guarding, working, or ordered to sit.
+  - Added a post-transition transfer using NeoForge/Minecraft's cross-dimension entity teleport API, placing each captured companion at a safe spot near the player.
+  - Rechecked the same eligibility before transfer so an order changed during the transition cannot move a companion unexpectedly; bumped version to 3.35.
+- Rationale: The pre-transition event preserves the source-dimension companion identities, while the post-transition event has the player's real target position. Filtering on the synchronized order flags keeps non-Follow companions in their original dimension.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; live Nether/End/custom-dimension Follow versus Patrol/Guard/sit smoke testing remains required.
+
 ## 2026-07-30 (firearm specialist Curios registration)
 - Prompt/task: Ensure all new firearm specialists receive Curios slots when Curios is present.
 - Steps:

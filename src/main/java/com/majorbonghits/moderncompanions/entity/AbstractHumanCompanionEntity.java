@@ -270,6 +270,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private ItemStack savedOffhand = ItemStack.EMPTY;
     protected final Map<Item, Integer> foodRequirements = new HashMap<>();
     private boolean resourceRequirementResolved;
+    private boolean untamedGreetingPlayed;
     private boolean renderingEquipment;
     protected final Random rand = new Random();
 
@@ -285,6 +286,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     private final CompanionPersonality personality = new CompanionPersonality();
     private final EnumMap<ModSounds.Cue, Integer> voiceCooldowns = new EnumMap<>(ModSounds.Cue.class);
+    // Cross-cue lock keeps independent events from starting overlapping voice playback.
+    private int voiceLockUntilTick = Integer.MIN_VALUE;
     private int bondTickCounter = 0;
     private int lastNearDeathTick = -200;
     private int personalityRefreshTicker = 0;
@@ -1608,6 +1611,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return voiceCooldowns;
     }
 
+    int voiceLockUntilTick() {
+        return voiceLockUntilTick;
+    }
+
+    void setVoiceLockUntilTick(int tick) {
+        voiceLockUntilTick = tick;
+    }
+
     public int getBaseHealth() {
         return this.entityData.get(BASE_HEALTH);
     }
@@ -2174,7 +2185,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         ItemStack held = player.getItemInHand(hand);
         if (hand == InteractionHand.MAIN_HAND) {
             if (!this.isTame() && !this.level().isClientSide()) {
-                CompanionVoice.play(this, ModSounds.Cue.GREETING);
+                if (!untamedGreetingPlayed) {
+                    untamedGreetingPlayed = true;
+                    CompanionVoice.play(this, ModSounds.Cue.GREETING);
+                }
                 if (foodRequirements.isEmpty() || !resourceRequirementResolved) {
                     assignFoodRequirements(player);
                 }
@@ -2207,12 +2221,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                             if (moveBackGoal != null)
                                 moveBackGoal.radius = 4;
                         } else if (foodRequirements.get(fedItem) == 0) {
-                            CompanionVoice.play(this, ModSounds.Cue.REFUSAL);
+                            CompanionVoice.play(this, ModSounds.Cue.CONFIRMATION);
                             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
                                     CompanionData.ENOUGH_FOOD[this.random
                                             .nextInt(CompanionData.ENOUGH_FOOD.length)]));
                         } else {
-                            CompanionVoice.play(this, ModSounds.Cue.REFUSAL);
+                            CompanionVoice.play(this, ModSounds.Cue.CONFIRMATION);
                             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
                                     CompanionData.tameFail[this.random.nextInt(CompanionData.tameFail.length)]));
                         }
@@ -2378,6 +2392,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putString("CustomSkinUrl", this.entityData.get(CUSTOM_SKIN_URL));
         tag.putString("CustomBio", this.entityData.get(CUSTOM_BIO));
         tag.putBoolean("Eating", this.isEating());
+        tag.putBoolean("UntamedGreetingPlayed", untamedGreetingPlayed);
         tag.putBoolean("Alert", this.isAlert());
         tag.putBoolean("Hunting", this.isHunting());
         tag.putBoolean("Patrolling", this.isPatrolling());
@@ -2465,6 +2480,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.setCustomBio(tag.getString("CustomBio"));
         }
         this.setEating(tag.getBoolean("Eating"));
+        untamedGreetingPlayed = tag.getBoolean("UntamedGreetingPlayed");
         entityData.set(EQUIPMENT_RENDER_MASK, tag.contains("EquipmentRenderMask")
                 ? tag.getInt("EquipmentRenderMask") : ALL_EQUIPMENT_RENDER_MASK);
         this.setAlert(tag.getBoolean("Alert"));
@@ -3038,8 +3054,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         super.setTarget(target != null && !canHarm(target) ? null : target);
         LivingEntity accepted = getTarget();
         if (!this.level().isClientSide() && accepted != null && accepted != previous) {
-            CompanionVoice.play(this, accepted == getLastHurtByMob()
-                    ? ModSounds.Cue.UNDER_ATTACK : ModSounds.Cue.ENEMY_SPOTTED);
+            if (accepted == getLastHurtByMob()) {
+                CompanionVoice.play(this, ModSounds.Cue.UNDER_ATTACK);
+            } else {
+                CompanionVoice.playEnemySpotted(this, accepted);
+            }
         }
     }
 

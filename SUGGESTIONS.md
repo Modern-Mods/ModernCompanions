@@ -384,3 +384,16 @@
 ## 2026-08-01 (companion voice pools)
 
 - Smoke-test actor persistence through relog, Companion Mover capture/redeploy, and Resurrection Scroll revival; add per-cue volume controls only if live playtesting shows the shared voice level needs tuning.
+
+## 2026-08-01 (single companion enemy callout)
+
+- Smoke-test two or more owned companions acquiring the same hostile target together and confirm only one `Enemy Spotted` voice plays while all companions still attack normally.
+- If callouts should also be globally serialized across different simultaneous enemies, add an owner-level cooldown after live testing shows target-specific suppression is insufficient.
+
+## 2026-08-01 (closest companion enemy callout)
+
+- Smoke-test companions at different distances from the player and confirm the closest one is the audible speaker while every eligible companion retains combat behavior.
+
+## 2026-08-01 (taming voice cue routing)
+
+- Smoke-test a new untamed companion with empty hand, wrong food, desired food, repeated desired food, and rapid clicks; verify one greeting, refusals only for rejected food, confirmation for accepted food, and no overlapping cues.

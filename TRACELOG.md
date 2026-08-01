@@ -2535,3 +2535,24 @@
 - Steps: Added the common `companion.teleportLeash` setting with a default of `false`; gated the shared follow goal's safe teleport behind it; changed the threshold from a fixed 35 blocks to the selected Radius plus 5; added localized config text, README guidance, and a no-world threshold regression check; bumped version to 3.42.
 - Rationale: The shared follow goal is the single normal companion teleport path, so one config gate covers every companion without changing navigation or safe-spot validation. The Radius-relative threshold makes small configured follow distances intentionally teleport sooner.
 - Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` remain required; manual Mod List config visibility and following/teleport smoke remain required.
+
+## 2026-08-01 (single companion enemy callout)
+
+- Prompt/task: Prevent every owned companion present in the same level from calling out the same newly acquired enemy.
+- Steps: Routed non-revenge enemy-spotted voice playback through a shared companion check; suppress the callout when another alive, tame companion with the same owner is already targeting that enemy; bumped the version to 3.43.
+- Rationale: The shared `setTarget` voice boundary covers Alert and other ordinary target acquisition without changing combat targeting or the separate under-attack cue.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; `git diff --check` passed. Live multi-companion callout and combat smoke remain required.
+
+## 2026-08-01 (closest companion enemy callout)
+
+- Prompt/task: Make the single companion that announces a shared enemy always be the closest currently owned and present companion to the player.
+- Steps: Selected the closest alive, tame, same-owner companion from the loaded server level and played the enemy-spotted voice from that entity; bumped the version to 3.44.
+- Rationale: The shared voice boundary now controls both duplicate suppression and speaker position without changing which companions acquire or attack the target.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; `git diff --check` passed. Live closest-companion callout smoke remains required.
+
+## 2026-08-01 (taming voice cue routing)
+
+- Prompt/task: Stop overlapping companion audio during taming and route greetings, refusals, and approval sounds to the correct interaction outcomes.
+- Steps: Persisted a one-time untamed greeting flag; kept refusals for wrong or already-completed food, changed accepted required food progress to confirmation, and added a companion-wide voice lock; bumped the version to 3.45.
+- Rationale: The shared voice method now prevents different cue types from overlapping, while the taming branch emits one semantically correct cue for each interaction.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; wrong-food, desired-food, first-interaction, and rapid-click smoke remain required.

@@ -307,6 +307,7 @@ Configurable companion behaviors include:
 - Low-health food threshold.
 - Stamina enablement and costs.
 - Alert targeting: Alert automatically recognizes every entity registered as a Monster. `minecraft:creeper` is the one default entry in `excludedMobs`, so companions avoid Creepers out of the box; existing configurations receive this entry once on startup, and removing it lets companions fight Creepers. In single-player or as the host, open Mods → Modern Companions → Config → Alert to add registry entity IDs such as `minecraft:ender_dragon` or `example:dangerous_mob`; Java class names such as `EnderDragon.class` are not valid. Dedicated-server operators use the same server config.
+- Taming and manual hunting: Mods → Modern Companions → Config now exposes the default food, healing-consumable, common/uncommon/rare taming-resource, and manual Hunt-mob lists as editable registry IDs. The in-game lists display the current vanilla values by default and accept registered mod items or entity types.
 - House spacing.
 - Trait, Bond, and Morale systems.
 

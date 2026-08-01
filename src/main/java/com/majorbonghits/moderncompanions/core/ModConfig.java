@@ -15,6 +15,28 @@ import java.util.List;
 public final class ModConfig {
     private ModConfig() {}
 
+    private static final List<String> DEFAULT_ALL_FOODS = List.of(
+            "minecraft:cookie", "minecraft:bread", "minecraft:melon_slice", "minecraft:apple", "minecraft:sweet_berries",
+            "minecraft:carrot", "minecraft:baked_potato", "minecraft:cooked_salmon", "minecraft:cooked_cod",
+            "minecraft:cooked_mutton", "minecraft:cooked_porkchop", "minecraft:cooked_beef", "minecraft:cooked_chicken",
+            "minecraft:pumpkin_pie", "minecraft:glow_berries", "minecraft:potato", "minecraft:beetroot",
+            "minecraft:dried_kelp", "minecraft:cooked_rabbit");
+    private static final List<String> DEFAULT_EXTRA_HEAL_CONSUMABLES = List.of(
+            "minecraft:golden_apple", "minecraft:enchanted_golden_apple", "minecraft:golden_carrot", "minecraft:honey_bottle",
+            "minecraft:mushroom_stew", "minecraft:beetroot_soup", "minecraft:rabbit_stew");
+    private static final List<String> DEFAULT_COMMON_RESOURCE_ITEMS = List.of(
+            "minecraft:coal", "minecraft:charcoal", "minecraft:copper_ingot", "minecraft:iron_ingot", "minecraft:redstone",
+            "minecraft:lapis_lazuli", "minecraft:flint", "minecraft:clay_ball", "minecraft:string", "minecraft:leather",
+            "minecraft:bone", "minecraft:feather");
+    private static final List<String> DEFAULT_UNCOMMON_RESOURCE_ITEMS = List.of(
+            "minecraft:gold_ingot", "minecraft:amethyst_shard", "minecraft:slime_ball", "minecraft:gunpowder",
+            "minecraft:glowstone_dust", "minecraft:prismarine_shard", "minecraft:prismarine_crystals",
+            "minecraft:ender_pearl", "minecraft:obsidian");
+    private static final List<String> DEFAULT_RARE_RESOURCE_ITEMS = List.of(
+            "minecraft:diamond", "minecraft:emerald", "minecraft:blaze_rod", "minecraft:magma_cream");
+    private static final List<String> DEFAULT_HUNT_MOBS = List.of(
+            "minecraft:chicken", "minecraft:cow", "minecraft:pig", "minecraft:rabbit", "minecraft:sheep", "minecraft:goat");
+
     private static ModConfigSpec COMMON_SPEC;
     public static ModConfigSpec.IntValue AVERAGE_HOUSE_SEPARATION;
     public static ModConfigSpec.BooleanValue FRIENDLY_FIRE_COMPANIONS;
@@ -29,6 +51,12 @@ public final class ModConfig {
     public static ModConfigSpec.IntValue STAMINA_SPRINT_COST;
     public static ModConfigSpec.IntValue STAMINA_MELEE_COST;
     public static ModConfigSpec.BooleanValue CREEPER_WARNING;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> ALL_FOODS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> EXTRA_HEAL_CONSUMABLES;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> COMMON_RESOURCE_ITEMS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> UNCOMMON_RESOURCE_ITEMS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> RARE_RESOURCE_ITEMS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> HUNT_MOBS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> ALERT_EXCLUDED_MOBS;
     private static ModConfigSpec.BooleanValue ALERT_CREEPER_DEFAULT_MIGRATED;
     public static ModConfigSpec.BooleanValue TRAITS_ENABLED;
@@ -118,6 +146,30 @@ public final class ModConfig {
         CREEPER_WARNING = builder.translation("modern_companions.configuration.companion.creeper_warning")
                 .comment("If true, companions warn the player and avoid nearby creepers")
                 .define("creeperWarning", true);
+        builder.pop();
+
+        builder.translation("modern_companions.configuration.taming").push("taming");
+        ALL_FOODS = builder.translation("modern_companions.configuration.taming.all_foods")
+                .comment("Item registry ids companions may request, choose as favorites, and eat for healing.")
+                .defineList("allFoods", DEFAULT_ALL_FOODS, () -> "minecraft:bread", ModConfig::isKnownItemId);
+        EXTRA_HEAL_CONSUMABLES = builder.translation("modern_companions.configuration.taming.extra_heal_consumables")
+                .comment("Additional item registry ids companions may consume for healing but never request while taming.")
+                .defineListAllowEmpty("extraHealConsumables", DEFAULT_EXTRA_HEAL_CONSUMABLES, () -> "minecraft:golden_apple", ModConfig::isKnownItemId);
+        COMMON_RESOURCE_ITEMS = builder.translation("modern_companions.configuration.taming.common_resource_items")
+                .comment("Item registry ids used for common companion taming-resource requests.")
+                .defineList("commonResourceItems", DEFAULT_COMMON_RESOURCE_ITEMS, () -> "minecraft:iron_ingot", ModConfig::isKnownItemId);
+        UNCOMMON_RESOURCE_ITEMS = builder.translation("modern_companions.configuration.taming.uncommon_resource_items")
+                .comment("Item registry ids used for uncommon companion taming-resource requests.")
+                .defineList("uncommonResourceItems", DEFAULT_UNCOMMON_RESOURCE_ITEMS, () -> "minecraft:gold_ingot", ModConfig::isKnownItemId);
+        RARE_RESOURCE_ITEMS = builder.translation("modern_companions.configuration.taming.rare_resource_items")
+                .comment("Item registry ids used for rare companion taming-resource requests.")
+                .defineList("rareResourceItems", DEFAULT_RARE_RESOURCE_ITEMS, () -> "minecraft:diamond", ModConfig::isKnownItemId);
+        builder.pop();
+
+        builder.translation("modern_companions.configuration.hunting").push("hunting");
+        HUNT_MOBS = builder.translation("modern_companions.configuration.hunting.hunt_mobs")
+                .comment("Entity registry ids companions target when the manual Hunt toggle is enabled.")
+                .defineListAllowEmpty("huntMobs", DEFAULT_HUNT_MOBS, () -> "minecraft:chicken", ModConfig::isKnownEntityId);
         builder.pop();
 
         builder.translation("modern_companions.configuration.alert").push("alert");
@@ -235,5 +287,12 @@ public final class ModConfig {
         if (!(value instanceof String raw)) return false;
         ResourceLocation id = ResourceLocation.tryParse(raw);
         return id != null && BuiltInRegistries.ENTITY_TYPE.containsKey(id);
+    }
+
+    /** Reject malformed or unloaded item ids in the native config editor. */
+    private static boolean isKnownItemId(Object value) {
+        if (!(value instanceof String raw)) return false;
+        ResourceLocation id = ResourceLocation.tryParse(raw);
+        return id != null && BuiltInRegistries.ITEM.containsKey(id);
     }
 }

@@ -1,3 +1,4 @@
+- 2026-08-01: Keep taming-resource and manual-Hunt lists as registry-ID config entries; add tag selectors only if pack authors need broad dynamic item or entity groups.
 - 2026-08-01: Keep the one-time Creeper-default migration marker hidden from the config screen; replace it only if NeoForge adds first-class config migrations.
 - 2026-07-31: Keep Creeper as the sole editable Alert exclusion by default; add a broader default safety roster only if player feedback establishes a clear need.
 - 2026-07-31: Consider an optional entity-ID picker only if the concise registry-ID field and tooltip prove insufficient for modpack players.

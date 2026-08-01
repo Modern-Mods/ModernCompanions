@@ -1,7 +1,8 @@
 package com.majorbonghits.moderncompanions.entity.ai;
 
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
-import com.majorbonghits.moderncompanions.entity.CompanionData;
+import com.majorbonghits.moderncompanions.core.ModConfig;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 
@@ -17,12 +18,8 @@ public class HuntGoal extends NearestAttackableTargetGoal<LivingEntity> {
     }
 
     private static boolean isHuntTarget(LivingEntity entity) {
-        for (Class<?> c : CompanionData.huntMobs) {
-            if (c.isInstance(entity)) {
-                return true;
-            }
-        }
-        return false;
+        return ModConfig.safeGet(ModConfig.HUNT_MOBS)
+                .contains(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString());
     }
 
     @Override

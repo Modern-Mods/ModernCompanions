@@ -1187,7 +1187,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private void assignFavoriteFood() {
-        Item favorite = CompanionData.ALL_FOODS[this.random.nextInt(CompanionData.ALL_FOODS.length)];
+        Item favorite = CompanionData.pickConfiguredFood(this.random);
         this.entityData.set(FAVORITE_FOOD, BuiltInRegistries.ITEM.getKey(favorite).toString());
     }
 

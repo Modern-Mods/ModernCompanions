@@ -1,6 +1,8 @@
 package com.majorbonghits.moderncompanions.entity;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
+import com.majorbonghits.moderncompanions.core.ModConfig;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -9,8 +11,6 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.animal.*;
-import net.minecraft.world.entity.animal.goat.Goat;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.alchemy.PotionContents;
@@ -18,80 +18,14 @@ import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.Level;
 
 import java.util.*;
+import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
 
 /**
  * Shared data tables (names, skins, foods) brought forward from the original Companions mod.
  */
 public class CompanionData {
     public static final Random rand = new Random();
-
-    public static final Item[] ALL_FOODS = new Item[]{
-            Items.COOKIE,
-            Items.BREAD,
-            Items.MELON_SLICE,
-            Items.APPLE,
-            Items.SWEET_BERRIES,
-            Items.CARROT,
-            Items.BAKED_POTATO,
-            Items.COOKED_SALMON,
-            Items.COOKED_COD,
-            Items.COOKED_MUTTON,
-            Items.COOKED_PORKCHOP,
-            Items.COOKED_BEEF,
-            Items.COOKED_CHICKEN,
-            Items.PUMPKIN_PIE,
-            Items.GLOW_BERRIES,
-            Items.POTATO,
-            Items.BEETROOT,
-            Items.DRIED_KELP,
-            Items.COOKED_RABBIT
-    };
-
-    /** Higher-tier foods/drinks companions can consume for healing but will not request while taming. */
-    public static final Item[] EXTRA_HEAL_CONSUMABLES = new Item[]{
-            Items.GOLDEN_APPLE,
-            Items.ENCHANTED_GOLDEN_APPLE,
-            Items.GOLDEN_CARROT,
-            Items.HONEY_BOTTLE,
-            Items.MUSHROOM_STEW,
-            Items.BEETROOT_SOUP,
-            Items.RABBIT_STEW
-    };
-
-    /** Resource tiers used for the second taming requirement. */
-    public static final Item[] COMMON_RESOURCE_ITEMS = new Item[]{
-            Items.COAL,
-            Items.CHARCOAL,
-            Items.COPPER_INGOT,
-            Items.IRON_INGOT,
-            Items.REDSTONE,
-            Items.LAPIS_LAZULI,
-            Items.FLINT,
-            Items.CLAY_BALL,
-            Items.STRING,
-            Items.LEATHER,
-            Items.BONE,
-            Items.FEATHER,
-    };
-
-    public static final Item[] UNCOMMON_RESOURCE_ITEMS = new Item[]{
-            Items.GOLD_INGOT,
-            Items.AMETHYST_SHARD,
-            Items.SLIME_BALL,
-            Items.GUNPOWDER,
-            Items.GLOWSTONE_DUST,
-            Items.PRISMARINE_SHARD,
-            Items.PRISMARINE_CRYSTALS,
-            Items.ENDER_PEARL,
-            Items.OBSIDIAN,
-    };
-
-    public static final Item[] RARE_RESOURCE_ITEMS = new Item[]{
-            Items.DIAMOND,
-            Items.EMERALD,
-            Items.BLAZE_ROD,
-            Items.MAGMA_CREAM,
-    };
 
     private static final String REACHED_NETHER = "ModernCompanionsReachedNether";
     private static final String REACHED_OCEAN = "ModernCompanionsReachedOcean";
@@ -259,15 +193,6 @@ public class CompanionData {
             Component.translatable("dialogue.modern_companions.enough_food.27"),
             Component.translatable("dialogue.modern_companions.enough_food.28"),
             Component.translatable("dialogue.modern_companions.enough_food.29")
-    };
-
-    public static final Class<?>[] huntMobs = new Class<?>[]{
-        Chicken.class,
-        Cow.class,
-        Pig.class,
-        Rabbit.class,
-        Sheep.class,
-        Goat.class
     };
 
     // Male (0) / female (1) skins. Every entry mirrors a bundled 64x64 texture.
@@ -700,13 +625,9 @@ public class CompanionData {
     public static boolean isFood(ItemStack stack) {
         Item item = stack.getItem();
         if (DISALLOWED_FOODS.contains(item)) return false;
-        for (Item food : ALL_FOODS) {
-            if (food.equals(item)) return true;
-        }
-        for (Item bonus : EXTRA_HEAL_CONSUMABLES) {
-            if (bonus.equals(item)) return true;
-        }
-        return isHealingPotion(stack);
+        return isConfiguredItem(item, ModConfig.safeGet(ModConfig.ALL_FOODS))
+                || isConfiguredItem(item, ModConfig.safeGet(ModConfig.EXTRA_HEAL_CONSUMABLES))
+                || isHealingPotion(stack);
     }
 
     /** Allow only regen/healing potions (no splash/harmful mixes) as valid consumables. */
@@ -726,26 +647,58 @@ public class CompanionData {
         return hasHealingEffect;
     }
 
+    /** Chooses from the player's configured food list for favorite-food assignment and taming requests. */
+    public static Item pickConfiguredFood(Random random) {
+        return pickConfiguredFood(random::nextInt);
+    }
+
+    /** Supports Minecraft entity random sources without changing their random sequence semantics. */
+    public static Item pickConfiguredFood(net.minecraft.util.RandomSource random) {
+        return pickConfiguredFood(random::nextInt);
+    }
+
+    private static Item pickConfiguredFood(IntUnaryOperator randomIndex) {
+        Item food = pickConfiguredItem(randomIndex, ModConfig.safeGet(ModConfig.ALL_FOODS), item -> !DISALLOWED_FOODS.contains(item));
+        return food == Items.AIR ? Items.BREAD : food;
+    }
+
     private static Item pickAllowedFood(Random random) {
-        Item candidate;
-        do {
-            candidate = ALL_FOODS[random.nextInt(ALL_FOODS.length)];
-        } while (DISALLOWED_FOODS.contains(candidate));
-        return candidate;
+        return pickConfiguredFood(random);
     }
 
     static Item pickResource(Random random, boolean reachedNether, boolean reachedOcean) {
-        Item[] tier = random.nextFloat() < 0.70F ? COMMON_RESOURCE_ITEMS
-                : random.nextFloat() < (0.25F / 0.30F) ? UNCOMMON_RESOURCE_ITEMS : RARE_RESOURCE_ITEMS;
-        int available = 0;
-        for (Item item : tier) {
-            if (isResourceAvailable(item, reachedNether, reachedOcean)) available++;
+        List<? extends String> selectedTier = random.nextFloat() < 0.70F
+                ? ModConfig.safeGet(ModConfig.COMMON_RESOURCE_ITEMS)
+                : random.nextFloat() < (0.25F / 0.30F)
+                        ? ModConfig.safeGet(ModConfig.UNCOMMON_RESOURCE_ITEMS)
+                        : ModConfig.safeGet(ModConfig.RARE_RESOURCE_ITEMS);
+        Item resource = pickConfiguredItem(random::nextInt, selectedTier, item -> isResourceAvailable(item, reachedNether, reachedOcean));
+        if (resource != Items.AIR) return resource;
+
+        // A pack can gate every item in a selected tier; fall back to another configured, available tier.
+        for (List<? extends String> tier : List.of(ModConfig.safeGet(ModConfig.COMMON_RESOURCE_ITEMS),
+                ModConfig.safeGet(ModConfig.UNCOMMON_RESOURCE_ITEMS), ModConfig.safeGet(ModConfig.RARE_RESOURCE_ITEMS))) {
+            resource = pickConfiguredItem(random::nextInt, tier, item -> isResourceAvailable(item, reachedNether, reachedOcean));
+            if (resource != Items.AIR) return resource;
         }
-        int selected = random.nextInt(available);
-        for (Item item : tier) {
-            if (isResourceAvailable(item, reachedNether, reachedOcean) && selected-- == 0) return item;
+        return Items.IRON_INGOT;
+    }
+
+    /** Matches an item registry id against a player-editable config list. */
+    private static boolean isConfiguredItem(Item item, List<? extends String> configuredItems) {
+        return configuredItems.contains(BuiltInRegistries.ITEM.getKey(item).toString());
+    }
+
+    /** Resolves valid configured item ids without allowing an empty or gated list to crash companion logic. */
+    private static Item pickConfiguredItem(IntUnaryOperator randomIndex, List<? extends String> configuredItems, Predicate<Item> allowed) {
+        List<Item> candidates = new ArrayList<>();
+        for (String id : configuredItems) {
+            ResourceLocation resourceId = ResourceLocation.tryParse(id);
+            if (resourceId == null) continue;
+            Item item = BuiltInRegistries.ITEM.get(resourceId);
+            if (item != Items.AIR && allowed.test(item)) candidates.add(item);
         }
-        throw new IllegalStateException("Resource tier unexpectedly had no available items");
+        return candidates.isEmpty() ? Items.AIR : candidates.get(randomIndex.applyAsInt(candidates.size()));
     }
 
     private static boolean isResourceAvailable(Item item, boolean reachedNether, boolean reachedOcean) {

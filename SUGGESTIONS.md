@@ -338,3 +338,7 @@
 ## 2026-07-31 (Epic Fight mage AI ownership)
 - Keep the single Epic Fight ownership predicate: mages retain their spell goal while Epic Fight keeps the shared patch and animated renderer. Add a dedicated cast animation only if the current generic spell swing is visibly inadequate.
 - With Epic Fight and Iron's Spellbooks and/or Ars Nouveau installed, verify each mage keeps range, casts light and heavy spells, and still displays Epic Fight idle, movement, hit, and cast animations.
+
+## 2026-08-01 (pointed dripstone pathfinding)
+- Smoke-test a companion through dripstone caves with both upward stalagmites and downward stalactites, including a one-block-wide route, and confirm it chooses the open route around them without repeated replanning.
+- Keep the explicit evaluator guard unless a future Minecraft path evaluator correctly classifies the air node above pointed dripstone for the companion's full bounding box.

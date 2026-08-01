@@ -42,6 +42,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.npc.Villager;
@@ -321,6 +322,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         this.setPathfindingMalus(PathType.WATER, 0.0F);
         this.setPathfindingMalus(PathType.WATER_BORDER, 0.0F);
+    }
+
+    @Override
+    protected PathNavigation createNavigation(Level level) {
+        return new CompanionGroundPathNavigation(this, level);
     }
 
     /* ---------- Registration ---------- */

@@ -2466,3 +2466,9 @@
 - Steps: Removed the legacy per-structure creature spawn overrides so the code spawner is the only resident source; replaced one executor task per chunk load with a deduplicated queue that inserts at most one companion per server tick and only when its destination chunk is already loaded; and added a no-world insertion-gate regression check. Bumped version to 3.14.
 - Rationale: The old dual spawning could create extra residents, while queued entity initialization could accumulate in one server tick or synchronously touch an adjacent unfinished chunk. The bounded queue preserves one resident without recursive chunk work.
 - Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon`; structure JSON parsing and task-owned `git diff --check` run after the edit. Live exploration/pregeneration smoke remains required.
+
+## 2026-08-01 (pointed dripstone companion pathfinding)
+- Prompt/task: Make companions treat Pointed Dripstone as an obstacle while traversing caves.
+- Steps: Routed companions through a custom ground navigation that retains native door and float behavior, but marks a node containing Pointed Dripstone or standing directly above it as `BLOCKED`; bumped version to 3.25.
+- Rationale: Vanilla pathfinding can accept the air feet node directly above an upward stalagmite even though its collision reaches into that space. Blocking that shared node prevents companions from walking onto or getting stuck against dripstone while preserving native route-around behavior.
+- Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed with existing checks; `git diff --check` passed. Live cave traversal around stalactites, stalagmites, and mixed narrow passages remains required.

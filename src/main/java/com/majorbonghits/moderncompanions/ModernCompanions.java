@@ -6,6 +6,7 @@ import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.core.ModEntityAttributes;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.core.ModEffects;
+import com.majorbonghits.moderncompanions.core.ModSounds;
 import com.majorbonghits.moderncompanions.item.CompanionBrewing;
 import com.majorbonghits.moderncompanions.registry.ModCreativeTabs;
 import net.neoforged.fml.ModList;
@@ -32,6 +33,7 @@ public final class ModernCompanions {
         com.majorbonghits.moderncompanions.registry.ModItems.register(modBus); // weapons
         com.majorbonghits.moderncompanions.core.ModItems.ITEMS.register(modBus); // spawn eggs
         ModEffects.EFFECTS.register(modBus);
+        ModSounds.register(modBus);
         com.majorbonghits.moderncompanions.core.ModRecipeSerializers.SERIALIZERS.register(modBus);
         ModCreativeTabs.register(modBus); // dedicated creative tab
         ModEntityTypes.ENTITY_TYPES.register(modBus);

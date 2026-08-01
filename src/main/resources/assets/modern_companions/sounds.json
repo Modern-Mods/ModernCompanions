@@ -1,0 +1,650 @@
+﻿{
+  "companion_alex_celebration": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/laughter_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/woo_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/wow_alex"
+    ]
+  },
+  "companion_alex_completion": {
+    "sounds": [
+      "modern_companions:mob/companions/completion/male/alex_brodie/all_done_alex",
+      "modern_companions:mob/companions/completion/male/alex_brodie/complete_alex",
+      "modern_companions:mob/companions/completion/male/alex_brodie/crafting_complete_alex",
+      "modern_companions:mob/companions/completion/male/alex_brodie/finished_alex",
+      "modern_companions:mob/companions/completion/male/alex_brodie/ready_alex"
+    ]
+  },
+  "companion_alex_confirmation": {
+    "sounds": [
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/alright_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/definitely_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/great_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/lets_go_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/okay_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/on_it_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/on_my_way_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/yeah_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/yes_alex",
+      "modern_companions:mob/companions/confirmation/male/alex_brodie/you_got_it_alex"
+    ]
+  },
+  "companion_alex_death": {
+    "sounds": [
+      "modern_companions:mob/companions/death/male/alex_brodie/death_10_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_1_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_2_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_3_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_4_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_5_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_6_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_7_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_8_alex",
+      "modern_companions:mob/companions/death/male/alex_brodie/death_9_alex"
+    ]
+  },
+  "companion_alex_enemy_spotted": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/enemy_spotted_alex"
+    ]
+  },
+  "companion_alex_farewell": {
+    "sounds": [
+      "modern_companions:mob/companions/farewell/male/alex_brodie/adios_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/bye_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/farewell_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/good_luck_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/goodbye_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/later_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/see_ya_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/so_long_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/ta_ta_alex",
+      "modern_companions:mob/companions/farewell/male/alex_brodie/take_care_alex"
+    ]
+  },
+  "companion_alex_greeting": {
+    "sounds": [
+      "modern_companions:mob/companions/greeting/male/alex_brodie/greetings_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/hello_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/hey_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/hi_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/hiya_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/hm_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/howdy_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/welcome_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/whats_up_alex",
+      "modern_companions:mob/companions/greeting/male/alex_brodie/yo_alex"
+    ]
+  },
+  "companion_alex_idle": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/burping_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/clearing_throat_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/coughing_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/crying_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/gasping_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/hmm_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/huh_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/sighing_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/sneezing_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/sniffling_alex"
+    ]
+  },
+  "companion_alex_low_health": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/low_on_health_alex"
+    ]
+  },
+  "companion_alex_pain": {
+    "sounds": [
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_10_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_1_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_2_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_3_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_4_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_5_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_6_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_7_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_8_alex",
+      "modern_companions:mob/companions/damage/male/alex_brodie/pain_9_alex"
+    ]
+  },
+  "companion_alex_refusal": {
+    "sounds": [
+      "modern_companions:mob/companions/refusal/male/alex_brodie/cant_do_that_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/nah_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/negative_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/never_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/no_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/no_can_do_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/no_way_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/not_for_me_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/not_happening_alex",
+      "modern_companions:mob/companions/refusal/male/alex_brodie/sorry_alex"
+    ]
+  },
+  "companion_alex_under_attack": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/get_ready_alex",
+      "modern_companions:mob/companions/miscellaneous/male/alex_brodie/were_under_attack_alex"
+    ]
+  },
+  "companion_ian_celebration": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/laughter_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/woo_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/wow_ian"
+    ]
+  },
+  "companion_ian_completion": {
+    "sounds": [
+      "modern_companions:mob/companions/completion/male/ian_lampert/all_done_ian",
+      "modern_companions:mob/companions/completion/male/ian_lampert/complete_ian",
+      "modern_companions:mob/companions/completion/male/ian_lampert/crafting_complete_ian",
+      "modern_companions:mob/companions/completion/male/ian_lampert/finished_ian",
+      "modern_companions:mob/companions/completion/male/ian_lampert/ready_ian"
+    ]
+  },
+  "companion_ian_confirmation": {
+    "sounds": [
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/alright_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/definitely_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/great_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/lets_go_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/okay_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/on_it_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/on_my_way_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/yeah_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/yes_ian",
+      "modern_companions:mob/companions/confirmation/male/ian_lampert/you_got_it_ian"
+    ]
+  },
+  "companion_ian_death": {
+    "sounds": [
+      "modern_companions:mob/companions/death/male/ian_lampert/death_10_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_1_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_2_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_3_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_4_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_5_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_6_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_7_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_8_ian",
+      "modern_companions:mob/companions/death/male/ian_lampert/death_9_ian"
+    ]
+  },
+  "companion_ian_enemy_spotted": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/enemy_spotted_ian"
+    ]
+  },
+  "companion_ian_farewell": {
+    "sounds": [
+      "modern_companions:mob/companions/farewell/male/ian_lampert/adios_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/bye_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/farewell_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/good_luck_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/goodbye_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/later_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/see_ya_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/so_long_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/ta_ta_ian",
+      "modern_companions:mob/companions/farewell/male/ian_lampert/take_care_ian"
+    ]
+  },
+  "companion_ian_greeting": {
+    "sounds": [
+      "modern_companions:mob/companions/greeting/male/ian_lampert/greetings_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/hello_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/hey_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/hi_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/hiya_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/hm_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/howdy_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/welcome_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/whats_up_ian",
+      "modern_companions:mob/companions/greeting/male/ian_lampert/yo_ian"
+    ]
+  },
+  "companion_ian_idle": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/burping_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/clearing_throat_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/coughing_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/crying_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/gasping_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/hmm_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/huh_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/sighing_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/sneezing_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/sniffling_ian"
+    ]
+  },
+  "companion_ian_low_health": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/low_on_health_ian"
+    ]
+  },
+  "companion_ian_pain": {
+    "sounds": [
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_10_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_1_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_2_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_3_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_4_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_5_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_6_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_7_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_8_ian",
+      "modern_companions:mob/companions/damage/male/ian_lampert/pain_9_ian"
+    ]
+  },
+  "companion_ian_refusal": {
+    "sounds": [
+      "modern_companions:mob/companions/refusal/male/ian_lampert/cant_do_that_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/nah_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/negative_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/never_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/no_can_do_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/no_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/no_way_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/not_for_me_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/not_happening_ian",
+      "modern_companions:mob/companions/refusal/male/ian_lampert/sorry_ian"
+    ]
+  },
+  "companion_ian_under_attack": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/get_ready_ian",
+      "modern_companions:mob/companions/miscellaneous/male/ian_lampert/were_under_attack_ian"
+    ]
+  },
+  "companion_karen_celebration": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/laughter_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/woo_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/wow_karen"
+    ]
+  },
+  "companion_karen_completion": {
+    "sounds": [
+      "modern_companions:mob/companions/completion/female/karen_cenon/all_done_karen",
+      "modern_companions:mob/companions/completion/female/karen_cenon/complete_karen",
+      "modern_companions:mob/companions/completion/female/karen_cenon/crafting_complete_karen",
+      "modern_companions:mob/companions/completion/female/karen_cenon/finished_karen",
+      "modern_companions:mob/companions/completion/female/karen_cenon/ready_karen"
+    ]
+  },
+  "companion_karen_confirmation": {
+    "sounds": [
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/alright_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/definitely_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/great_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/lets_go_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/okay_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/on_it_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/on_my_way_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/yeah_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/yes_karen",
+      "modern_companions:mob/companions/confirmation/female/karen_cenon/you_got_it_karen"
+    ]
+  },
+  "companion_karen_death": {
+    "sounds": [
+      "modern_companions:mob/companions/death/female/karen_cenon/death_10_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_1_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_2_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_3_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_4_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_5_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_6_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_7_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_8_karen",
+      "modern_companions:mob/companions/death/female/karen_cenon/death_9_karen"
+    ]
+  },
+  "companion_karen_enemy_spotted": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/enemy_spotted_karen"
+    ]
+  },
+  "companion_karen_farewell": {
+    "sounds": [
+      "modern_companions:mob/companions/farewell/female/karen_cenon/adios_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/bye_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/farewell_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/good_luck_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/goodbye_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/later_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/see_ya_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/so_long_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/ta_ta_karen",
+      "modern_companions:mob/companions/farewell/female/karen_cenon/take_care_karen"
+    ]
+  },
+  "companion_karen_greeting": {
+    "sounds": [
+      "modern_companions:mob/companions/greeting/female/karen_cenon/greetings_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/hello_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/hey_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/hi_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/hiya_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/hm_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/howdy_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/welcome_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/whats_up_karen",
+      "modern_companions:mob/companions/greeting/female/karen_cenon/yo_karen"
+    ]
+  },
+  "companion_karen_idle": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/clearing_throat_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/coughing_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/crying_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/gasping_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/hmm_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/huh_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/sighing_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/sneezing_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/sniffling_karen"
+    ]
+  },
+  "companion_karen_low_health": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/low_on_health_karen"
+    ]
+  },
+  "companion_karen_pain": {
+    "sounds": [
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_10_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_1_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_2_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_3_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_4_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_5_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_6_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_7_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_8_karen",
+      "modern_companions:mob/companions/damage/female/karen_cenon/pain_9_karen"
+    ]
+  },
+  "companion_karen_refusal": {
+    "sounds": [
+      "modern_companions:mob/companions/refusal/female/karen_cenon/cant_do_that_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/nah_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/negative_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/never_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/no_can_do_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/no_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/no_way_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/not_for_me_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/not_happening_karen",
+      "modern_companions:mob/companions/refusal/female/karen_cenon/sorry_karen"
+    ]
+  },
+  "companion_karen_under_attack": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/get_ready_karen",
+      "modern_companions:mob/companions/miscellaneous/female/karen_cenon/were_under_attack_karen"
+    ]
+  },
+  "companion_meghan_celebration": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/laughter_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/woo_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/wow_meghan"
+    ]
+  },
+  "companion_meghan_completion": {
+    "sounds": [
+      "modern_companions:mob/companions/completion/female/meghan_christian/all_done_meghan",
+      "modern_companions:mob/companions/completion/female/meghan_christian/complete_meghan",
+      "modern_companions:mob/companions/completion/female/meghan_christian/crafting_complete_meghan",
+      "modern_companions:mob/companions/completion/female/meghan_christian/finished_meghan",
+      "modern_companions:mob/companions/completion/female/meghan_christian/ready_meghan"
+    ]
+  },
+  "companion_meghan_confirmation": {
+    "sounds": [
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/alright_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/definitely_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/great_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/lets_go_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/okay_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/on_it_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/on_my_way_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/yeah_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/yes_meghan",
+      "modern_companions:mob/companions/confirmation/female/meghan_christian/you_got_it_meghan"
+    ]
+  },
+  "companion_meghan_death": {
+    "sounds": [
+      "modern_companions:mob/companions/death/female/meghan_christian/death_10_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_1_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_2_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_3_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_4_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_5_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_6_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_7_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_8_meghan",
+      "modern_companions:mob/companions/death/female/meghan_christian/death_9_meghan"
+    ]
+  },
+  "companion_meghan_enemy_spotted": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/enemy_spotted_meghan"
+    ]
+  },
+  "companion_meghan_farewell": {
+    "sounds": [
+      "modern_companions:mob/companions/farewell/female/meghan_christian/adios_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/bye_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/farewell_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/good_luck_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/goodbye_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/later_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/see_ya_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/so_long_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/ta_ta_meghan",
+      "modern_companions:mob/companions/farewell/female/meghan_christian/take_care_meghan"
+    ]
+  },
+  "companion_meghan_greeting": {
+    "sounds": [
+      "modern_companions:mob/companions/greeting/female/meghan_christian/greetings_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/hello_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/hey_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/hi_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/hiya_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/hm_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/howdy_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/welcome_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/whats_up_meghan",
+      "modern_companions:mob/companions/greeting/female/meghan_christian/yo_meghan"
+    ]
+  },
+  "companion_meghan_idle": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/clearing_throat_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/coughing_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/crying_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/gasping_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/hmm_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/huh_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/sighing_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/sneezing_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/sniffling_meghan"
+    ]
+  },
+  "companion_meghan_low_health": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/low_on_health_meghan"
+    ]
+  },
+  "companion_meghan_pain": {
+    "sounds": [
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_10_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_1_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_2_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_3_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_4_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_5_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_6_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_7_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_8_meghan",
+      "modern_companions:mob/companions/damage/female/meghan_christian/pain_9_meghan"
+    ]
+  },
+  "companion_meghan_refusal": {
+    "sounds": [
+      "modern_companions:mob/companions/refusal/female/meghan_christian/cant_do_that_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/nah_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/negative_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/never_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/no_can_do_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/no_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/no_way_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/not_for_me_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/not_happening_meghan",
+      "modern_companions:mob/companions/refusal/female/meghan_christian/sorry_meghan"
+    ]
+  },
+  "companion_meghan_under_attack": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/get_ready_meghan",
+      "modern_companions:mob/companions/miscellaneous/female/meghan_christian/were_under_attack_meghan"
+    ]
+  },
+  "companion_sean_celebration": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/laughter_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/woo_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/wow_sean"
+    ]
+  },
+  "companion_sean_completion": {
+    "sounds": [
+      "modern_companions:mob/companions/completion/male/sean_lenhart/all_done_sean",
+      "modern_companions:mob/companions/completion/male/sean_lenhart/complete_sean",
+      "modern_companions:mob/companions/completion/male/sean_lenhart/crafting_complete_sean",
+      "modern_companions:mob/companions/completion/male/sean_lenhart/finished_sean",
+      "modern_companions:mob/companions/completion/male/sean_lenhart/ready_sean"
+    ]
+  },
+  "companion_sean_confirmation": {
+    "sounds": [
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/alright_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/definitely_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/great_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/lets_go_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/okay_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/on_it_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/on_my_way_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/yeah_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/yes_sean",
+      "modern_companions:mob/companions/confirmation/male/sean_lenhart/you_got_it_sean"
+    ]
+  },
+  "companion_sean_death": {
+    "sounds": [
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_10_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_1_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_2_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_3_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_4_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_5_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_6_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_7_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_8_sean",
+      "modern_companions:mob/companions/death/male/sean_lenhart/death_9_sean"
+    ]
+  },
+  "companion_sean_enemy_spotted": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/enemy_spotted_sean"
+    ]
+  },
+  "companion_sean_farewell": {
+    "sounds": [
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/adios_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/bye_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/farewell_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/good_luck_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/goodbye_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/later_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/see_ya_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/so_long_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/ta_ta_sean",
+      "modern_companions:mob/companions/farewell/male/sean_lenhart/take_care_sean"
+    ]
+  },
+  "companion_sean_greeting": {
+    "sounds": [
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/greetings_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/hello_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/hey_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/hi_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/hiya_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/hm_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/howdy_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/welcome_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/whats_up_sean",
+      "modern_companions:mob/companions/greeting/male/sean_lenhart/yo_sean"
+    ]
+  },
+  "companion_sean_idle": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/clearing_throat_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/coughing_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/crying_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/gasping_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/hmm_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/huh_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/sighing_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/sneezing_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/sniffling_sean"
+    ]
+  },
+  "companion_sean_low_health": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/low_on_health_sean"
+    ]
+  },
+  "companion_sean_pain": {
+    "sounds": [
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_10_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_1_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_2_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_3_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_4_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_5_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_6_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_7_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_8_sean",
+      "modern_companions:mob/companions/damage/male/sean_lenhart/pain_9_sean"
+    ]
+  },
+  "companion_sean_refusal": {
+    "sounds": [
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/cant_do_that_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/nah_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/negative_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/never_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/no_can_do_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/no_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/no_way_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/not_for_me_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/not_happening_sean",
+      "modern_companions:mob/companions/refusal/male/sean_lenhart/sorry_sean"
+    ]
+  },
+  "companion_sean_under_attack": {
+    "sounds": [
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/get_ready_sean",
+      "modern_companions:mob/companions/miscellaneous/male/sean_lenhart/were_under_attack_sean"
+    ]
+  }
+}
+

@@ -304,6 +304,7 @@ Configurable companion behaviors include:
 - Spawn armor.
 - Spawn weapons.
 - Automatic gear equip from companion inventories (off by default).
+- Teleport leash while following (off by default); when enabled, teleport starts at the companion's selected Radius plus 5 blocks.
 - Low-health food behavior.
 - Low-health food threshold.
 - Stamina enablement and costs.

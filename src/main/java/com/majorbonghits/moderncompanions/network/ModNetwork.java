@@ -2,6 +2,8 @@ package com.majorbonghits.moderncompanions.network;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.entity.CompanionVoice;
+import com.majorbonghits.moderncompanions.core.ModSounds;
 import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.network.OpenCompanionInventoryPayload;
@@ -54,7 +56,10 @@ public final class ModNetwork {
                         companion.setGuarding(payload.value());
                         companion.setPatrolPos(companion.blockPosition());
                     }
-                    case "work" -> companion.setWorkEnabled(payload.value());
+                    case "work" -> {
+                        companion.setWorkEnabled(payload.value());
+                        CompanionVoice.play(companion, payload.value() ? ModSounds.Cue.CONFIRMATION : ModSounds.Cue.FAREWELL);
+                    }
                     case "follow" -> companion.setFollowing(payload.value());
                     case "pickup" -> companion.setPickupEnabled(payload.value());
                     default -> {}
@@ -105,6 +110,8 @@ public final class ModNetwork {
             if (entity instanceof AbstractHumanCompanionEntity companion && companion.isOwnedBy(serverPlayer)) {
                 companion.setJob(CompanionJob.fromId(payload.jobId()));
                 companion.onJobChanged();
+                CompanionVoice.play(companion, companion.getJob() == CompanionJob.NONE
+                        ? ModSounds.Cue.FAREWELL : ModSounds.Cue.CONFIRMATION);
             }
         });
     }

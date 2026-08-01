@@ -372,6 +372,15 @@
 
 - Add a smoke check that confirms the cosmetic popup, standard equipment panel, and world model show their respective functional/cosmetic views without requiring an inventory reopen.
 
+## 2026-08-01 (optional Radius-relative teleport leash)
+
+- Smoke-test the default-off setting, then enable it in Mods → Modern Companions → Config → Companion and verify teleport starts at Radius + 5 for small and large Radius values.
+- If teleport frequency needs further tuning, expose the 5-block buffer only after live following tests show that a fixed buffer is insufficient.
+
 ## 2026-08-01 (cosmetic armor popup alignment)
 
 - Add a visual dev-world check for empty armor silhouettes, each cosmetic slot independently, and the popup preview against the standard equipment preview.
+
+## 2026-08-01 (companion voice pools)
+
+- Smoke-test actor persistence through relog, Companion Mover capture/redeploy, and Resurrection Scroll revival; add per-cue volume controls only if live playtesting shows the shared voice level needs tuning.

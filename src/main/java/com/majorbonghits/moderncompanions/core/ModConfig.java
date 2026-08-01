@@ -45,6 +45,7 @@ public final class ModConfig {
     public static ModConfigSpec.BooleanValue SPAWN_ARMOR;
     public static ModConfigSpec.BooleanValue SPAWN_WEAPON;
     public static ModConfigSpec.BooleanValue AUTO_EQUIP;
+    public static ModConfigSpec.BooleanValue TELEPORT_LEASH;
     public static ModConfigSpec.IntValue BASE_HEALTH;
     public static ModConfigSpec.BooleanValue LOW_HEALTH_FOOD;
     public static ModConfigSpec.DoubleValue LOW_HEALTH_FOOD_THRESHOLD;
@@ -52,6 +53,8 @@ public final class ModConfig {
     public static ModConfigSpec.IntValue STAMINA_SPRINT_COST;
     public static ModConfigSpec.IntValue STAMINA_MELEE_COST;
     public static ModConfigSpec.BooleanValue CREEPER_WARNING;
+    public static ModConfigSpec.EnumValue<CompanionVoiceMode> COMPANION_VOICE_MODE;
+    public static ModConfigSpec.IntValue COMPANION_VOICE_VOLUME;
     public static ModConfigSpec.ConfigValue<List<? extends String>> ALL_FOODS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> EXTRA_HEAL_CONSUMABLES;
     public static ModConfigSpec.ConfigValue<List<? extends String>> COMMON_RESOURCE_ITEMS;
@@ -129,6 +132,9 @@ public final class ModConfig {
         AUTO_EQUIP = builder.translation("modern_companions.configuration.companion.auto_equip")
                 .comment("Whether companions automatically equip suitable gear from their inventory")
                 .define("autoEquip", false);
+        TELEPORT_LEASH = builder.translation("modern_companions.configuration.companion.teleport_leash")
+                .comment("When enabled, following companions teleport to a safe spot near the owner after exceeding the selected Radius by 5 blocks.")
+                .define("teleportLeash", false);
         BASE_HEALTH = builder.translation("modern_companions.configuration.companion.base_health")
                 .comment("Base health for companions; a small random variance is applied on spawn")
                 .defineInRange("baseHealth", 20, 5, Integer.MAX_VALUE);
@@ -150,6 +156,12 @@ public final class ModConfig {
         CREEPER_WARNING = builder.translation("modern_companions.configuration.companion.creeper_warning")
                 .comment("If true, companions warn the player and avoid nearby creepers")
                 .define("creeperWarning", true);
+        COMPANION_VOICE_MODE = builder.translation("modern_companions.configuration.companion.voice_mode")
+                .comment("Full plays all companion voice lines; Limited keeps pain, death, and ambient noises; Off disables custom companion sounds.")
+                .defineEnum("voiceMode", CompanionVoiceMode.FULL);
+        COMPANION_VOICE_VOLUME = builder.translation("modern_companions.configuration.companion.voice_volume")
+                .comment("Volume of custom companion sounds as a percentage.")
+                .defineInRange("voiceVolume", 80, 0, 100);
         builder.pop();
 
         builder.translation("modern_companions.configuration.taming").push("taming");

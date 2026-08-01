@@ -2528,3 +2528,10 @@
 - Prompt/task: Prevent cosmetic armor placed in the popup from appearing in the standard equipment slots immediately after confirming the popup.
 - Steps: Added an explicit functional-equipment accessor for menu slots instead of reusing the renderer-aware equipment accessor; bumped the version to 3.34.
 - Rationale: Cosmetic armor belongs to model rendering only. Inventory equipment slots must always read the companion's functional vanilla equipment, regardless of the active preview render context.
+
+## 2026-08-01 (optional Radius-relative teleport leash)
+
+- Prompt/task: Add an optional teleport leash controlled by the companion's follow Radius.
+- Steps: Added the common `companion.teleportLeash` setting with a default of `false`; gated the shared follow goal's safe teleport behind it; changed the threshold from a fixed 35 blocks to the selected Radius plus 5; added localized config text, README guidance, and a no-world threshold regression check; bumped version to 3.42.
+- Rationale: The shared follow goal is the single normal companion teleport path, so one config gate covers every companion without changing navigation or safe-spot validation. The Radius-relative threshold makes small configured follow distances intentionally teleport sooner.
+- Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` remain required; manual Mod List config visibility and following/teleport smoke remain required.

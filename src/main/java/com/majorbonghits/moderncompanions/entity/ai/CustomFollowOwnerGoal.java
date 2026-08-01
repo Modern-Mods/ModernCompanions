@@ -1,5 +1,6 @@
 package com.majorbonghits.moderncompanions.entity.ai;
 
+import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;
@@ -12,7 +13,6 @@ import java.util.EnumSet;
  * Lightweight follow-owner goal that respects the companion's follow flag.
  */
 public class CustomFollowOwnerGoal extends Goal {
-    private static final double TELEPORT_DISTANCE_SQ = 35.0D * 35.0D; // Companion snaps back once ~35 blocks away.
     private static final int TELEPORT_ATTEMPTS = 10;
     private static final int TELEPORT_RANGE = 3;
 
@@ -76,7 +76,9 @@ public class CustomFollowOwnerGoal extends Goal {
         if (--timeToRecalc <= 0) {
             timeToRecalc = 10;
             double distanceSq = companion.distanceToSqr(owner);
-            if (distanceSq >= TELEPORT_DISTANCE_SQ && teleport) {
+            if (distanceSq >= FollowLeashRules.teleportDistanceSquared(companion.getPatrolRadius())
+                    && teleport
+                    && ModConfig.safeGet(ModConfig.TELEPORT_LEASH)) {
                 if (!tryTeleportCloseToOwner()) {
                     companion.getNavigation().moveTo(owner, speedModifier); // Fallback if no safe spot found.
                 }

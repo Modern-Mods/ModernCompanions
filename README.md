@@ -21,10 +21,20 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Custom Names and Skins:** Companions use expanded male and female name pools, including medieval and fantasy names. Use `/companionskin "NAME" URL` to assign an HTTP(S) skin.
 - **295 Bundled Skins:** The full bundled male and female skin collection is available for random companion appearances.
 - **Personality and Journal:** Companions have traits, backstories, Morale, Bond, age, favorite foods, and persistent journey statistics.
+- **Companion Voices:** Five gender-matched voice actors provide greetings, confirmations, refusals, combat callouts, pain, death, idle, and job-completion cues. Voice playback is configurable and duplicate callouts are suppressed.
 - **Curios and Sophisticated Backpacks:** Optional support adds Curios slots, rendered accessories, backpack storage, and native backpack upgrades/settings.
 - **Companion Resources:** Stamina supports sprinting and melee pacing. Magic companions also use Mana.
 - **Brewing:** Craft reusable vessels and brew Health, Regeneration, Stamina, Mana, Rejuvenation, and Shield potions.
+- **Living Jobs:** Lumberjacks, Hunters, Miners, Fishers, and Chefs can search, travel, work, collect, deliver, and resume jobs. Jobs are experimental and hidden by default.
 - **Safety Controls:** Villager and PvP protection controls are available per companion and default to safe.
+
+## Recent Updates
+
+- Added configurable Alert exclusions, taming food/resource lists, manual Hunt targets, low-health food thresholds, Stamina costs, voice mode/volume, automatic equipment, and Radius-based teleport leashes.
+- Added Epic Fight combat/rendering compatibility, including companion weapon capabilities and TacZ gun pose handoff.
+- Added TacZ firearm specialists with native gun, ammunition, reload, and category-specific equipment behavior.
+- Added resumable profession goals, delivery chests, job status reporting, safe worker actions, and the Assignment Wand.
+- Added cosmetic armor storage and per-slot equipment rendering controls without changing functional armor.
 
 ## Worldgen and Spawns
 
@@ -123,6 +133,8 @@ Each companion has:
 - Dedicated helmet, chestplate, leggings, boots, main-hand, and offhand slots.
 - A 3D inventory preview.
 - Automatic armor and weapon selection.
+- Optional automatic gear equip from the companion inventory (disabled by default).
+- Separate cosmetic armor slots with per-slot visibility toggles; cosmetic items change appearance without replacing functional equipment.
 - Persistent equipment through relogging, capture, and redeployment.
 - Owner-only villager and PvP safety controls.
 
@@ -263,6 +275,10 @@ The Summoning Wand recalls all living companions and Beastmaster pets in the cur
 
 ![Summoning Wand](https://i.imgur.com/OClm2Fj.png)
 
+### Assignment Wand
+
+The Assignment Wand links a working companion to a delivery container. Right-click an owned companion with the wand, then sneak-right-click a container. The companion delivers job output there and can withdraw raw inputs when a job supports it.
+
 ### Spawn Gems
 
 All companion spawn eggs use class-colored gem artwork and are available on the Modern Companions creative tab. Survival acquisition is left to modpack makers and datapacks.
@@ -293,38 +309,139 @@ Levels I–III are available.
 
 Books can appear in dungeon, mineshaft, stronghold library, temple, buried treasure, and shipwreck loot.
 
-## Configuration and Compatibility
+## Jobs
 
-Configurable companion behaviors include:
+Jobs are disabled in the player-facing screen by default while the system remains experimental. Set `showJobsButton = true` under `[jobs]` in `config/modern_companions-common.toml` to expose the Jobs button. The Jobs category is intentionally hidden from the native config screen for now.
 
-- Friendly fire.
-- Player damage.
-- Villager damage.
-- Fall damage.
-- Spawn armor.
-- Spawn weapons.
-- Automatic gear equip from companion inventories (off by default).
-- Teleport leash while following (off by default); when enabled, teleport starts at the companion's selected Radius plus 5 blocks.
-- Low-health food behavior.
-- Low-health food threshold.
-- Stamina enablement and costs.
-- Alert targeting: Alert automatically recognizes every entity registered as a Monster. `minecraft:creeper` is the one default entry in `excludedMobs`, so companions avoid Creepers out of the box; existing configurations receive this entry once on startup, and removing it lets companions fight Creepers. In single-player or as the host, open Mods → Modern Companions → Config → Alert to add registry entity IDs such as `minecraft:ender_dragon` or `example:dangerous_mob`; Java class names such as `EnderDragon.class` are not valid. Dedicated-server operators use the same server config.
-- Taming and manual hunting: Mods → Modern Companions → Config now exposes the default food, healing-consumable, common/uncommon/rare taming-resource, and manual Hunt-mob lists as editable registry IDs. The in-game lists display the current vanilla values by default and accept registered mod items or entity types.
-- House spacing.
-- Trait, Bond, and Morale systems.
+Available jobs:
 
-Optional compatibility includes:
+- **Lumberjack:** Finds mature natural trees, chops them with an axe, collects logs, and replants when possible.
+- **Hunter:** Tracks configured hunt targets with a sword, axe, bow, or crossbow and collects the results.
+- **Miner:** Surveys the work area and safely tunnels to configured ore targets with a pickaxe.
+- **Fisher:** Finds water, fishes with a fishing rod, and collects catches.
+- **Chef:** Uses raw food, cooking recipes, and nearby campfires, soul campfires, furnaces, or smokers. Furnaces and smokers need fuel.
 
-- Iron’s Spellbooks.
-- Ars Nouveau.
-- TacZ.
-- Curios.
-- Sophisticated Backpacks.
-- Jade.
-- JEI/REI.
-- Bronze weapon materials.
-- Better Combat reach handling.
-- Epic Fight: companions use its armature renderer, movement, melee timing, hit logic, and weapon movesets while retaining their roles, stamina, equipment, and safety rules. Class-valid held weapons remain equipped instead of being swapped with cargo every tick, and equipping a melee weapon restores Epic Fight's animated attack/chase pair. A companion holding a TacZ gun temporarily uses TacZ's native pose and firearm logic, then returns to Epic Fight animations when it holds another item; a gun in cargo does not disable Epic Fight melee. Every bundled weapon family has an Epic Fight capability category for its matching moveset.
+To use a job, assign it in the Jobs screen, give the companion the required tool, and bind a delivery container with the Assignment Wand. The **Work** control starts or pauses the job. Job phases and waiting reasons are shown in the worker panel; combat, blocked routes, full inventories, and unavailable chests preserve the job checkpoint for later resumption.
+
+## Configuration
+
+Open **Mods → Modern Companions → Config** for the player-facing settings. Dedicated servers use the common server config. Values below are the shipped defaults and accepted ranges.
+
+### Worldgen
+
+| Key | Default | Description |
+| --- | ---: | --- |
+| `averageHouseSeparation` | `20` | Average chunk separation between companion houses; minimum `11`. |
+
+### Companion
+
+| Key | Default | Description |
+| --- | ---: | --- |
+| `friendlyFireCompanions` | `false` | Allow companions to damage each other. |
+| `friendlyFirePlayer` | `true` | Allow a companion to damage its owner. |
+| `fallDamage` | `true` | Allow fall damage. |
+| `spawnArmor` | `true` | Give newly spawned companions random armor. |
+| `spawnWeapon` | `true` | Give newly spawned companions a weapon. |
+| `autoEquip` | `false` | Automatically equip suitable gear from the companion inventory. |
+| `teleportLeash` | `false` | Teleport a following companion to a safe spot after it exceeds its selected Radius by 5 blocks. |
+| `baseHealth` | `20` | Base health before spawn variance; minimum `5`. |
+| `lowHealthFood` | `true` | Let companions eat and ask for food when low on health. |
+| `lowHealthFoodThreshold` | `0.5` | Health fraction for low-health food behavior; `0.0`–`1.0`. |
+| `staminaEnabled` | `true` | Enable the Stamina system. |
+| `sprintStaminaCost` | `1` | Stamina per sprinting tick; `0`–`100`, where `0` disables sprint drain. |
+| `meleeStaminaCost` | `8` | Stamina per successful melee hit; `0`–`100`, where `0` disables melee drain. |
+| `creeperWarning` | `true` | Warn about and avoid nearby Creepers. |
+| `voiceMode` | `FULL` | `FULL` plays all cues, `LIMITED` keeps pain/death/idle cues, and `OFF` disables custom companion sounds. |
+| `voiceVolume` | `80` | Custom voice volume as a percentage; `0`–`100`. |
+
+### Taming, hunting, and Alert
+
+Lists use registry IDs. Item lists accept IDs such as `minecraft:bread`; entity lists accept IDs such as `minecraft:goat`. Java class names are not valid.
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `allFoods` | See defaults below | Foods companions may request, select as favorites, and eat for healing. |
+| `extraHealConsumables` | See defaults below | Healing items companions may eat but never request for taming; may be empty. |
+| `commonResourceItems` | See defaults below | Common taming-resource pool. |
+| `uncommonResourceItems` | See defaults below | Uncommon taming-resource pool. |
+| `rareResourceItems` | See defaults below | Rare taming-resource pool. |
+| `huntMobs` | See defaults below | Entity IDs targeted by the manual Hunt control; may be empty. |
+| `excludedMobs` | `minecraft:creeper` | Entity IDs excluded from Alert targeting; may be empty. Alert otherwise recognizes registered Monster entities. Existing configs receive the Creeper default once. |
+
+`creeperDefaultMigrated` is an internal migration marker and should not be edited.
+
+Default lists:
+
+```text
+allFoods = minecraft:cookie, minecraft:bread, minecraft:melon_slice, minecraft:apple, minecraft:sweet_berries, minecraft:carrot, minecraft:baked_potato, minecraft:cooked_salmon, minecraft:cooked_cod, minecraft:cooked_mutton, minecraft:cooked_porkchop, minecraft:cooked_beef, minecraft:cooked_chicken, minecraft:pumpkin_pie, minecraft:glow_berries, minecraft:potato, minecraft:beetroot, minecraft:dried_kelp, minecraft:cooked_rabbit
+extraHealConsumables = minecraft:golden_apple, minecraft:enchanted_golden_apple, minecraft:golden_carrot, minecraft:honey_bottle, minecraft:mushroom_stew, minecraft:beetroot_soup, minecraft:rabbit_stew
+commonResourceItems = minecraft:coal, minecraft:charcoal, minecraft:copper_ingot, minecraft:iron_ingot, minecraft:redstone, minecraft:lapis_lazuli, minecraft:flint, minecraft:clay_ball, minecraft:string, minecraft:leather, minecraft:bone, minecraft:feather
+uncommonResourceItems = minecraft:gold_ingot, minecraft:amethyst_shard, minecraft:slime_ball, minecraft:gunpowder, minecraft:glowstone_dust, minecraft:prismarine_shard, minecraft:prismarine_crystals, minecraft:ender_pearl, minecraft:obsidian
+rareResourceItems = minecraft:diamond, minecraft:emerald, minecraft:blaze_rod, minecraft:magma_cream
+huntMobs = minecraft:chicken, minecraft:cow, minecraft:pig, minecraft:rabbit, minecraft:sheep, minecraft:goat
+```
+
+Alert can also be extended by pack authors through `data/modern_companions/tags/entity_type/alert_unsafe.json`. A higher-priority datapack can use `"replace": true` to provide the complete safety policy before `/reload`.
+
+### Personality
+
+| Key | Default | Range / description |
+| --- | ---: | --- |
+| `traitsEnabled` | `true` | Enable primary and secondary birth traits. |
+| `secondaryTraitChance` | `40` | Percent chance of a secondary trait; `0`–`100`. |
+| `bondEnabled` | `true` | Enable Bond/Loyalty. |
+| `moraleEnabled` | `true` | Enable Morale and its small performance effects. |
+| `bondTickInterval` | `1200` | Ticks between passive Bond XP awards near the owner; minimum `20`. |
+| `bondTimeXp` | `5` | Bond XP per passive interval; `0`–`10000`. |
+| `bondFeedXp` | `15` | Bond XP when fed; `0`–`10000`. |
+| `bondResurrectXp` | `80` | Bond XP when resurrected; `0`–`100000`. |
+| `moraleFeedDelta` | `0.05` | Morale change when fed; `-1.0`–`1.0`. |
+| `moraleNearDeathDelta` | `-0.07` | Morale change after nearly dying; `-1.0`–`1.0`. |
+| `moraleResurrectDelta` | `-0.1` | Morale change after resurrection; `-1.0`–`1.0`. |
+| `moraleBondLevelDelta` | `0.05` | Morale change when Bond levels up; `-1.0`–`1.0`. |
+| `luckyExtraDropChance` | `0.05` | Lucky trait extra-drop chance; `0.0`–`1.0` (`5%` by default). |
+
+### Jobs
+
+The job settings are available in the common TOML but hidden from the native editor while Jobs are experimental.
+
+| Key | Default | Range / description |
+| --- | ---: | --- |
+| `lumberjackEnabled` | `true` | Enable Lumberjack behavior. |
+| `lumberjackRadius` | `10` | Minimum search radius; `4`–`64`. Companion Radius can expand work up to `128` blocks. |
+| `hunterEnabled` | `true` | Enable Hunter behavior. |
+| `hunterRadius` | `20` | Hunt scan radius; `6`–`64`. |
+| `minerEnabled` | `true` | Enable Miner behavior. |
+| `minerRadius` | `8` | Minimum ore search radius; `4`–`32`. Companion Radius can expand work up to `128` blocks. |
+| `minerAllowBlocks` | `[]` | Optional block-ID whitelist; empty uses the default ore tags. |
+| `minerDenyBlocks` | `minecraft:chest`, `minecraft:spawner` | Block-ID blacklist. |
+| `fisherEnabled` | `true` | Enable Fisher behavior. |
+| `fisherRadius` | `10` | Water search radius; `4`–`32`. |
+| `chefEnabled` | `true` | Enable Chef behavior. |
+| `chefRadius` | `8` | Heat-source search radius; `3`–`24`. |
+| `assignedChestsChunkload` | `false` | Keep assigned delivery chests chunk-loaded. |
+| `showJobsButton` | `false` | Show the Jobs button in the companion screen. |
+
+## Optional Mod Compatibility
+
+All integrations are optional unless listed under Requirements. Content that depends on an absent mod is not registered.
+
+| Mod | Integration |
+| --- | --- |
+| **Iron's Spellbooks** | Enables magic companions and their native spell API. |
+| **Ars Nouveau** | Enables magic companions and their native spell API. Install either magic mod for the nine optional magic roles; both can be used together. |
+| **TacZ** | Adds firearm specialists, category-matched guns and ammunition, native firing/reload behavior, and matching summon gems. |
+| **Curios** | Adds companion Curios slots, accessory rendering, and per-slot render toggles. |
+| **Sophisticated Backpacks** | Adds a native backpack screen, upgrades, settings, and pickup insertion for a backpack equipped in the companion's Curios back slot. Requires Curios. |
+| **Epic Fight** | Adds the armature renderer, movement, melee timing, hit logic, and weapon movesets while retaining companion roles, Stamina, equipment, and safety rules. Bundled weapon families include matching Epic Fight capabilities. TacZ guns temporarily use TacZ's native pose; a gun stored in cargo does not disable Epic Fight melee. |
+| **Jade** | Shows companion attributes and Stamina/Mana bars in the HUD. |
+| **WTHIT** | Shows companion data in WTHIT tooltips. |
+| **JEI** | Adds the custom-vessel brewing steps to JEI's brewing category. Modern Companions does not ship a dedicated REI plugin. |
+| **Better Combat** | Prevents duplicate custom reach handling for Modern Companions weapons. |
+| **Bronze weapon providers** | Registers bronze dagger, club, hammer, spear, quarterstaff, and glaive variants when the `bronze` mod ID is present. |
+| **Mekanism** | Clears Mekanism entity radiation when a companion is resurrected. |
+
+Epic Fight's optional `Epic Fight x Curios Compat` layer is also detected when present so Curios accessories can remain attached to Epic Fight companion renderers.
 
 Pack authors can extend `data/modern_companions/tags/entity_type/alert_unsafe.json` with unsafe entity ids. A higher-priority datapack can set `"replace": true` to supply the complete safety policy before `/reload`.
 

@@ -122,7 +122,7 @@ public class CompanionMenu extends AbstractContainerMenu {
     }
 
     /** Equipment slots are views over the companion's live equipment, so menu extraction cannot fork a stack. */
-    private static class CompanionEquipmentSlot extends Slot {
+    public static class CompanionEquipmentSlot extends Slot {
         private final EquipmentSlot equipmentSlot;
         private final AbstractHumanCompanionEntity companion;
 
@@ -163,6 +163,10 @@ public class CompanionMenu extends AbstractContainerMenu {
         @Override
         public ItemStack remove(int amount) {
             return companion == null ? super.remove(amount) : companion.removeEquipment(equipmentSlot, amount);
+        }
+
+        public EquipmentSlot getEquipmentSlot() {
+            return equipmentSlot;
         }
     }
 }

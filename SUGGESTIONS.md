@@ -342,3 +342,7 @@
 ## 2026-08-01 (pointed dripstone pathfinding)
 - Smoke-test a companion through dripstone caves with both upward stalagmites and downward stalactites, including a one-block-wide route, and confirm it chooses the open route around them without repeated replanning.
 - Keep the explicit evaluator guard unless a future Minecraft path evaluator correctly classifies the air node above pointed dripstone for the companion's full bounding box.
+
+## 2026-08-01 (main equipment render toggles)
+- Smoke-test each armor slot, main hand, and offhand toggle in the companion inventory, including the 3D preview, world rendering, relog persistence, and an Epic Fight-enabled client.
+- If main equipment visibility must work without Curios installed, move the shared eye icon into a Modern Companions-owned texture instead of depending on Curios' existing 8px sprite.

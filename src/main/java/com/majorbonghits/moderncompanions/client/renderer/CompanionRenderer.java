@@ -41,8 +41,13 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
     @Override
     public void render(AbstractHumanCompanionEntity entity, float entityYaw, float partialTicks, PoseStack poseStack,
                        MultiBufferSource buffer, int packedLight) {
-        this.setModelProperties(entity);
-        super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+        entity.setEquipmentRenderContext(true);
+        try {
+            this.setModelProperties(entity);
+            super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+        } finally {
+            entity.setEquipmentRenderContext(false);
+        }
     }
 
     @Override

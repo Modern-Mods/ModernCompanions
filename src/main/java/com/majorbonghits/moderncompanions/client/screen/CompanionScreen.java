@@ -8,6 +8,7 @@ import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
 import com.majorbonghits.moderncompanions.network.CompanionActionPayload;
+import com.majorbonghits.moderncompanions.network.CompanionToggleEquipmentRenderPayload;
 import com.majorbonghits.moderncompanions.network.OpenCompanionCuriosPayload;
 import com.majorbonghits.moderncompanions.network.OpenCompanionBackpackPayload;
 import com.majorbonghits.moderncompanions.network.SetPatrolRadiusPayload;
@@ -23,6 +24,7 @@ import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.neoforged.fml.ModList;
 
 import java.util.Optional;
@@ -38,6 +40,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             ModernCompanions.MOD_ID, "textures/gui/newbuttons.png");
     private static final ResourceLocation SMALL_BUTTONS = ResourceLocation.fromNamespaceAndPath(
             ModernCompanions.MOD_ID, "textures/gui/newbuttons_small.png");
+    private static final ResourceLocation RENDER_TOGGLE = ResourceLocation.fromNamespaceAndPath(
+            "curios", "textures/gui/curios/inventory.png");
     private static final int BG_WIDTH = 458;
     private static final int BG_HEIGHT = 249;
     private static final int CONTENT_X_OFFSET = 103;
@@ -54,6 +58,13 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     @Override
     protected void init() {
         super.init();
+        for (var slot : this.menu.slots) {
+            if (slot instanceof CompanionMenu.CompanionEquipmentSlot equipmentSlot) {
+                int x = this.leftPos + slot.x + 12;
+                int y = this.topPos + slot.y - 1;
+                addRenderableWidget(new EquipmentRenderToggleButton(x, y, equipmentSlot.getEquipmentSlot()));
+            }
+        }
         int buttonX = leftPos + BUTTON_X;
         int buttonY = topPos + BUTTON_Y;
         addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.alert"), buttonX, buttonY,
@@ -291,6 +302,26 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         }
     }
 
+    private void toggleEquipmentRender(EquipmentSlot slot) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getConnection() != null) {
+            mc.getConnection().send(new ServerboundCustomPayloadPacket(
+                    new CompanionToggleEquipmentRenderPayload(menu.getCompanionId(), equipmentIndex(slot))));
+        }
+    }
+
+    private static int equipmentIndex(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> 0;
+            case CHEST -> 1;
+            case LEGS -> 2;
+            case FEET -> 3;
+            case MAINHAND -> 4;
+            case OFFHAND -> 5;
+            default -> -1;
+        };
+    }
+
     private Optional<AbstractHumanCompanionEntity> safeCompanion() {
         AbstractHumanCompanionEntity companion = menu.getCompanion();
         if (companion == null && minecraft != null && minecraft.level != null
@@ -316,6 +347,21 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             RenderSystem.enableBlend();
             gfx.blit(texture, getX(), getY(), xTexStart, textureY, width, height, 32, 32);
             RenderSystem.disableBlend();
+        }
+    }
+
+    private class EquipmentRenderToggleButton extends Button {
+        private final EquipmentSlot slot;
+
+        EquipmentRenderToggleButton(int x, int y, EquipmentSlot slot) {
+            super(x, y, 8, 8, Component.empty(), button -> toggleEquipmentRender(slot), DEFAULT_NARRATION);
+            this.slot = slot;
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            int texX = safeCompanion().map(companion -> companion.isEquipmentRenderVisible(slot)).orElse(true) ? 75 : 83;
+            gfx.blit(RENDER_TOGGLE, getX(), getY(), texX, 0, 8, 8, 256, 256);
         }
     }
 

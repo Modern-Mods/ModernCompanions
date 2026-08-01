@@ -29,7 +29,9 @@ public final class ModNetwork {
                 .playToServer(SetPatrolRadiusPayload.TYPE, SetPatrolRadiusPayload.CODEC, ModNetwork::handlePatrolRadius)
                 .playToServer(SetCompanionJobPayload.TYPE, SetCompanionJobPayload.CODEC, ModNetwork::handleSetJob)
                 .playToServer(EditCompanionJournalPayload.TYPE, EditCompanionJournalPayload.CODEC, ModNetwork::handleJournalEdit)
-                .playToServer(OpenCompanionInventoryPayload.TYPE, OpenCompanionInventoryPayload.CODEC, ModNetwork::handleOpenInventory);
+                .playToServer(OpenCompanionInventoryPayload.TYPE, OpenCompanionInventoryPayload.CODEC, ModNetwork::handleOpenInventory)
+                .playToServer(CompanionToggleEquipmentRenderPayload.TYPE, CompanionToggleEquipmentRenderPayload.CODEC,
+                        ModNetwork::handleToggleEquipmentRender);
     }
 
     private static void handleToggleFlag(ToggleFlagPayload payload, IPayloadContext ctx) {
@@ -161,6 +163,17 @@ public final class ModNetwork {
                 serverPlayer.openMenu(new SimpleMenuProvider(
                         (id, inv, player) -> new CompanionMenu(id, inv, companion), companion.getDisplayName()),
                         buf -> buf.writeVarInt(companion.getId()));
+            }
+        });
+    }
+
+    private static void handleToggleEquipmentRender(CompanionToggleEquipmentRenderPayload payload, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            if (!(ctx.player() instanceof ServerPlayer serverPlayer)) return;
+            Entity entity = serverPlayer.level().getEntity(payload.entityId());
+            if (entity instanceof AbstractHumanCompanionEntity companion && companion.isOwnedBy(serverPlayer)) {
+                var slot = AbstractHumanCompanionEntity.equipmentSlotFromIndex(payload.slotIndex());
+                if (slot != null) companion.toggleEquipmentRender(slot);
             }
         });
     }

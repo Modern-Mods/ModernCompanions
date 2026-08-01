@@ -2472,3 +2472,9 @@
 - Steps: Routed companions through a custom ground navigation that retains native door and float behavior, but marks a node containing Pointed Dripstone or standing directly above it as `BLOCKED`; bumped version to 3.25.
 - Rationale: Vanilla pathfinding can accept the air feet node directly above an upward stalagmite even though its collision reaches into that space. Blocking that shared node prevents companions from walking onto or getting stuck against dripstone while preserving native route-around behavior.
 - Build/Test: Java 21 `gradlew.bat build --console=plain --no-daemon` passed with existing checks; `git diff --check` passed. Live cave traversal around stalactites, stalagmites, and mixed narrow passages remains required.
+
+## 2026-08-01 (main equipment render toggles)
+- Prompt/task: Add curio-style visibility buttons to the six main companion equipment slots so each slot's render can be hidden independently.
+- Steps: Added a synchronized and persisted six-slot render mask, owner-checked toggle payload, matching 8px inventory buttons, and renderer context filtering for normal and Epic Fight companion rendering; bumped version to 3.27.
+- Rationale: The render mask changes only client-visible item lookup during rendering, so hiding armor or held items does not remove equipment, alter AI, or affect gameplay state.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `git diff --check` passed. Manual inventory clicks, preview/world rendering, relog persistence, and Curios-absent texture smoke remain required.

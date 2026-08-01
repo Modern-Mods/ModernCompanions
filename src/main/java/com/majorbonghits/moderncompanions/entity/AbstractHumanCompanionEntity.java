@@ -218,6 +218,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> MANA_MAX = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> EQUIPMENT_RENDER_MASK = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final int ALL_EQUIPMENT_RENDER_MASK = (1 << 6) - 1;
     private static final ResourceLocation MOD_MORALE_DAMAGE = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "morale_damage");
     private static final ResourceLocation MOD_MORALE_ARMOR = ResourceLocation.fromNamespaceAndPath(
@@ -256,6 +259,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private ItemStack savedOffhand = ItemStack.EMPTY;
     protected final Map<Item, Integer> foodRequirements = new HashMap<>();
     private boolean resourceRequirementResolved;
+    private boolean renderingEquipment;
     protected final Random rand = new Random();
 
     public PatrolGoal patrolGoal;
@@ -408,6 +412,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(STAMINA, STAMINA_MAX_DEFAULT);
         builder.define(MANA_MAX, MANA_MAX_DEFAULT);
         builder.define(MANA, MANA_MAX_DEFAULT);
+        builder.define(EQUIPMENT_RENDER_MASK, ALL_EQUIPMENT_RENDER_MASK);
     }
 
     @Override
@@ -1242,6 +1247,53 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         };
     }
 
+    public static EquipmentSlot equipmentSlotFromIndex(int index) {
+        return switch (index) {
+            case 0 -> EquipmentSlot.HEAD;
+            case 1 -> EquipmentSlot.CHEST;
+            case 2 -> EquipmentSlot.LEGS;
+            case 3 -> EquipmentSlot.FEET;
+            case 4 -> EquipmentSlot.MAINHAND;
+            case 5 -> EquipmentSlot.OFFHAND;
+            default -> null;
+        };
+    }
+
+    public boolean isEquipmentRenderVisible(EquipmentSlot slot) {
+        int index = equipmentRenderIndex(slot);
+        return index < 0 || (this.entityData.get(EQUIPMENT_RENDER_MASK) & (1 << index)) != 0;
+    }
+
+    public void toggleEquipmentRender(EquipmentSlot slot) {
+        int index = equipmentRenderIndex(slot);
+        if (index < 0) return;
+        int bit = 1 << index;
+        this.entityData.set(EQUIPMENT_RENDER_MASK, this.entityData.get(EQUIPMENT_RENDER_MASK) ^ bit);
+    }
+
+    private static int equipmentRenderIndex(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> 0;
+            case CHEST -> 1;
+            case LEGS -> 2;
+            case FEET -> 3;
+            case MAINHAND -> 4;
+            case OFFHAND -> 5;
+            default -> -1;
+        };
+    }
+
+    /** Lets the client renderer hide selected slots without changing live equipment or AI state. */
+    public void setEquipmentRenderContext(boolean rendering) {
+        this.renderingEquipment = rendering;
+    }
+
+    @Override
+    public ItemStack getItemBySlot(EquipmentSlot slot) {
+        return renderingEquipment && !isEquipmentRenderVisible(slot)
+                ? ItemStack.EMPTY : super.getItemBySlot(slot);
+    }
+
     /** Manual slots are locks; automatic equipment continues to use the live entity slot. */
     public void setManualEquipment(EquipmentSlot slot, ItemStack stack) {
         if (!canEquipInSlot(slot, stack)) return;
@@ -2053,6 +2105,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                     // Empty-hand conversations use the dedicated pre-taming dialogue pool.
                     player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(),
                             CompanionData.notTamed[this.random.nextInt(CompanionData.notTamed.length)]));
+                    player.sendSystemMessage(getFoodStatus());
                 } else if (foodRequirements.containsKey(held.getItem())) {
                     Item fedItem = held.getItem();
                     int remaining = foodRequirements.get(fedItem);
@@ -2306,6 +2359,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("StaminaMax", getStaminaMax());
         tag.putInt("Mana", getMana());
         tag.putInt("ManaMax", getManaMax());
+        tag.putInt("EquipmentRenderMask", entityData.get(EQUIPMENT_RENDER_MASK));
     }
 
     @Override
@@ -2319,6 +2373,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.setCustomBio(tag.getString("CustomBio"));
         }
         this.setEating(tag.getBoolean("Eating"));
+        entityData.set(EQUIPMENT_RENDER_MASK, tag.contains("EquipmentRenderMask")
+                ? tag.getInt("EquipmentRenderMask") : ALL_EQUIPMENT_RENDER_MASK);
         this.setAlert(tag.getBoolean("Alert"));
         this.setHunting(tag.getBoolean("Hunting"));
         this.setPatrolling(tag.getBoolean("Patrolling"));

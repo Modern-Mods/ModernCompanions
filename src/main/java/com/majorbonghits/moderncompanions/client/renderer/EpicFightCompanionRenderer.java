@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.client.renderer;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.world.entity.EntityType;
 import yesman.epicfight.api.asset.AssetAccessor;
@@ -16,6 +17,18 @@ public final class EpicFightCompanionRenderer extends PHumanoidRenderer<Abstract
         LivingEntityPatch<AbstractHumanCompanionEntity>, PlayerModel<AbstractHumanCompanionEntity>, CompanionRenderer, HumanoidMesh> {
     public EpicFightCompanionRenderer(EntityRendererProvider.Context context, EntityType<?> entityType) {
         super(Meshes.BIPED, context, entityType);
+    }
+
+    @Override
+    public void render(AbstractHumanCompanionEntity entity, LivingEntityPatch<AbstractHumanCompanionEntity> patch,
+                       CompanionRenderer renderer, MultiBufferSource buffer, PoseStack poseStack, int packedLight,
+                       float partialTicks) {
+        entity.setEquipmentRenderContext(true);
+        try {
+            super.render(entity, patch, renderer, buffer, poseStack, packedLight, partialTicks);
+        } finally {
+            entity.setEquipmentRenderContext(false);
+        }
     }
 
     @Override

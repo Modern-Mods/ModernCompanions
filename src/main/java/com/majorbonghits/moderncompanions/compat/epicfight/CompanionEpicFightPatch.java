@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.compat.epicfight;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.entity.FirearmSpecialist;
 import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
+import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
@@ -53,7 +54,7 @@ final class CompanionEpicFightPatch<T extends AbstractHumanCompanionEntity> exte
     protected void initAI() {
         super.initAI();
         // MobPatch avoids HumanoidMobPatch's held-item animation reset; its goals remain Epic Fight's.
-        if (!isNativeRanged(this.original.getMainHandItem())) {
+        if (!EpicFightCombatRules.keepsNativeCombatAI(isNativeRanged(this.original.getMainHandItem()), this.original instanceof AbstractMageCompanion)) {
             installMeleeGoals(getHoldingItemCapability(InteractionHand.MAIN_HAND), this.original.getMainHandItem());
         }
     }
@@ -62,7 +63,7 @@ final class CompanionEpicFightPatch<T extends AbstractHumanCompanionEntity> exte
     public void updateHeldItem(CapabilityItem fromCap, CapabilityItem toCap, ItemStack from, ItemStack to,
                                InteractionHand hand) {
         if (this.original.level().isClientSide() || hand != InteractionHand.MAIN_HAND
-                || isNativeRanged(to)) return;
+                || EpicFightCombatRules.keepsNativeCombatAI(isNativeRanged(to), this.original instanceof AbstractMageCompanion)) return;
 
         Set<Goal> toRemove = new java.util.HashSet<>();
         selectGoalToRemove(toRemove);

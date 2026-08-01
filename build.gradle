@@ -101,6 +101,12 @@ tasks.register("structureSpawnCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("epicFightCombatAiCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.compat.epicfight.CompanionEpicFightPatchTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("epicFightCapabilityCheck") {
     def weaponTypes = [dagger: "dagger", hammer: "axe", club: "axe", spear: "spear", quarterstaff: "longsword", glaive: "spear"]
     doLast {
@@ -125,6 +131,7 @@ tasks.named("check") {
     dependsOn tasks.named("companionResourcesCheck")
     dependsOn tasks.named("firearmCategoryCheck")
     dependsOn tasks.named("structureSpawnCheck")
+    dependsOn tasks.named("epicFightCombatAiCheck")
 }
 
 tasks.processResources.configure {

@@ -326,3 +326,7 @@
 
 ## 2026-07-31 (structure insertion smoke)
 - Keep structure residents on the bounded code-spawn path; only raise the one-per-tick budget if profiling shows the queue cannot clear during deliberate pregeneration. Test `/place structure` and a Chunky-style pregeneration run with timings enabled before changing it.
+
+## 2026-07-31 (Epic Fight mage AI ownership)
+- Keep the single Epic Fight ownership predicate: mages retain their spell goal while Epic Fight keeps the shared patch and animated renderer. Add a dedicated cast animation only if the current generic spell swing is visibly inadequate.
+- With Epic Fight and Iron's Spellbooks and/or Ars Nouveau installed, verify each mage keeps range, casts light and heavy spells, and still displays Epic Fight idle, movement, hit, and cast animations.

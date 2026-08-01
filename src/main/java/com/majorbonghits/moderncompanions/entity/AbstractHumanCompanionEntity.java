@@ -220,6 +220,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> EQUIPMENT_RENDER_MASK = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<ItemStack> COSMETIC_HEAD = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> COSMETIC_CHEST = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> COSMETIC_LEGS = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<ItemStack> COSMETIC_FEET = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.ITEM_STACK);
     private static final int ALL_EQUIPMENT_RENDER_MASK = (1 << 6) - 1;
     private static final ResourceLocation MOD_MORALE_DAMAGE = ResourceLocation.fromNamespaceAndPath(
             com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID, "morale_damage");
@@ -413,6 +421,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(MANA_MAX, MANA_MAX_DEFAULT);
         builder.define(MANA, MANA_MAX_DEFAULT);
         builder.define(EQUIPMENT_RENDER_MASK, ALL_EQUIPMENT_RENDER_MASK);
+        builder.define(COSMETIC_HEAD, ItemStack.EMPTY);
+        builder.define(COSMETIC_CHEST, ItemStack.EMPTY);
+        builder.define(COSMETIC_LEGS, ItemStack.EMPTY);
+        builder.define(COSMETIC_FEET, ItemStack.EMPTY);
     }
 
     @Override
@@ -1290,8 +1302,50 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     @Override
     public ItemStack getItemBySlot(EquipmentSlot slot) {
-        return renderingEquipment && !isEquipmentRenderVisible(slot)
-                ? ItemStack.EMPTY : super.getItemBySlot(slot);
+        if (renderingEquipment) {
+            if (!isEquipmentRenderVisible(slot)) return ItemStack.EMPTY;
+            ItemStack cosmetic = getCosmeticArmorItem(slot);
+            if (!cosmetic.isEmpty()) return cosmetic;
+        }
+        return super.getItemBySlot(slot);
+    }
+
+    /** Functional equipment view used by inventory slots; cosmetic gear is renderer-only. */
+    public ItemStack getFunctionalEquipmentItem(EquipmentSlot slot) {
+        return super.getItemBySlot(slot);
+    }
+
+    private static EntityDataAccessor<ItemStack> cosmeticAccessor(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> COSMETIC_HEAD;
+            case CHEST -> COSMETIC_CHEST;
+            case LEGS -> COSMETIC_LEGS;
+            case FEET -> COSMETIC_FEET;
+            default -> null;
+        };
+    }
+
+    public ItemStack getCosmeticArmorItem(EquipmentSlot slot) {
+        EntityDataAccessor<ItemStack> accessor = cosmeticAccessor(slot);
+        return accessor == null ? ItemStack.EMPTY : this.entityData.get(accessor);
+    }
+
+    public boolean canEquipCosmeticArmor(EquipmentSlot slot, ItemStack stack) {
+        return stack.isEmpty() || (cosmeticAccessor(slot) != null && stack.canEquip(slot, this));
+    }
+
+    public boolean setCosmeticArmorItem(EquipmentSlot slot, ItemStack stack) {
+        EntityDataAccessor<ItemStack> accessor = cosmeticAccessor(slot);
+        if (accessor == null || !canEquipCosmeticArmor(slot, stack)) return false;
+        this.entityData.set(accessor, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+        return true;
+    }
+
+    public ItemStack removeCosmeticArmor(EquipmentSlot slot, int amount) {
+        ItemStack current = getCosmeticArmorItem(slot);
+        if (current.isEmpty() || amount <= 0) return ItemStack.EMPTY;
+        setCosmeticArmorItem(slot, ItemStack.EMPTY);
+        return current.copyWithCount(Math.min(amount, current.getCount()));
     }
 
     /** Manual slots are locks; automatic equipment continues to use the live entity slot. */
@@ -1353,6 +1407,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             ItemStack fallback = findInventoryWeaponOrTool();
             stack = fallback.isEmpty() ? (isMainHandEquipment(stack) ? stack : ItemStack.EMPTY) : fallback;
         }
+        if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP) && findInventorySlot(stack) >= 0
+                && !(slot == EquipmentSlot.MAINHAND && getJob().isWorker() && isPatrolling()
+                && isJobTool(stack, getJob()))) return;
         int index = dedicatedEquipmentIndex(slot);
         ItemStack manual = super.getItemBySlot(slot);
         if (manuallyEquipped[index] && !manual.isEmpty()) {
@@ -1403,6 +1460,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     /** Shift-click equips one better armor piece, sword, or shield without overriding a manual slot. */
     public boolean equipBetterFromPlayer(ItemStack stack) {
+        if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP)) return false;
         EquipmentSlot slot = equipmentSlotFor(stack);
         if (slot == null || hasDedicatedEquipment(slot)) return false;
         ItemStack current = getItemBySlot(slot);
@@ -2360,6 +2418,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("Mana", getMana());
         tag.putInt("ManaMax", getManaMax());
         tag.putInt("EquipmentRenderMask", entityData.get(EQUIPMENT_RENDER_MASK));
+        SimpleContainer cosmeticArmor = new SimpleContainer(4);
+        cosmeticArmor.setItem(0, getCosmeticArmorItem(EquipmentSlot.HEAD).copy());
+        cosmeticArmor.setItem(1, getCosmeticArmorItem(EquipmentSlot.CHEST).copy());
+        cosmeticArmor.setItem(2, getCosmeticArmorItem(EquipmentSlot.LEGS).copy());
+        cosmeticArmor.setItem(3, getCosmeticArmorItem(EquipmentSlot.FEET).copy());
+        tag.put("CosmeticArmor", cosmeticArmor.createTag(this.registryAccess()));
     }
 
     @Override
@@ -2525,6 +2589,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(STAMINA, bounded(tag.contains("Stamina") ? tag.getInt("Stamina") : getStaminaMax(), getStaminaMax()));
         this.entityData.set(MANA_MAX, Math.max(1, tag.contains("ManaMax") ? tag.getInt("ManaMax") : MANA_MAX_DEFAULT));
         this.entityData.set(MANA, bounded(tag.contains("Mana") ? tag.getInt("Mana") : getManaMax(), getManaMax()));
+        if (tag.contains("CosmeticArmor", 9)) {
+            SimpleContainer cosmeticArmor = new SimpleContainer(4);
+            cosmeticArmor.fromTag(tag.getList("CosmeticArmor", 10), this.registryAccess());
+            setCosmeticArmorItem(EquipmentSlot.HEAD, cosmeticArmor.getItem(0));
+            setCosmeticArmorItem(EquipmentSlot.CHEST, cosmeticArmor.getItem(1));
+            setCosmeticArmorItem(EquipmentSlot.LEGS, cosmeticArmor.getItem(2));
+            setCosmeticArmorItem(EquipmentSlot.FEET, cosmeticArmor.getItem(3));
+        }
         syncPersonalityToData();
         // reset tracking anchors post-load
         this.lastTrackX = this.getX();
@@ -3045,6 +3117,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     public void checkArmor() {
+        if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP)) return;
         ItemStack head = this.getItemBySlot(EquipmentSlot.HEAD);
         ItemStack chest = this.getItemBySlot(EquipmentSlot.CHEST);
         ItemStack legs = this.getItemBySlot(EquipmentSlot.LEGS);

@@ -350,3 +350,27 @@
 ## 2026-08-01 (Epic Fight Curios renderer compatibility)
 - With `epicfight_curios_compat` and `efcurioshead` installed, smoke-test body, head, necklace, belt, hand, and feet Curios on companions while idle, walking, attacking, looking, crouching, and using the inventory preview.
 - Keep the reflection bridge unless the compatibility mod publishes a stable API; replace it with a direct integration only when that API exists and the dependency remains optional.
+
+## 2026-08-01 (companion cosmetic armor popup)
+- Add a dev-world smoke test for opening the popup, placing/removing head/chest/legs/feet armor with left and right clicks, hovering item tooltips, and closing with the green button.
+- Verify cosmetic armor replaces functional armor visually in the world and inventory preview while functional armor attributes and equipment-render toggles remain correct.
+- Repeat persistence checks through relog, Companion Mover capture/redeploy, Resurrection Scroll revival, and an Epic Fight-enabled client.
+## 2026-08-01
+
+- Keep the equipment-panel background and popup visibility state in `CompanionScreen`; this keeps the split texture assets aligned without duplicating menu state.
+
+## 2026-08-01 (automatic gear toggle)
+
+- Add a dev-world check for default-off behavior, manual armor/weapon placement, shift-click fallback to cargo, and job-tool equipping while `autoEquip` is disabled.
+
+## 2026-08-01 (cosmetic slot release routing)
+
+- Add a visual smoke check for removing and replacing each cosmetic armor piece with empty and occupied cursors.
+
+## 2026-08-01 (functional equipment panel refresh)
+
+- Add a smoke check that confirms the cosmetic popup, standard equipment panel, and world model show their respective functional/cosmetic views without requiring an inventory reopen.
+
+## 2026-08-01 (cosmetic armor popup alignment)
+
+- Add a visual dev-world check for empty armor silhouettes, each cosmetic slot independently, and the popup preview against the standard equipment preview.

@@ -44,6 +44,7 @@ public final class ModConfig {
     public static ModConfigSpec.BooleanValue FALL_DAMAGE;
     public static ModConfigSpec.BooleanValue SPAWN_ARMOR;
     public static ModConfigSpec.BooleanValue SPAWN_WEAPON;
+    public static ModConfigSpec.BooleanValue AUTO_EQUIP;
     public static ModConfigSpec.IntValue BASE_HEALTH;
     public static ModConfigSpec.BooleanValue LOW_HEALTH_FOOD;
     public static ModConfigSpec.DoubleValue LOW_HEALTH_FOOD_THRESHOLD;
@@ -125,6 +126,9 @@ public final class ModConfig {
         SPAWN_WEAPON = builder.translation("modern_companions.configuration.companion.spawn_weapon")
                 .comment("Whether companions spawn with a weapon")
                 .define("spawnWeapon", true);
+        AUTO_EQUIP = builder.translation("modern_companions.configuration.companion.auto_equip")
+                .comment("Whether companions automatically equip suitable gear from their inventory")
+                .define("autoEquip", false);
         BASE_HEALTH = builder.translation("modern_companions.configuration.companion.base_health")
                 .comment("Base health for companions; a small random variance is applied on spawn")
                 .defineInRange("baseHealth", 20, 5, Integer.MAX_VALUE);

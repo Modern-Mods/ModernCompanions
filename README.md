@@ -303,6 +303,7 @@ Configurable companion behaviors include:
 - Fall damage.
 - Spawn armor.
 - Spawn weapons.
+- Automatic gear equip from companion inventories (off by default).
 - Low-health food behavior.
 - Low-health food threshold.
 - Stamina enablement and costs.

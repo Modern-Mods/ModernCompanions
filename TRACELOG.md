@@ -2484,3 +2484,38 @@
 - Steps: Inspected both supplied JARs, matched their patched Curios layer registration, and registered that layer reflectively for every Modern Companions Epic Fight renderer when `epicfight_curios_compat` is loaded; bumped version to 3.28.
 - Rationale: The compatibility mod patches only the player renderer. Reusing its own `PatchedCuriosLayerRenderer` keeps slot transforms and the efcurioshead mixin behavior intact without compile-time dependencies or changes when either optional mod is absent.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `git diff --check` passed. Live Epic Fight body rendering with both supplied JARs remains required.
+
+## 2026-08-01 (companion cosmetic armor popup)
+- Prompt/task: Add a cosmetic armor layer to companions with a popup over the existing equipment panel, using the supplied `cosmeticarmor.png` and `newbuttons_small.png` assets.
+- Steps: Added four synced cosmetic armor stacks with entity NBT persistence and equip-slot validation; kept cosmetic armor separate from functional equipment while substituting it only during renderer lookup; added off-screen menu-backed cosmetic slots and a client popup with the requested overlay, companion preview, item rendering, hover button, and close button; bumped version to 3.29.
+- Rationale: Entity-owned data preserves cosmetic armor through normal saves, Companion Mover capture, Resurrection Scroll redeployment, and multiplayer tracking without a player-only cache or renderer mixin. The existing humanoid armor layer and equipment render context provide one visual armor path, so cosmetic gear does not affect armor attributes, AI, durability, or inventory behavior.
+- Build/Test: Java 21 `gradlew.bat compileJava --console=plain --no-daemon` passed; full `check`/`build`, popup interaction, cosmetic armor persistence, custom armor rendering, and Epic Fight runtime smoke remain required.
+## Cosmetic armor equipment-panel visibility fix
+
+- Prompt: Hide the standard companion equipment panel, its slots, toggles, and preview while the cosmetic armor popup is open, then restore them on close.
+- Steps: Added the standalone equipment-panel texture to the closed-screen render path; skipped functional equipment slots, equipment render toggles, and the base companion preview while the popup is active; retained the existing cosmetic popup and close-button path.
+- Rationale: The inventory backgrounds no longer contain the equipment panel, so rendering the panel as a closed-state layer and suppressing the shared equipment render paths removes the underlying UI instead of covering it after the fact.
+
+## Cosmetic armor popup slot and preview alignment
+
+- Prompt: Restore cosmetic armor slot silhouettes, align the popup companion preview with the standard equipment preview, and remove duplicated off-screen cosmetic item renders.
+- Steps: Reused the functional equipment slot background sprites for empty cosmetic slots, matched the popup preview bounds to the standard preview, and excluded menu-backed cosmetic slots from the base container renderer.
+- Rationale: Cosmetic items are drawn by the popup at their requested coordinates; the off-screen menu slots remain interaction-only and never render through the base screen.
+
+## 2026-08-01 (optional automatic companion gear)
+
+- Prompt/task: Put automatic gear equip behind a default-off config toggle exposed in the in-game config screen with localized text.
+- Steps: Added the common `autoEquip` boolean under Companion Settings, blocked inventory-sourced automatic gear and shift-click upgrades when disabled, preserved manual equipment and required job-tool swaps, and added the English label/tooltip and player-facing README note.
+- Rationale: The shared equipment mutation path prevents armor, weapons, and shields from being moved out of cargo without duplicating guards across every companion class, while job-required tools continue to support worker behavior.
+
+## 2026-08-01 (cosmetic slot release routing)
+
+- Prompt/task: Prevent removing cosmetic armor from also interacting with the functional equipment slot underneath it.
+- Steps: Consumed mouse release events inside the cosmetic popup so the inherited container-screen release handler cannot perform a second click against the overlapping functional slot; bumped the version to 3.33.
+- Rationale: The popup and functional equipment slots intentionally share screen coordinates, so both click phases must stay in the cosmetic interaction path.
+
+## 2026-08-01 (functional equipment panel refresh)
+
+- Prompt/task: Prevent cosmetic armor placed in the popup from appearing in the standard equipment slots immediately after confirming the popup.
+- Steps: Added an explicit functional-equipment accessor for menu slots instead of reusing the renderer-aware equipment accessor; bumped the version to 3.34.
+- Rationale: Cosmetic armor belongs to model rendering only. Inventory equipment slots must always read the companion's functional vanilla equipment, regardless of the active preview render context.

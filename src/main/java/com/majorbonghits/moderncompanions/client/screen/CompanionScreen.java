@@ -14,17 +14,22 @@ import com.majorbonghits.moderncompanions.network.OpenCompanionBackpackPayload;
 import com.majorbonghits.moderncompanions.network.SetPatrolRadiusPayload;
 import com.majorbonghits.moderncompanions.network.ToggleFlagPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 
 import java.util.Optional;
@@ -47,7 +52,23 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final int CONTENT_X_OFFSET = 103;
     private static final int BUTTON_X = CONTENT_X_OFFSET + 181;
     private static final int BUTTON_Y = 17;
+    private static final ResourceLocation COSMETIC_ARMOR = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/cosmeticarmor.png");
+    private static final ResourceLocation EQUIPMENT_PANEL = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/equipmentpanel.png");
+    private static final int EQUIPMENT_PANEL_X = 1;
+    private static final int EQUIPMENT_PANEL_Y = 23;
+    private static final int COSMETIC_PANEL_WIDTH = 101;
+    private static final int COSMETIC_PANEL_HEIGHT = 90;
+    private static final int COSMETIC_SLOT_X = 8;
+    private static final int COSMETIC_SLOT_Y = 14;
+    private static final int COSMETIC_CLOSE_X = 79;
+    private static final int COSMETIC_CLOSE_Y = 69;
+    private static final int COSMETIC_BUTTON_X = 78;
+    private static final int COSMETIC_BUTTON_Y = 64;
     private static final int TEXT_COLOR = 0xFF000000;
+
+    private boolean cosmeticArmorOpen;
 
     public CompanionScreen(CompanionMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -65,6 +86,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
                 addRenderableWidget(new EquipmentRenderToggleButton(x, y, equipmentSlot.getEquipmentSlot()));
             }
         }
+        addRenderableWidget(new CosmeticArmorButton(leftPos + COSMETIC_BUTTON_X, topPos + COSMETIC_BUTTON_Y,
+                () -> cosmeticArmorOpen = true));
         int buttonX = leftPos + BUTTON_X;
         int buttonY = topPos + BUTTON_Y;
         addRenderableWidget(new TexturedButton(Component.translatable("button.modern_companions.alert"), buttonX, buttonY,
@@ -143,6 +166,13 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         ResourceLocation background = safeCompanion().filter(companion -> companion.getJob().isWorker()).isPresent()
                 ? JOB_BG : NO_JOB_BG;
         gfx.blit(background, leftPos, topPos, 0, 0, imageWidth, imageHeight, BG_WIDTH, BG_HEIGHT);
+        if (cosmeticArmorOpen) {
+            return;
+        }
+
+        gfx.blit(EQUIPMENT_PANEL, leftPos + EQUIPMENT_PANEL_X, topPos + EQUIPMENT_PANEL_Y,
+                0, 0, COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT,
+                COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT);
         safeCompanion().ifPresent(companion -> {
             CompanionRenderer.setPreviewNameplateSuppressed(true);
             try {
@@ -153,6 +183,15 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
                 CompanionRenderer.setPreviewNameplateSuppressed(false);
             }
         });
+    }
+
+    @Override
+    protected void renderSlot(GuiGraphics gfx, Slot slot) {
+        if (slot instanceof CompanionMenu.CompanionCosmeticArmorSlot
+                || cosmeticArmorOpen && slot instanceof CompanionMenu.CompanionEquipmentSlot) {
+            return;
+        }
+        super.renderSlot(gfx, slot);
     }
 
     @Override
@@ -169,7 +208,123 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
         super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
+        if (cosmeticArmorOpen) {
+            renderCosmeticArmorPopup(gfx, mouseX, mouseY);
+        }
+        if (!cosmeticArmorOpen) {
+            renderTooltip(gfx, mouseX, mouseY);
+        }
+        if (cosmeticArmorOpen) {
+            ItemStack hovered = cosmeticArmorAt(mouseX, mouseY);
+            if (hovered != null && !hovered.isEmpty()) {
+                gfx.renderTooltip(font, hovered, mouseX, mouseY);
+            }
+        }
+    }
+
+    private void renderCosmeticArmorPopup(GuiGraphics gfx, int mouseX, int mouseY) {
+        int x = leftPos + EQUIPMENT_PANEL_X;
+        int y = topPos + EQUIPMENT_PANEL_Y;
+        gfx.blit(COSMETIC_ARMOR, x, y, 0, 0, COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT,
+                COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT);
+
+        safeCompanion().ifPresent(companion -> {
+            CompanionRenderer.setPreviewNameplateSuppressed(true);
+            try {
+                InventoryScreen.renderEntityInInventoryFollowsMouse(gfx, x + 26, y + 17, x + 75, y + 84,
+                        30, 0.0625F, mouseX, mouseY, companion);
+            } finally {
+                CompanionRenderer.setPreviewNameplateSuppressed(false);
+            }
+
+            EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+            for (int i = 0; i < slots.length; i++) {
+                int slotX = x + COSMETIC_SLOT_X;
+                int slotY = y + COSMETIC_SLOT_Y + i * 18;
+                ItemStack stack = companion.getCosmeticArmorItem(slots[i]);
+                if (stack.isEmpty()) {
+                    renderCosmeticSlotBackground(gfx, i, slotX, slotY);
+                } else {
+                    gfx.renderItem(stack, slotX, slotY);
+                    gfx.renderItemDecorations(font, stack, slotX, slotY);
+                }
+            }
+        });
+
+        boolean closeHovered = isInside(mouseX, mouseY, x + COSMETIC_CLOSE_X, y + COSMETIC_CLOSE_Y, 16, 16);
+        gfx.blit(SMALL_BUTTONS, x + COSMETIC_CLOSE_X, y + COSMETIC_CLOSE_Y, 0, closeHovered ? 16 : 32,
+                16, 16, 16, 80);
+    }
+
+    private void renderCosmeticSlotBackground(GuiGraphics gfx, int index, int x, int y) {
+        Pair<ResourceLocation, ResourceLocation> icon = menu.slots.get(index).getNoItemIcon();
+        if (icon != null) {
+            TextureAtlasSprite sprite = minecraft.getTextureAtlas(icon.getFirst()).apply(icon.getSecond());
+            gfx.blit(x, y, 0, 16, 16, sprite);
+        }
+    }
+
+    private ItemStack cosmeticArmorAt(double mouseX, double mouseY) {
+        int x = leftPos + EQUIPMENT_PANEL_X + COSMETIC_SLOT_X;
+        int y = topPos + EQUIPMENT_PANEL_Y + COSMETIC_SLOT_Y;
+        for (int i = 0; i < 4; i++) {
+            if (isInside(mouseX, mouseY, x, y + i * 18, 16, 16)) {
+                int slotIndex = i;
+                return safeCompanion().map(companion -> companion.getCosmeticArmorItem(cosmeticSlot(slotIndex)))
+                        .orElse(ItemStack.EMPTY);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static EquipmentSlot cosmeticSlot(int index) {
+        return switch (index) {
+            case 0 -> EquipmentSlot.HEAD;
+            case 1 -> EquipmentSlot.CHEST;
+            case 2 -> EquipmentSlot.LEGS;
+            case 3 -> EquipmentSlot.FEET;
+            default -> null;
+        };
+    }
+
+    private static boolean isInside(double mouseX, double mouseY, int x, int y, int width, int height) {
+        return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (cosmeticArmorOpen) {
+            int panelX = leftPos + EQUIPMENT_PANEL_X;
+            int panelY = topPos + EQUIPMENT_PANEL_Y;
+            if (isInside(mouseX, mouseY, panelX + COSMETIC_CLOSE_X, panelY + COSMETIC_CLOSE_Y, 16, 16)) {
+                cosmeticArmorOpen = false;
+                return true;
+            }
+            if (isInside(mouseX, mouseY, panelX, panelY, COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT)) {
+                for (int i = 0; i < 4; i++) {
+                    if (isInside(mouseX, mouseY, panelX + COSMETIC_SLOT_X,
+                            panelY + COSMETIC_SLOT_Y + i * 18, 16, 16)) {
+                        if ((button == 0 || button == 1) && minecraft.gameMode != null && minecraft.player != null) {
+                            minecraft.gameMode.handleInventoryMouseClick(menu.containerId,
+                                    menu.getCosmeticArmorSlotIndex(i), button, ClickType.PICKUP, minecraft.player);
+                        }
+                        return true;
+                    }
+                }
+                return true;
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (cosmeticArmorOpen && isInside(mouseX, mouseY,
+                leftPos + EQUIPMENT_PANEL_X, topPos + EQUIPMENT_PANEL_Y,
+                COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT)) {
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     private void renderCompanionInfo(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {
@@ -331,6 +486,20 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
         return Optional.ofNullable(companion);
     }
 
+    private final class CosmeticArmorButton extends Button {
+        CosmeticArmorButton(int x, int y, Runnable onPress) {
+            super(x, y, 16, 16, Component.translatable("button.modern_companions.cosmetic_armor"),
+                    button -> onPress.run(), DEFAULT_NARRATION);
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            if (cosmeticArmorOpen) return;
+            gfx.blit(SMALL_BUTTONS, getX(), getY(), 0, isHoveredOrFocused() ? 16 : 32,
+                    width, height, 16, 80);
+        }
+    }
+
     private class RadiusButton extends Button {
         private final int xTexStart;
         private final ResourceLocation texture;
@@ -360,8 +529,14 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
         @Override
         public void renderWidget(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            if (cosmeticArmorOpen) return;
             int texX = safeCompanion().map(companion -> companion.isEquipmentRenderVisible(slot)).orElse(true) ? 75 : 83;
             gfx.blit(RENDER_TOGGLE, getX(), getY(), texX, 0, 8, 8, 256, 256);
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            return !cosmeticArmorOpen && super.mouseClicked(mouseX, mouseY, button);
         }
     }
 

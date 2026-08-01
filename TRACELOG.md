@@ -2478,3 +2478,9 @@
 - Steps: Added a synchronized and persisted six-slot render mask, owner-checked toggle payload, matching 8px inventory buttons, and renderer context filtering for normal and Epic Fight companion rendering; bumped version to 3.27.
 - Rationale: The render mask changes only client-visible item lookup during rendering, so hiding armor or held items does not remove equipment, alter AI, or affect gameplay state.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `git diff --check` passed. Manual inventory clicks, preview/world rendering, relog persistence, and Curios-absent texture smoke remain required.
+
+## 2026-08-01 (Epic Fight Curios renderer compatibility)
+- Prompt/task: Make equipped Curios render on companions using Epic Fight bodies and animations with optional EpicFight x Curios Compat and efcurioshead support.
+- Steps: Inspected both supplied JARs, matched their patched Curios layer registration, and registered that layer reflectively for every Modern Companions Epic Fight renderer when `epicfight_curios_compat` is loaded; bumped version to 3.28.
+- Rationale: The compatibility mod patches only the player renderer. Reusing its own `PatchedCuriosLayerRenderer` keeps slot transforms and the efcurioshead mixin behavior intact without compile-time dependencies or changes when either optional mod is absent.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `git diff --check` passed. Live Epic Fight body rendering with both supplied JARs remains required.

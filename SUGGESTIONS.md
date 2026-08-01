@@ -346,3 +346,7 @@
 ## 2026-08-01 (main equipment render toggles)
 - Smoke-test each armor slot, main hand, and offhand toggle in the companion inventory, including the 3D preview, world rendering, relog persistence, and an Epic Fight-enabled client.
 - If main equipment visibility must work without Curios installed, move the shared eye icon into a Modern Companions-owned texture instead of depending on Curios' existing 8px sprite.
+
+## 2026-08-01 (Epic Fight Curios renderer compatibility)
+- With `epicfight_curios_compat` and `efcurioshead` installed, smoke-test body, head, necklace, belt, hand, and feet Curios on companions while idle, walking, attacking, looking, crouching, and using the inventory preview.
+- Keep the reflection bridge unless the compatibility mod publishes a stable API; replace it with a direct integration only when that API exists and the dependency remains optional.

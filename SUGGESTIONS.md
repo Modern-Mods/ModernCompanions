@@ -398,3 +398,8 @@
 ## 2026-08-01 (taming voice cue routing)
 
 - Smoke-test a new untamed companion with empty hand, wrong food, desired food, repeated desired food, and rapid clicks; verify one greeting, refusals only for rejected food, confirmation for accepted food, and no overlapping cues.
+
+## 2026-08-03 (companion health persistence)
+
+- Smoke-test a leveled companion through save, relog, and chunk unload/reload while full and while injured; also add/remove a max-health source and confirm full companions refill once while injured companions retain their saved health.
+- If runtime behavior differs, capture the companion's level, max health, current health, and source of the extra max health before and after the reload.

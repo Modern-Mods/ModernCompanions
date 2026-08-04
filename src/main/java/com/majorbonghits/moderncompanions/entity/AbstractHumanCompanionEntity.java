@@ -113,6 +113,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> EXP_LVL = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final String HEALTH_WAS_FULL_TAG = "CompanionWasFullHealth";
     private static final EntityDataAccessor<String> CUSTOM_SKIN_URL = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> CUSTOM_BIO = SynchedEntityData
@@ -2384,6 +2385,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
+        // Max-health modifiers can be rebuilt after vanilla loads Health; preserve whether the
+        // saved value represented a genuinely full companion so a larger max is refilled once.
+        tag.putBoolean(HEALTH_WAS_FULL_TAG, this.getHealth() >= this.getMaxHealth() - 0.01F);
         tag.put("Inventory", this.inventory.createTag(this.registryAccess()));
         byte[] manualSlots = new byte[manuallyEquipped.length];
         for (int i = 0; i < manualSlots.length; i++) manualSlots[i] = (byte) (manuallyEquipped[i] ? 1 : 0);
@@ -2472,6 +2476,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        float savedHealth = this.getHealth();
+        boolean hasFullHealthMarker = tag.contains(HEALTH_WAS_FULL_TAG);
+        boolean wasFullAtSave = hasFullHealthMarker && tag.getBoolean(HEALTH_WAS_FULL_TAG);
         this.setSkinIndex(tag.getInt("skin"));
         if (tag.contains("CustomSkinUrl")) {
             this.setCustomSkinUrl(tag.getString("CustomSkinUrl"));
@@ -2677,7 +2684,19 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         recomputeEquipmentAttributeBonuses();
         applyRpgAttributeModifiers();
-        clampHealthToMax();
+        // Restore the transient level bonus before clamping; otherwise a full leveled companion
+        // is first reduced to base health and only regains max health several ticks later.
+        refreshLevelHealthModifier();
+        if (!hasFullHealthMarker) {
+            // Legacy saves have no full-health marker. The pre-level max is the best signal left
+            // after a transient level modifier was discarded during vanilla attribute loading.
+            wasFullAtSave = savedHealth >= this.getMaxHealth() - (getExpLvl() / 3) - 0.01F;
+        }
+        if (wasFullAtSave) {
+            this.setHealth(this.getMaxHealth());
+        } else {
+            this.setHealth(Math.min(savedHealth, this.getMaxHealth()));
+        }
     }
 
     /* ---------- Spawning ---------- */
@@ -2920,6 +2939,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             this.experienceProgress = 0.0F;
             this.totalExperience = 0;
         }
+        refreshLevelHealthModifier();
         syncExpProgress();
         if (levels > 0 && this.getExpLvl() % 5 == 0 && (float) this.lastLevelUpTime < (float) this.tickCount - 100.0F) {
             this.lastLevelUpTime = this.tickCount;
@@ -2945,17 +2965,17 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         AttributeModifier modifier = new AttributeModifier(id, change, AttributeModifier.Operation.ADD_VALUE);
         if (permanent) {
             attribute.addPermanentModifier(modifier);
-        } else {
+        } else if (change != 0) {
             attribute.addTransientModifier(modifier);
         }
     }
 
     public void checkStats() {
-        if ((int) this.getMaxHealth() != getBaseHealth() + (getExpLvl() / 3)) {
-            if (getExpLvl() / 3 != 0) {
-                modifyMaxHealth(getExpLvl() / 3, "companion level health", false);
-            }
-        }
+        refreshLevelHealthModifier();
+    }
+
+    private void refreshLevelHealthModifier() {
+        modifyMaxHealth(getExpLvl() / 3, "companion level health", false);
     }
 
     private void syncExpProgress() {

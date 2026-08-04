@@ -2565,3 +2565,9 @@
 - Steps: Persisted a one-time untamed greeting flag; kept refusals for wrong or already-completed food, changed accepted required food progress to confirmation, and added a companion-wide voice lock; bumped the version to 3.45.
 - Rationale: The shared voice method now prevents different cue types from overlapping, while the taming branch emits one semantically correct cue for each interaction.
 - Build/Test: Java 21 `gradlew.bat check --console=plain --no-daemon` and `gradlew.bat build --console=plain --no-daemon` passed; wrong-food, desired-food, first-interaction, and rapid-click smoke remain required.
+
+## 2026-08-03 (companion health persistence)
+
+- Prompt/task: Preserve level-based health after relogging and prevent companions that were full before a max-health increase from needing food after chunk reload.
+- Steps: Persisted a full-health marker, restored the transient level-health modifier before load-time health clamping, preserved injured saved health, added legacy-save fallback handling, and refreshed the level modifier immediately when XP levels change; bumped the version to 3.47.
+- Rationale: Vanilla loads current health before all companion max-health modifiers are rebuilt. The shared load boundary now restores max health first and refills only companions that were actually full, covering level, RPG, gear, and other max-health changes without healing injured companions.

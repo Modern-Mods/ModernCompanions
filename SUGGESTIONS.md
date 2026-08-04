@@ -411,3 +411,18 @@
 
 - Smoke-test an Ocelot and each supported pet family beside its Beastmaster and player owner, then repeat with `friendlyFireCompanions` enabled to confirm the documented opt-in behavior.
 - Add a pet-specific avoidance rule only if a future pet needs to retain one particular vanilla avoidance behavior after live testing.
+
+## 2026-08-03 (recruitment food status rendering)
+
+- Smoke-test two untamed companions in sequence and verify vanilla, modded, wrong, and partially fulfilled requirements render item names in chat after the localization change.
+- If a display-only fix does not resolve the issue, capture the interaction log from a build that actually reports that version before changing recruitment logic.
+
+## 2026-08-04 (server-side recruitment item names)
+
+- Smoke-test the new build in an integrated server and confirm the client resolves both vanilla and Farmer’s Delight item descriptions in the recruitment chat.
+- Keep server-side recruitment messages as translatable components; resolving item names with `getString()` before sending can produce empty text because the server has no client language table.
+
+## 2026-08-04 (Epic Fight recruitment chat compatibility)
+
+- Smoke-test 3.52 with Epic Fight enabled, then repeat with Epic Fight disabled, using a second companion and both vanilla and Farmer’s Delight foods.
+- The refreshed 3.51 logs fail during unrelated mod loading before recruitment; retain a clean successful runtime log if the 3.52 chat still renders blank.

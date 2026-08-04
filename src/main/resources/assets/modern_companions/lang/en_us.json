@@ -790,7 +790,7 @@
   "job_status.modern_companions.inventory_full": "Inventory full" ,
   "job_status.modern_companions.mining_blocked": "Mining blocked" ,
   "job_status.modern_companions.no_pickaxe": "No pickaxe" ,
-  "food.modern_companions.item_amount": "%sx %s" ,
+  "food.modern_companions.item_amount": "%sx" ,
   "food.modern_companions.done": "done" ,
   "food.modern_companions.wants": "Wants: %s and %s" ,
   "food.modern_companions.compact.both": "%s, %s" ,

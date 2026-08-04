@@ -1237,15 +1237,17 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private Component foodRequirementComponent(String id, int amount) {
-        return amount > 0
-                ? Component.translatable("food.modern_companions.item_amount", amount, prettyItemComponent(id))
-                : Component.translatable("food.modern_companions.done");
-    }
+        if (amount <= 0)
+            return Component.translatable("food.modern_companions.done");
 
-    private Component prettyItemComponent(String id) {
         ResourceLocation resource = ResourceLocation.tryParse(id);
-        if (resource == null) return Component.literal(id);
-        return BuiltInRegistries.ITEM.get(resource).getDescription();
+        Component itemName = resource == null
+                ? Component.literal(id)
+                : BuiltInRegistries.ITEM.get(resource).getDescription();
+        // Keep item names as client-resolved Components; server-side getString() is empty before locale resolution.
+        return Component.translatable("food.modern_companions.item_amount", amount)
+                .append(Component.literal(" "))
+                .append(itemName);
     }
 
     public SimpleContainer getInventory() {
@@ -2336,14 +2338,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 entityData.set(FOOD2_AMT, count);
             }
         });
-    }
-
-    private String prettyItemName(String id) {
-        ResourceLocation rl = ResourceLocation.tryParse(id);
-        if (rl == null)
-            return id;
-        Item item = BuiltInRegistries.ITEM.get(rl);
-        return item.getDescription().getString();
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.core;
 import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import com.majorbonghits.moderncompanions.entity.CompanionRecruitmentRules;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 
@@ -56,6 +57,7 @@ public final class ModConfig {
     public static ModConfigSpec.EnumValue<CompanionVoiceMode> COMPANION_VOICE_MODE;
     public static ModConfigSpec.IntValue COMPANION_VOICE_VOLUME;
     public static ModConfigSpec.ConfigValue<List<? extends String>> ALL_FOODS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> RECRUITMENT_REQUIREMENTS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> EXTRA_HEAL_CONSUMABLES;
     public static ModConfigSpec.ConfigValue<List<? extends String>> COMMON_RESOURCE_ITEMS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> UNCOMMON_RESOURCE_ITEMS;
@@ -101,6 +103,11 @@ public final class ModConfig {
         } catch (IllegalStateException ex) {
             return value.getDefault();
         }
+    }
+
+    /** Automatic safe modded foods are the compatibility default, not an override of player config. */
+    public static boolean usesAutomaticModdedFoods() {
+        return DEFAULT_ALL_FOODS.equals(safeGet(ALL_FOODS));
     }
 
     public static void register() {
@@ -168,6 +175,10 @@ public final class ModConfig {
         ALL_FOODS = builder.translation("modern_companions.configuration.taming.all_foods")
                 .comment("Configured item registry ids companions may request, choose as favorites, and eat for healing. Safe standard foods from other mods are detected automatically.")
                 .defineList("allFoods", DEFAULT_ALL_FOODS, () -> "minecraft:bread", ModConfig::isKnownItemId);
+        RECRUITMENT_REQUIREMENTS = builder.translation("modern_companions.configuration.taming.recruitment_requirements")
+                .comment("Optional exact recruitment rows: companion registry id|item registry id|count. Add multiple rows for multiple required items; an omitted companion keeps the random default.")
+                .defineListAllowEmpty("recruitmentRequirements", List.<String>of(),
+                        () -> "modern_companions:archer|minecraft:bread|3", ModConfig::isRecruitmentRequirement);
         EXTRA_HEAL_CONSUMABLES = builder.translation("modern_companions.configuration.taming.extra_heal_consumables")
                 .comment("Additional item registry ids companions may consume for healing but never request while taming.")
                 .defineListAllowEmpty("extraHealConsumables", DEFAULT_EXTRA_HEAL_CONSUMABLES, () -> "minecraft:golden_apple", ModConfig::isKnownItemId);
@@ -310,5 +321,15 @@ public final class ModConfig {
         if (!(value instanceof String raw)) return false;
         ResourceLocation id = ResourceLocation.tryParse(raw);
         return id != null && BuiltInRegistries.ITEM.containsKey(id);
+    }
+
+    /** Validate both registry IDs while keeping the list editor usable for modded content. */
+    private static boolean isRecruitmentRequirement(Object value) {
+        if (!(value instanceof String raw)) return false;
+        var parsed = CompanionRecruitmentRules.parseEntry(raw);
+        if (parsed.isEmpty()) return false;
+        var rule = parsed.get();
+        return ("*".equals(rule.companionId()) || isKnownEntityId(rule.companionId()))
+                && isKnownItemId(rule.itemId());
     }
 }

@@ -360,7 +360,8 @@ Lists use registry IDs. Item lists accept IDs such as `minecraft:bread`; entity 
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `allFoods` | See defaults below | Configured foods companions may request, select as favorites, and eat for healing. Safe standard foods from other mods are included automatically. |
+| `allFoods` | See defaults below | Configured foods companions may request, select as favorites, and eat for healing. Safe standard foods from other mods are included automatically until this list is changed; then this list is authoritative. |
+| `recruitmentRequirements` | Empty | Optional exact rows formatted `companion_id\|item_id\|count`; add multiple rows for multiple required items. `*` applies to every companion without an exact row. |
 | `extraHealConsumables` | See defaults below | Healing items companions may eat but never request for taming; may be empty. |
 | `commonResourceItems` | See defaults below | Common taming-resource pool. |
 | `uncommonResourceItems` | See defaults below | Uncommon taming-resource pool. |
@@ -374,6 +375,7 @@ Default lists:
 
 ```text
 allFoods = minecraft:cookie, minecraft:bread, minecraft:melon_slice, minecraft:apple, minecraft:sweet_berries, minecraft:carrot, minecraft:baked_potato, minecraft:cooked_salmon, minecraft:cooked_cod, minecraft:cooked_mutton, minecraft:cooked_porkchop, minecraft:cooked_beef, minecraft:cooked_chicken, minecraft:pumpkin_pie, minecraft:glow_berries, minecraft:potato, minecraft:beetroot, minecraft:dried_kelp, minecraft:cooked_rabbit
+recruitmentRequirements = "modern_companions:archer|minecraft:bread|3", "modern_companions:archer|minecraft:iron_ingot|2"
 extraHealConsumables = minecraft:golden_apple, minecraft:enchanted_golden_apple, minecraft:golden_carrot, minecraft:honey_bottle, minecraft:mushroom_stew, minecraft:beetroot_soup, minecraft:rabbit_stew
 commonResourceItems = minecraft:coal, minecraft:charcoal, minecraft:copper_ingot, minecraft:iron_ingot, minecraft:redstone, minecraft:lapis_lazuli, minecraft:flint, minecraft:clay_ball, minecraft:string, minecraft:leather, minecraft:bone, minecraft:feather
 uncommonResourceItems = minecraft:gold_ingot, minecraft:amethyst_shard, minecraft:slime_ball, minecraft:gunpowder, minecraft:glowstone_dust, minecraft:prismarine_shard, minecraft:prismarine_crystals, minecraft:ender_pearl, minecraft:obsidian

@@ -89,6 +89,12 @@ tasks.register("companionResourcesCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("recruitmentRulesCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.CompanionRecruitmentRulesTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("firearmCategoryCheck", JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.majorbonghits.moderncompanions.compat.firearms.FirearmSupportTest"
@@ -147,6 +153,7 @@ tasks.named("check") {
 tasks.named("check") {
     dependsOn tasks.named("workerSafetyCheck")
     dependsOn tasks.named("companionResourcesCheck")
+    dependsOn tasks.named("recruitmentRulesCheck")
     dependsOn tasks.named("alertTargetCheck")
     dependsOn tasks.named("alertConfigMigrationCheck")
     dependsOn tasks.named("followLeashCheck")

@@ -607,6 +607,24 @@ public class CompanionData {
         return getRandomFoodRequirement(random, false, false);
     }
 
+    /** Resolve an exact config override; absent entries retain the shipped random behavior. */
+    public static Optional<Map<Item, Integer>> getConfiguredRecruitmentRequirements(ResourceLocation companionId) {
+        Map<String, Map<String, Integer>> configured = CompanionRecruitmentRules.parse(
+                ModConfig.safeGet(ModConfig.RECRUITMENT_REQUIREMENTS));
+        Map<String, Integer> ids = configured.get(companionId.toString());
+        if (ids == null) ids = configured.get("*");
+        if (ids == null) return Optional.empty();
+
+        Map<Item, Integer> resolved = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> entry : ids.entrySet()) {
+            ResourceLocation itemId = ResourceLocation.tryParse(entry.getKey());
+            if (itemId == null) continue;
+            Item item = BuiltInRegistries.ITEM.get(itemId);
+            if (item != Items.AIR) resolved.put(item, entry.getValue());
+        }
+        return resolved.isEmpty() ? Optional.empty() : Optional.of(resolved);
+    }
+
     public static Map<Item, Integer> getRandomFoodRequirement(Random random, Player player) {
         updateResourceProgress(player);
         var data = player.getPersistentData();
@@ -614,7 +632,7 @@ public class CompanionData {
     }
 
     private static Map<Item, Integer> getRandomFoodRequirement(Random random, boolean reachedNether, boolean reachedOcean) {
-        Map<Item, Integer> food = new HashMap<>();
+        Map<Item, Integer> food = new LinkedHashMap<>();
         Item foodItem = pickAllowedFood(random);
         Item resourceItem = pickResource(random, reachedNether, reachedOcean);
         // 2–5 food, 2–6 resource
@@ -629,7 +647,7 @@ public class CompanionData {
         Item item = stack.getItem();
         if (DISALLOWED_FOODS.contains(item)) return false;
         return isConfiguredItem(item, ModConfig.safeGet(ModConfig.ALL_FOODS))
-                || isAutomaticModdedFood(stack)
+                || (ModConfig.usesAutomaticModdedFoods() && isAutomaticModdedFood(stack))
                 || isConfiguredItem(item, ModConfig.safeGet(ModConfig.EXTRA_HEAL_CONSUMABLES))
                 || isHealingPotion(stack);
     }
@@ -662,7 +680,7 @@ public class CompanionData {
         return hasHealingEffect;
     }
 
-    /** Chooses configured foods plus safe standard foods registered by other mods. */
+    /** Chooses configured foods, expanding to safe standard foods only for the untouched default list. */
     public static Item pickConfiguredFood(Random random) {
         return pickConfiguredFood(random::nextInt);
     }
@@ -675,10 +693,12 @@ public class CompanionData {
     private static Item pickConfiguredFood(IntUnaryOperator randomIndex) {
         Set<Item> candidates = new LinkedHashSet<>();
         addConfiguredFoodCandidates(candidates);
-        // ponytail: scan the small item registry per assignment; cache only if large packs show a spawn-time cost.
-        for (Item item : BuiltInRegistries.ITEM) {
-            if (isAutomaticModdedFood(item.getDefaultInstance())) {
-                candidates.add(item);
+        if (ModConfig.usesAutomaticModdedFoods()) {
+            // ponytail: scan the small item registry per assignment; cache only if large packs show a spawn-time cost.
+            for (Item item : BuiltInRegistries.ITEM) {
+                if (isAutomaticModdedFood(item.getDefaultInstance())) {
+                    candidates.add(item);
+                }
             }
         }
         if (candidates.isEmpty()) return Items.BREAD;

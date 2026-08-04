@@ -18,6 +18,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.protocol.game.ClientboundAnimatePacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -168,6 +169,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> FOOD2_AMT = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> RECRUITMENT_REQUIREMENTS = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Float> EXP_PROGRESS = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> SPECIALIST = SynchedEntityData
@@ -269,7 +272,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     // Vanilla LivingEntity equipment is the single source of truth; only manual locks need extra state.
     private final boolean[] manuallyEquipped = new boolean[6];
     private ItemStack savedOffhand = ItemStack.EMPTY;
-    protected final Map<Item, Integer> foodRequirements = new HashMap<>();
+    protected final Map<Item, Integer> foodRequirements = new LinkedHashMap<>();
     private boolean resourceRequirementResolved;
     private boolean untamedGreetingPlayed;
     private boolean renderingEquipment;
@@ -394,6 +397,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(FAVORITE_FOOD, "");
         builder.define(FOOD1_AMT, 0);
         builder.define(FOOD2_AMT, 0);
+        builder.define(RECRUITMENT_REQUIREMENTS, "");
         builder.define(EXP_PROGRESS, 0.0F);
         builder.define(STR, 4);
         builder.define(DEX, 4);
@@ -1192,9 +1196,19 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     public Component getFoodStatus() {
-        Component f1 = foodRequirementComponent(entityData.get(FOOD1), entityData.get(FOOD1_AMT));
-        Component f2 = foodRequirementComponent(entityData.get(FOOD2), entityData.get(FOOD2_AMT));
-        return Component.translatable("food.modern_companions.wants", f1, f2);
+        List<Component> requirements = foodRequirements.entrySet().stream()
+                .map(entry -> foodRequirementComponent(
+                        BuiltInRegistries.ITEM.getKey(entry.getKey()).toString(), entry.getValue()))
+                .toList();
+        if (requirements.isEmpty()) return Component.translatable("food.modern_companions.none");
+        if (requirements.size() == 1) {
+            return Component.translatable("food.modern_companions.wants_single", requirements.get(0));
+        }
+        MutableComponent result = Component.translatable("food.modern_companions.wants", requirements.get(0), requirements.get(1));
+        for (int i = 2; i < requirements.size(); i++) {
+            result.append(Component.literal(", ")).append(requirements.get(i));
+        }
+        return result;
     }
 
     public Component getFoodStatusForGui() {
@@ -1225,15 +1239,46 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     public Component getWantedFoodsCompact() {
-        int amt1 = entityData.get(FOOD1_AMT);
-        int amt2 = entityData.get(FOOD2_AMT);
-        String id1 = entityData.get(FOOD1);
-        String id2 = entityData.get(FOOD2);
-        Component first = foodRequirementComponent(id1, amt1);
-        Component second = foodRequirementComponent(id2, amt2);
-        if (amt1 <= 0 && amt2 <= 0) return Component.empty();
-        if (amt1 > 0 && amt2 > 0) return Component.translatable("food.modern_companions.compact.both", first, second);
-        return amt1 > 0 ? first : second;
+        List<Component> active = syncedFoodRequirements().entrySet().stream()
+                .filter(entry -> entry.getValue() > 0)
+                .map(entry -> foodRequirementComponent(entry.getKey(), entry.getValue()))
+                .toList();
+        if (active.isEmpty()) return Component.empty();
+        if (active.size() == 2) {
+            return Component.translatable("food.modern_companions.compact.both", active.get(0), active.get(1));
+        }
+        MutableComponent result = Component.empty();
+        for (int i = 0; i < active.size(); i++) {
+            if (i > 0) result.append(Component.literal(", "));
+            result.append(active.get(i));
+        }
+        return result;
+    }
+
+    /** Read the arbitrary-length synced list, with a fallback for pre-3.53 entity data. */
+    private Map<String, Integer> syncedFoodRequirements() {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        String serialized = entityData.get(RECRUITMENT_REQUIREMENTS);
+        if (serialized != null && !serialized.isBlank()) {
+            for (String raw : serialized.split(";")) {
+                String[] parts = raw.split("=", 2);
+                if (parts.length != 2) continue;
+                try {
+                    result.put(parts[0], Integer.parseInt(parts[1]));
+                } catch (NumberFormatException ignored) {
+                    // Ignore malformed client data and keep rendering valid requirements.
+                }
+            }
+        }
+        if (result.isEmpty()) {
+            addSyncedRequirement(result, entityData.get(FOOD1), entityData.get(FOOD1_AMT));
+            addSyncedRequirement(result, entityData.get(FOOD2), entityData.get(FOOD2_AMT));
+        }
+        return result;
+    }
+
+    private void addSyncedRequirement(Map<String, Integer> result, String id, int amount) {
+        if (id != null && !id.isBlank()) result.put(id, amount);
     }
 
     private Component foodRequirementComponent(String id, int amount) {
@@ -2314,30 +2359,66 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private void assignFoodRequirements(Player player) {
-        Map<Item, Integer> newReq = player == null
+        Optional<Map<Item, Integer>> configured = CompanionData.getConfiguredRecruitmentRequirements(
+                BuiltInRegistries.ENTITY_TYPE.getKey(this.getType()));
+        Map<Item, Integer> newReq = configured.orElseGet(() -> player == null
                 ? CompanionData.getRandomFoodRequirement(rand)
-                : CompanionData.getRandomFoodRequirement(rand, player);
+                : CompanionData.getRandomFoodRequirement(rand, player));
         foodRequirements.clear();
         foodRequirements.putAll(newReq);
-        resourceRequirementResolved = player != null;
-        var entries = foodRequirements.entrySet().stream().toList();
-        this.entityData.set(FOOD1, BuiltInRegistries.ITEM.getKey(entries.get(0).getKey()).toString());
-        this.entityData.set(FOOD1_AMT, entries.get(0).getValue());
-        this.entityData.set(FOOD2, BuiltInRegistries.ITEM.getKey(entries.get(1).getKey()).toString());
-        this.entityData.set(FOOD2_AMT, entries.get(1).getValue());
+        resourceRequirementResolved = configured.isPresent() || player != null;
+        syncFoodRequirements();
     }
 
     private void syncFoodRequirements() {
-        if (foodRequirements.isEmpty())
+        String serialized = foodRequirements.entrySet().stream()
+                .map(entry -> BuiltInRegistries.ITEM.getKey(entry.getKey()) + "=" + entry.getValue())
+                .collect(java.util.stream.Collectors.joining(";"));
+        entityData.set(RECRUITMENT_REQUIREMENTS, serialized);
+        List<Map.Entry<Item, Integer>> entries = foodRequirements.entrySet().stream().toList();
+        setLegacyRequirement(FOOD1, FOOD1_AMT, entries, 0);
+        setLegacyRequirement(FOOD2, FOOD2_AMT, entries, 1);
+    }
+
+    private void setLegacyRequirement(EntityDataAccessor<String> idAccessor, EntityDataAccessor<Integer> amountAccessor,
+                                      List<Map.Entry<Item, Integer>> entries, int index) {
+        if (index >= entries.size()) {
+            entityData.set(idAccessor, "");
+            entityData.set(amountAccessor, 0);
             return;
-        foodRequirements.forEach((item, count) -> {
-            String id = BuiltInRegistries.ITEM.getKey(item).toString();
-            if (id.equals(entityData.get(FOOD1))) {
-                entityData.set(FOOD1_AMT, count);
-            } else if (id.equals(entityData.get(FOOD2))) {
-                entityData.set(FOOD2_AMT, count);
+        }
+        Map.Entry<Item, Integer> entry = entries.get(index);
+        entityData.set(idAccessor, BuiltInRegistries.ITEM.getKey(entry.getKey()).toString());
+        entityData.set(amountAccessor, entry.getValue());
+    }
+
+    private void loadSerializedFoodRequirements(String serialized) {
+        if (serialized == null || serialized.isBlank()) return;
+        for (String raw : serialized.split(";")) {
+            String[] parts = raw.split("=", 2);
+            if (parts.length != 2) continue;
+            ResourceLocation id = ResourceLocation.tryParse(parts[0]);
+            if (id == null) continue;
+            try {
+                int amount = Integer.parseInt(parts[1]);
+                Item item = BuiltInRegistries.ITEM.get(id);
+                if (item != Items.AIR && amount >= 0) foodRequirements.put(item, amount);
+            } catch (NumberFormatException ignored) {
+                // Ignore malformed saved data instead of preventing the companion from loading.
             }
-        });
+        }
+    }
+
+    private void loadLegacyFoodRequirements() {
+        loadLegacyFoodRequirement(entityData.get(FOOD1), entityData.get(FOOD1_AMT));
+        loadLegacyFoodRequirement(entityData.get(FOOD2), entityData.get(FOOD2_AMT));
+    }
+
+    private void loadLegacyFoodRequirement(String idText, int amount) {
+        ResourceLocation id = ResourceLocation.tryParse(idText);
+        if (id == null) return;
+        Item item = BuiltInRegistries.ITEM.get(id);
+        if (item != Items.AIR && amount >= 0) foodRequirements.put(item, amount);
     }
 
     @Override
@@ -2421,6 +2502,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putString("FavoriteFood", entityData.get(FAVORITE_FOOD));
         tag.putInt("food1_amt", entityData.get(FOOD1_AMT));
         tag.putInt("food2_amt", entityData.get(FOOD2_AMT));
+        tag.putString("RecruitmentRequirements", entityData.get(RECRUITMENT_REQUIREMENTS));
         tag.putBoolean("ResourceRequirementResolved", resourceRequirementResolved);
         tag.putInt("Strength", getBaseStrength());
         tag.putInt("Dexterity", getBaseDexterity());
@@ -2527,13 +2609,18 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         entityData.set(FAVORITE_FOOD, tag.getString("FavoriteFood"));
         entityData.set(FOOD1_AMT, tag.getInt("food1_amt"));
         entityData.set(FOOD2_AMT, tag.getInt("food2_amt"));
+        boolean hasSerializedRequirements = tag.contains("RecruitmentRequirements");
+        String serializedRequirements = hasSerializedRequirements ? tag.getString("RecruitmentRequirements") : "";
+        entityData.set(RECRUITMENT_REQUIREMENTS, serializedRequirements);
         resourceRequirementResolved = tag.contains("ResourceRequirementResolved")
                 ? tag.getBoolean("ResourceRequirementResolved") : this.isTame();
         foodRequirements.clear();
-        ResourceLocation id1 = ResourceLocation.parse(entityData.get(FOOD1));
-        ResourceLocation id2 = ResourceLocation.parse(entityData.get(FOOD2));
-        foodRequirements.put(BuiltInRegistries.ITEM.get(id1), entityData.get(FOOD1_AMT));
-        foodRequirements.put(BuiltInRegistries.ITEM.get(id2), entityData.get(FOOD2_AMT));
+        if (hasSerializedRequirements) {
+            loadSerializedFoodRequirements(serializedRequirements);
+        } else {
+            loadLegacyFoodRequirements();
+            syncFoodRequirements();
+        }
         if (tag.getInt("baseHealth") == 0) {
             this.setBaseHealth(ModConfig.safeGet(ModConfig.BASE_HEALTH));
         } else {

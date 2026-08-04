@@ -2583,3 +2583,26 @@
 - Prompt/task: Stop Beastmaster pets such as Ocelots from fleeing players and apply companion friendly-fire protection to those pets and companion summons.
 - Steps: Removed inherited pet avoidance goals while retaining the Beastmaster follow goal; recognized the Beastmaster owner tag in shared companion target/damage gates; allowed the existing `friendlyFireCompanions` setting to control tagged-pet damage; bumped version to 3.49 and updated the config documentation.
 - Rationale: Vanilla avoidance is the shared cause of pet flight, and the owner tag is the only ownership path available to non-tamable pets. Reusing the existing target and damage protection boundaries covers melee, ranged, splash, and upstream summon damage without per-companion patches.
+## 2026-08-04 (data-driven recruitment requirements)
+- Prompt/task: Let modpack developers and players fully dictate what each companion requires for taming/recruitment instead of defining requirements only in code.
+- Steps:
+  - Added editable common-config rows in `companion_id|item_id|count` form, including `*` wildcard defaults and multiple rows per companion.
+  - Routed exact rows through the shared recruitment assignment path; companions without an override retain the existing random food/resource behavior.
+  - Replaced the two-slot sync/persistence path with an arbitrary-length serialized requirement list while retaining legacy fields for old saves and UI compatibility.
+  - Added a dependency-free parser check, localized the config field, documented the format, and bumped version to 3.53.
+- Rationale: The common interaction method is the single recruitment boundary, so config resolution there covers every companion and avoids per-class requirement code while still allowing modded registry IDs.
+## 2026-08-04 (authoritative custom food lists)
+- Prompt/task: Preserve automatic safe-food behavior by default, but let a player or modpack developer make `allFoods` the complete acceptable-food list by changing it.
+- Steps:
+  - Detect whether `allFoods` still matches the shipped default list.
+  - Keep automatic safe modded foods in the default pool; disable that expansion once `allFoods` is customized for food checks, favorites, and random recruitment.
+  - Clarified the config tooltip and README, bumped version to 3.54, and recorded the required dev-world smoke coverage.
+- Rationale: The existing shared food predicate and candidate pool cover healing, favorites, and recruitment, so one default-vs-custom gate keeps normal behavior while making an edited list authoritative.
+## 2026-08-04 (complete configuration explanation)
+- Prompt/task: Provide a complete, detailed breakdown of every config TOML option and how to use it in `config/Explanation.md`.
+- Steps:
+  - Audited the current common config declarations and their runtime consumers.
+  - Documented defaults, accepted ranges, registry-ID/list formats, section behavior, precedence rules, progression gates, experimental Jobs settings, and practical TOML examples.
+  - Called out `averageHouseSeparation` as schema-defined but not currently consumed by the active runtime placement path.
+  - Bumped the project version to 3.55 and added the documentation maintenance follow-up.
+- Rationale: Keep the player/modpack-facing reference grounded in shipped behavior, including known configuration boundaries and options that are currently dormant.

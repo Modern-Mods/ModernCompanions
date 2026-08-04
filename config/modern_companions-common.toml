@@ -1,0 +1,138 @@
+[worldgen]
+averageHouseSeparation = 20
+
+[companion]
+friendlyFireCompanions = false
+friendlyFirePlayer = true
+fallDamage = true
+spawnArmor = true
+spawnWeapon = true
+autoEquip = false
+teleportLeash = false
+baseHealth = 20
+lowHealthFood = true
+lowHealthFoodThreshold = 0.5
+staminaEnabled = true
+sprintStaminaCost = 1
+meleeStaminaCost = 8
+creeperWarning = true
+voiceMode = "FULL"
+voiceVolume = 80
+
+[taming]
+# Safe modded foods are included automatically while this remains unchanged.
+# Once edited, this list becomes authoritative.
+allFoods = [
+  "minecraft:cookie",
+  "minecraft:bread",
+  "minecraft:melon_slice",
+  "minecraft:apple",
+  "minecraft:sweet_berries",
+  "minecraft:carrot",
+  "minecraft:baked_potato",
+  "minecraft:cooked_salmon",
+  "minecraft:cooked_cod",
+  "minecraft:cooked_mutton",
+  "minecraft:cooked_porkchop",
+  "minecraft:cooked_beef",
+  "minecraft:cooked_chicken",
+  "minecraft:pumpkin_pie",
+  "minecraft:glow_berries",
+  "minecraft:potato",
+  "minecraft:beetroot",
+  "minecraft:dried_kelp",
+  "minecraft:cooked_rabbit"
+]
+
+# Empty keeps the normal random recruitment behavior.
+# Format: "companion_id|item_id|count"
+recruitmentRequirements = []
+
+extraHealConsumables = [
+  "minecraft:golden_apple",
+  "minecraft:enchanted_golden_apple",
+  "minecraft:golden_carrot",
+  "minecraft:honey_bottle",
+  "minecraft:mushroom_stew",
+  "minecraft:beetroot_soup",
+  "minecraft:rabbit_stew"
+]
+
+commonResourceItems = [
+  "minecraft:coal",
+  "minecraft:charcoal",
+  "minecraft:copper_ingot",
+  "minecraft:iron_ingot",
+  "minecraft:redstone",
+  "minecraft:lapis_lazuli",
+  "minecraft:flint",
+  "minecraft:clay_ball",
+  "minecraft:string",
+  "minecraft:leather",
+  "minecraft:bone",
+  "minecraft:feather"
+]
+
+uncommonResourceItems = [
+  "minecraft:gold_ingot",
+  "minecraft:amethyst_shard",
+  "minecraft:slime_ball",
+  "minecraft:gunpowder",
+  "minecraft:glowstone_dust",
+  "minecraft:prismarine_shard",
+  "minecraft:prismarine_crystals",
+  "minecraft:ender_pearl",
+  "minecraft:obsidian"
+]
+
+rareResourceItems = [
+  "minecraft:diamond",
+  "minecraft:emerald",
+  "minecraft:blaze_rod",
+  "minecraft:magma_cream"
+]
+
+[hunting]
+huntMobs = [
+  "minecraft:chicken",
+  "minecraft:cow",
+  "minecraft:pig",
+  "minecraft:rabbit",
+  "minecraft:sheep",
+  "minecraft:goat"
+]
+
+[alert]
+excludedMobs = ["minecraft:creeper"]
+creeperDefaultMigrated = false
+
+[personality]
+traitsEnabled = true
+secondaryTraitChance = 40
+bondEnabled = true
+moraleEnabled = true
+bondTickInterval = 1200
+bondTimeXp = 5
+bondFeedXp = 15
+bondResurrectXp = 80
+moraleFeedDelta = 0.05
+moraleNearDeathDelta = -0.07
+moraleResurrectDelta = -0.1
+moraleBondLevelDelta = 0.05
+luckyExtraDropChance = 0.05
+
+[jobs]
+lumberjackEnabled = true
+lumberjackRadius = 10
+hunterEnabled = true
+hunterRadius = 20
+minerEnabled = true
+minerRadius = 8
+minerAllowBlocks = []
+minerDenyBlocks = ["minecraft:chest", "minecraft:spawner"]
+fisherEnabled = true
+fisherRadius = 10
+chefEnabled = true
+chefRadius = 8
+assignedChestsChunkload = false
+showJobsButton = false

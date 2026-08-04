@@ -1,3 +1,6 @@
+- 2026-08-04: Keep config/Explanation.md synchronized with every new ModConfig option; add a runtime smoke step whenever a documented option changes behavior or UI visibility.
+- 2026-08-04: Add a dev-world smoke check proving untouched `allFoods` discovers safe modded foods while a customized `allFoods` list excludes unlisted modded foods from healing, favorites, and random recruitment.
+- 2026-08-04: Add a dev-world smoke check for a wildcard recruitment rule, a per-companion override, three or more required items, save/reload, and an omitted companion retaining the random default.
 - 2026-08-03: Add a dev-world smoke check with one safe standard food from another mod, one modded food with harmful effects, a configured custom consumable, save/reload of a modded recruitment request, and confirmation that vanilla foods still appear.
 - 2026-08-01: Add a dev-world dimension-transition smoke check for a nearby Follow companion, a distant Follow companion, Patrol, Guard, ordered-sit, and active-job companions; verify only the eligible nearby Follow companion appears beside the player in the target dimension.
 - 2026-08-01: Keep taming-resource and manual-Hunt lists as registry-ID config entries; add tag selectors only if pack authors need broad dynamic item or entity groups.

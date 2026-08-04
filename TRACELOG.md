@@ -2571,3 +2571,10 @@
 - Prompt/task: Preserve level-based health after relogging and prevent companions that were full before a max-health increase from needing food after chunk reload.
 - Steps: Persisted a full-health marker, restored the transient level-health modifier before load-time health clamping, preserved injured saved health, added legacy-save fallback handling, and refreshed the level modifier immediately when XP levels change; bumped the version to 3.47.
 - Rationale: Vanilla loads current health before all companion max-health modifiers are rebuilt. The shared load boundary now restores max health first and refills only companions that were actually full, covering level, RPG, gear, and other max-health changes without healing injured companions.
+
+## 2026-08-03 (survival weapon enchanting)
+
+- Prompt/task: Make Modern Companions weapons enchantable in survival.
+- Steps: Added every wooden, stone, iron, golden, diamond, netherite, and optional bronze dagger, hammer, club, spear, quarterstaff, and glaive to Minecraft's `swords` item tag; bumped the version to 3.48 and documented the player-facing behavior.
+- Rationale: Minecraft 1.21's combat, durability, repair, and enchanting-table weapon enchantments resolve through the `minecraft:swords` tag, so one data tag covers all dynamically registered weapon variants without custom enchantment code.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon`, JSON tag coverage, packaged-JAR tag inspection, and `git diff --check` passed. Live enchanting-table and anvil smoke remain required.

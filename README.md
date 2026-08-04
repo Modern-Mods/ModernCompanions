@@ -249,7 +249,7 @@ Name, Age, and Bio updates are owner-checked and persistent. Skin editing uses H
 
 ### Weapons
 
-Modern Companions adds vanilla-style recipes for every custom weapon and material combination. Bronze variants appear when a compatible bronze mod is installed.
+Modern Companions adds vanilla-style recipes for every custom weapon and material combination. Bronze variants appear when a compatible bronze mod is installed. All custom weapons accept the standard sword-compatible combat, durability, and repair enchantments in survival.
 
 ![Weapons](https://i.imgur.com/vJeU7FG.png)
 

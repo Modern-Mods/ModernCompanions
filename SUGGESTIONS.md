@@ -403,3 +403,7 @@
 
 - Smoke-test a leveled companion through save, relog, and chunk unload/reload while full and while injured; also add/remove a max-health source and confirm full companions refill once while injured companions retain their saved health.
 - If runtime behavior differs, capture the companion's level, max health, current health, and source of the extra max health before and after the reload.
+
+## 2026-08-03 (survival weapon enchanting)
+
+- Smoke-test one representative dagger, hammer, club, spear, quarterstaff, and glaive in an enchanting table and anvil with Sharpness, Unbreaking, and Mending; repeat with bronze loaded and absent.

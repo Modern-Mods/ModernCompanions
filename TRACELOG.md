@@ -1,3 +1,12 @@
+## 2026-08-03 (cross-mod companion food)
+- Prompt/task: Allow companions to eat food from other mods and sometimes require those foods for recruitment while retaining vanilla foods in the choice pool.
+- Steps:
+  - Reused the existing `DataComponents.FOOD` healing path and added automatic recognition for safe standard foods registered outside the `minecraft` namespace.
+  - Kept configured vanilla foods, explicit configured exceptions, the existing harmful-food blacklist, exact item-based taming progression, and registry-ID persistence.
+  - Updated config/player documentation and bumped the project version to 3.46.
+- Rationale: The shared food predicate and food-choice pool are the common boundaries for owner feeding, inventory healing, favorites, and untamed recruitment, so one change covers every consumer without per-mod compatibility code.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; installed-mod gameplay smoke testing remains required.
+
 ## 2026-08-01 (dimension-follow companion transfer)
 - Prompt/task: When a companion is near its player during a dimension traversal, transfer it only when actively set to Follow; leave Patrol, Guard, sit/stand-still, and job companions behind.
 - Steps:

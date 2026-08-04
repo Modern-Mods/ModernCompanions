@@ -166,7 +166,7 @@ public final class ModConfig {
 
         builder.translation("modern_companions.configuration.taming").push("taming");
         ALL_FOODS = builder.translation("modern_companions.configuration.taming.all_foods")
-                .comment("Item registry ids companions may request, choose as favorites, and eat for healing.")
+                .comment("Configured item registry ids companions may request, choose as favorites, and eat for healing. Safe standard foods from other mods are detected automatically.")
                 .defineList("allFoods", DEFAULT_ALL_FOODS, () -> "minecraft:bread", ModConfig::isKnownItemId);
         EXTRA_HEAL_CONSUMABLES = builder.translation("modern_companions.configuration.taming.extra_heal_consumables")
                 .comment("Additional item registry ids companions may consume for healing but never request while taming.")

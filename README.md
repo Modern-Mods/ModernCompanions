@@ -360,7 +360,7 @@ Lists use registry IDs. Item lists accept IDs such as `minecraft:bread`; entity 
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `allFoods` | See defaults below | Foods companions may request, select as favorites, and eat for healing. |
+| `allFoods` | See defaults below | Configured foods companions may request, select as favorites, and eat for healing. Safe standard foods from other mods are included automatically. |
 | `extraHealConsumables` | See defaults below | Healing items companions may eat but never request for taming; may be empty. |
 | `commonResourceItems` | See defaults below | Common taming-resource pool. |
 | `uncommonResourceItems` | See defaults below | Uncommon taming-resource pool. |

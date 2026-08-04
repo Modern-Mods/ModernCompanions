@@ -14,6 +14,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.Level;
 
@@ -622,12 +623,26 @@ public class CompanionData {
         return food;
     }
 
+    /** Accept configured foods plus safe standard foods supplied by other mods. */
     public static boolean isFood(ItemStack stack) {
+        if (stack.isEmpty()) return false;
         Item item = stack.getItem();
         if (DISALLOWED_FOODS.contains(item)) return false;
         return isConfiguredItem(item, ModConfig.safeGet(ModConfig.ALL_FOODS))
+                || isAutomaticModdedFood(stack)
                 || isConfiguredItem(item, ModConfig.safeGet(ModConfig.EXTRA_HEAL_CONSUMABLES))
                 || isHealingPotion(stack);
+    }
+
+    /** Standard food data is the safe cross-mod contract; custom consumables stay explicit. */
+    private static boolean isAutomaticModdedFood(ItemStack stack) {
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        FoodProperties food = stack.get(DataComponents.FOOD);
+        if (id == null || "minecraft".equals(id.getNamespace()) || food == null || food.nutrition() <= 0) {
+            return false;
+        }
+        return food.effects().stream().noneMatch(effect ->
+                effect.effect().getEffect().value().getCategory() == MobEffectCategory.HARMFUL);
     }
 
     /** Allow only regen/healing potions (no splash/harmful mixes) as valid consumables. */
@@ -647,7 +662,7 @@ public class CompanionData {
         return hasHealingEffect;
     }
 
-    /** Chooses from the player's configured food list for favorite-food assignment and taming requests. */
+    /** Chooses configured foods plus safe standard foods registered by other mods. */
     public static Item pickConfiguredFood(Random random) {
         return pickConfiguredFood(random::nextInt);
     }
@@ -658,8 +673,28 @@ public class CompanionData {
     }
 
     private static Item pickConfiguredFood(IntUnaryOperator randomIndex) {
-        Item food = pickConfiguredItem(randomIndex, ModConfig.safeGet(ModConfig.ALL_FOODS), item -> !DISALLOWED_FOODS.contains(item));
-        return food == Items.AIR ? Items.BREAD : food;
+        Set<Item> candidates = new LinkedHashSet<>();
+        addConfiguredFoodCandidates(candidates);
+        // ponytail: scan the small item registry per assignment; cache only if large packs show a spawn-time cost.
+        for (Item item : BuiltInRegistries.ITEM) {
+            if (isAutomaticModdedFood(item.getDefaultInstance())) {
+                candidates.add(item);
+            }
+        }
+        if (candidates.isEmpty()) return Items.BREAD;
+        return new ArrayList<>(candidates).get(randomIndex.applyAsInt(candidates.size()));
+    }
+
+    /** Keeps the existing vanilla/configured pool while allowing explicit non-standard items. */
+    private static void addConfiguredFoodCandidates(Set<Item> candidates) {
+        for (String id : ModConfig.safeGet(ModConfig.ALL_FOODS)) {
+            ResourceLocation resourceId = ResourceLocation.tryParse(id);
+            if (resourceId == null) continue;
+            Item item = BuiltInRegistries.ITEM.get(resourceId);
+            if (item != Items.AIR && !DISALLOWED_FOODS.contains(item)) {
+                candidates.add(item);
+            }
+        }
     }
 
     private static Item pickAllowedFood(Random random) {

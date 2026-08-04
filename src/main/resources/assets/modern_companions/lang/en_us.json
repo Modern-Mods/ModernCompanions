@@ -841,7 +841,7 @@
   "modern_companions.configuration.companion.voice_volume.tooltip": "Sets the volume of custom companion sounds from 0% to 100%. Default: 80%.",
   "modern_companions.configuration.taming": "Taming & Supplies",
   "modern_companions.configuration.taming.all_foods": "All Foods",
-  "modern_companions.configuration.taming.all_foods.tooltip": "Registry IDs companions may request, choose as favorites, and eat for healing.",
+  "modern_companions.configuration.taming.all_foods.tooltip": "Configured registry IDs companions may request, choose as favorites, and eat for healing. Safe standard foods from other mods are included automatically.",
   "modern_companions.configuration.taming.extra_heal_consumables": "Extra Heal Consumables",
   "modern_companions.configuration.taming.extra_heal_consumables.tooltip": "Registry IDs companions may consume for healing but never request while taming.",
   "modern_companions.configuration.taming.common_resource_items": "Common Resource Items",

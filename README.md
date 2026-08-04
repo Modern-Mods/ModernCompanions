@@ -337,7 +337,7 @@ Open **Mods → Modern Companions → Config** for the player-facing settings. D
 
 | Key | Default | Description |
 | --- | ---: | --- |
-| `friendlyFireCompanions` | `false` | Allow companions to damage each other. |
+| `friendlyFireCompanions` | `false` | Allow companions and Beastmaster pets to damage each other. |
 | `friendlyFirePlayer` | `true` | Allow a companion to damage its owner. |
 | `fallDamage` | `true` | Allow fall damage. |
 | `spawnArmor` | `true` | Give newly spawned companions random armor. |

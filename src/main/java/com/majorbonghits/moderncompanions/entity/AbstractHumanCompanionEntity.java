@@ -3053,6 +3053,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (entity == this.getOwner()) {
             return false;
         }
+        // Beastmaster pets use an owner tag for entities such as Ocelots that cannot be tamed.
+        if (Beastmaster.isBeastmasterPet(entity)) {
+            return ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_COMPANIONS);
+        }
         if (entity instanceof Villager && !canHarmVillagers()) {
             return false;
         }

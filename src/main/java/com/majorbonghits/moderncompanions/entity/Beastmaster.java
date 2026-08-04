@@ -104,6 +104,10 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         return pet instanceof LivingEntity living ? living : null;
     }
 
+    static boolean isBeastmasterPet(Entity entity) {
+        return entity != null && entity.getPersistentData().hasUUID(BEASTMASTER_OWNER_TAG);
+    }
+
     public Beastmaster(EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
         this.goalSelector.addGoal(2, new ArcherRangedBowAttackGoal<>(this, 1.05D, 22, 20.0F));
@@ -342,7 +346,7 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
 
     @Override
     public boolean canAttack(LivingEntity target) {
-        if (isOwnPet(target))
+        if (isOwnPet(target) && !ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_COMPANIONS))
             return false;
         return super.canAttack(target);
     }
@@ -591,7 +595,9 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
     private void pruneWanderGoals(Mob mob) {
         mob.goalSelector.getAvailableGoals().stream()
                 .filter(w -> w.getGoal() instanceof net.minecraft.world.entity.ai.goal.RandomStrollGoal
-                        || w.getGoal() instanceof net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal)
+                        || w.getGoal() instanceof net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal
+                        // Vanilla Ocelots and similar pets flee players; Beastmaster pets are controlled allies.
+                        || w.getGoal() instanceof net.minecraft.world.entity.ai.goal.AvoidEntityGoal)
                 .map(WrappedGoal::getGoal)
                 .toList()
                 .forEach(mob.goalSelector::removeGoal);

@@ -2578,3 +2578,8 @@
 - Steps: Added every wooden, stone, iron, golden, diamond, netherite, and optional bronze dagger, hammer, club, spear, quarterstaff, and glaive to Minecraft's `swords` item tag; bumped the version to 3.48 and documented the player-facing behavior.
 - Rationale: Minecraft 1.21's combat, durability, repair, and enchanting-table weapon enchantments resolve through the `minecraft:swords` tag, so one data tag covers all dynamically registered weapon variants without custom enchantment code.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon`, JSON tag coverage, packaged-JAR tag inspection, and `git diff --check` passed. Live enchanting-table and anvil smoke remain required.
+## 2026-08-03 (Beastmaster pet safety)
+
+- Prompt/task: Stop Beastmaster pets such as Ocelots from fleeing players and apply companion friendly-fire protection to those pets and companion summons.
+- Steps: Removed inherited pet avoidance goals while retaining the Beastmaster follow goal; recognized the Beastmaster owner tag in shared companion target/damage gates; allowed the existing `friendlyFireCompanions` setting to control tagged-pet damage; bumped version to 3.49 and updated the config documentation.
+- Rationale: Vanilla avoidance is the shared cause of pet flight, and the owner tag is the only ownership path available to non-tamable pets. Reusing the existing target and damage protection boundaries covers melee, ranged, splash, and upstream summon damage without per-companion patches.

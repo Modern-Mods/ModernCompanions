@@ -407,3 +407,7 @@
 ## 2026-08-03 (survival weapon enchanting)
 
 - Smoke-test one representative dagger, hammer, club, spear, quarterstaff, and glaive in an enchanting table and anvil with Sharpness, Unbreaking, and Mending; repeat with bronze loaded and absent.
+## 2026-08-03 (Beastmaster pet safety)
+
+- Smoke-test an Ocelot and each supported pet family beside its Beastmaster and player owner, then repeat with `friendlyFireCompanions` enabled to confirm the documented opt-in behavior.
+- Add a pet-specific avoidance rule only if a future pet needs to retain one particular vanilla avoidance behavior after live testing.

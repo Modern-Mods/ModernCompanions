@@ -1,6 +1,7 @@
 package com.majorbonghits.moderncompanions.entity;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
+import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -82,6 +83,11 @@ public final class CompanionProtectionEvents {
 
     static boolean canHarm(AbstractHumanCompanionEntity companion, Entity victim) {
         if (!companion.canHarm(victim)) return false;
+        // Apply the normal companion friendly-fire switch to tagged Beastmaster pets,
+        // including non-tamable pets and damage from upstream summons.
+        if (Beastmaster.isBeastmasterPet(victim)) {
+            return ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_COMPANIONS);
+        }
         Entity victimOwner = ownerOf(victim);
         if (victimOwner == companion || victimOwner == companion.getOwner()) return false;
         if (victimOwner instanceof AbstractHumanCompanionEntity other) {

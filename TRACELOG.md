@@ -1,3 +1,8 @@
+## 2026-08-05 (Cleric companion ally healing)
+- Prompt/task: Have Clerics heal their injured player owner, then injured same-owner companion allies, then themselves before ranged or melee combat.
+- Steps: Added nearby same-owner ally selection by lowest health ratio, a direct ally-heal path using the existing 6-Mana support cost, and the matching priority/mana gate; bumped version to 3.6.2.
+- Rationale: The existing owner/self healing branch and healing-mode goal provide the smallest shared priority seam while preserving distance-keeping during every healing mode.
+
 ## 2026-08-04 (Holy Spark kill experience attribution)
 - Prompt/task: Ensure Clerics receive experience when a Holy Spark kills its target.
 - Steps: Reused the existing companion projectile-owner resolver in the shared living-death XP handler, resolving direct projectile entities before ordinary damage-source entities; bumped version to 3.6.1.

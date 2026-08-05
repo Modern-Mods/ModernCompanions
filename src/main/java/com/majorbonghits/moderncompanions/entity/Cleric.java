@@ -10,16 +10,21 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.level.Level;
 
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.UUID;
 
 /** Owner-focused healer that falls back to melee when support is not needed. */
 public class Cleric extends IntegratedMageCompanion {
     private static final int CLERIC_SPELL_MANA_COST = 6;
     private static final int OWNER_HEAL_COOLDOWN_TICKS = 30;
+    private static final int ALLY_HEAL_COOLDOWN_TICKS = 30;
     private static final int SELF_HEAL_COOLDOWN_TICKS = 30;
     private static final float HEAL_AMOUNT = 2.5F;
     private static final double HEALING_DISTANCE = 10.0D;
+    private static final double ALLY_HEAL_RADIUS = 32.0D;
     private int ownerHealCooldown;
+    private int allyHealCooldown;
     private int selfHealCooldown;
 
     public Cleric(EntityType<? extends TamableAnimal> type, Level level) {
@@ -64,7 +69,8 @@ public class Cleric extends IntegratedMageCompanion {
 
     @Override
     public boolean canUseRangedAttack() {
-        return !ownerNeedsHealing() && !selfNeedsHealing() && canSpendMana(CLERIC_SPELL_MANA_COST);
+        return !ownerNeedsHealing() && injuredAlly() == null && !selfNeedsHealing()
+                && canSpendMana(CLERIC_SPELL_MANA_COST);
     }
 
     @Override
@@ -95,25 +101,40 @@ public class Cleric extends IntegratedMageCompanion {
     public void tick() {
         if (!level().isClientSide()) {
             if (ownerHealCooldown > 0) ownerHealCooldown--;
+            if (allyHealCooldown > 0) allyHealCooldown--;
             if (selfHealCooldown > 0) selfHealCooldown--;
             LivingEntity owner = getOwner();
             if (ownerNeedsHealing() && ownerHealCooldown <= 0 && owner != null && healOwner(owner)) {
                 ownerHealCooldown = OWNER_HEAL_COOLDOWN_TICKS;
-            } else if (!ownerNeedsHealing() && selfNeedsHealing() && selfHealCooldown <= 0 && healSelf()) {
-                selfHealCooldown = SELF_HEAL_COOLDOWN_TICKS;
+            } else if (!ownerNeedsHealing()) {
+                AbstractHumanCompanionEntity ally = injuredAlly();
+                if (ally != null && allyHealCooldown <= 0 && healAlly(ally)) {
+                    allyHealCooldown = ALLY_HEAL_COOLDOWN_TICKS;
+                } else if (ally == null && selfNeedsHealing() && selfHealCooldown <= 0 && healSelf()) {
+                    selfHealCooldown = SELF_HEAL_COOLDOWN_TICKS;
+                }
             }
         }
         super.tick();
     }
 
     private boolean healOwner(LivingEntity owner) {
-        if (!canSpendMana(basicManaCost()) || owner.getHealth() >= owner.getMaxHealth()) return false;
-        float before = owner.getHealth();
         // Iron's mob cast is self-targeted; heal the player directly so the priority is real.
-        owner.heal(HEAL_AMOUNT);
-        if (owner.getHealth() <= before) return false;
+        return healDirect(owner);
+    }
+
+    private boolean healAlly(AbstractHumanCompanionEntity ally) {
+        return healDirect(ally);
+    }
+
+    private boolean healDirect(LivingEntity target) {
+        if (!canSpendMana(basicManaCost()) || target == null || !target.isAlive()
+                || target.getHealth() >= target.getMaxHealth()) return false;
+        float before = target.getHealth();
+        target.heal(HEAL_AMOUNT);
+        if (target.getHealth() <= before) return false;
         spendMana(basicManaCost());
-        aimAt(owner);
+        aimAt(target);
         swingCast();
         return true;
     }
@@ -137,8 +158,20 @@ public class Cleric extends IntegratedMageCompanion {
         return getHealth() < getMaxHealth() - 0.5F;
     }
 
+    private AbstractHumanCompanionEntity injuredAlly() {
+        UUID ownerId = getOwnerUUID();
+        if (ownerId == null) return null;
+        return level().getEntitiesOfClass(AbstractHumanCompanionEntity.class, getBoundingBox().inflate(ALLY_HEAL_RADIUS))
+                .stream()
+                .filter(ally -> ally != this && ally.isAlive() && ownerId.equals(ally.getOwnerUUID())
+                        && ally.getHealth() < ally.getMaxHealth() - 0.5F)
+                .min(Comparator.comparingDouble(ally -> ally.getHealth() / ally.getMaxHealth()))
+                .orElse(null);
+    }
+
     private boolean isHealingMode() {
-        return ownerNeedsHealing() || (selfNeedsHealing() && canSpendMana(basicManaCost()));
+        return canSpendMana(basicManaCost())
+                && (ownerNeedsHealing() || injuredAlly() != null || selfNeedsHealing());
     }
 
     private void keepDistanceFrom(LivingEntity target) {

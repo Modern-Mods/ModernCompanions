@@ -1,3 +1,4 @@
+- 2026-08-04: Smoke-test a Holy Spark's lethal hit against undead and non-undead targets; verify Cleric kill count, XP progress, level-up behavior, and no duplicate XP award.
 - 2026-08-04: Smoke-test Cleric owner healing, self-healing, holy sparks, and melee fallback with Mana starting full, partial, and empty; confirm the 6-Mana cost and faster regeneration for magical companions without changing non-magical Stamina pacing.
 - 2026-08-04: Smoke-test simultaneous owner and Cleric injuries with Iron's Spellbooks and Ars Nouveau separately; verify owner health rises before Cleric health, then ranged kiting, then melee fallback when Mana is empty.
 - 2026-08-04: Smoke-test Cleric holy sparks against a Zombie, Skeleton, and non-undead target with full and depleted Mana; verify sparkle visibility, doubled undead damage, owner-heal priority, and melee fallback.

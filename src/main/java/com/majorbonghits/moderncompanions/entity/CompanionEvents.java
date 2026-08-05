@@ -125,10 +125,12 @@ public final class CompanionEvents {
 
     @SubscribeEvent
     public static void giveExperience(LivingDeathEvent event) {
-        if (event.getSource().getEntity() instanceof AbstractHumanCompanionEntity companion && event.getEntity().level() instanceof ServerLevel serverLevel) {
-            companion.recordKill(event.getEntity());
-            companion.giveExperiencePoints(event.getEntity().getExperienceReward(serverLevel, companion));
-        }
+        if (!(event.getEntity().level() instanceof ServerLevel serverLevel)) return;
+        AbstractHumanCompanionEntity companion = CompanionProtectionEvents.companionAttacker(event.getSource().getDirectEntity());
+        if (companion == null) companion = CompanionProtectionEvents.companionAttacker(event.getSource().getEntity());
+        if (companion == null) return;
+        companion.recordKill(event.getEntity());
+        companion.giveExperiencePoints(event.getEntity().getExperienceReward(serverLevel, companion));
     }
 
     @SubscribeEvent

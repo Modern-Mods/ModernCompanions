@@ -1,3 +1,8 @@
+## 2026-08-04 (Holy Spark kill experience attribution)
+- Prompt/task: Ensure Clerics receive experience when a Holy Spark kills its target.
+- Steps: Reused the existing companion projectile-owner resolver in the shared living-death XP handler, resolving direct projectile entities before ordinary damage-source entities; bumped version to 3.6.1.
+- Rationale: Projectile kills now follow the same `recordKill` and XP path as melee kills without adding a second award inside the projectile.
+
 ## 2026-08-04 (magical companion Mana pacing)
 - Prompt/task: Reduce Cleric spell costs and slightly increase Mana regeneration for all magical companions.
 - Steps:

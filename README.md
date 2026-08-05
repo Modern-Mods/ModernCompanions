@@ -58,7 +58,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Archer:** Ranged bow specialist that automatically equips bows and arrows.
 - **Arbalist:** Crossbow specialist using 1.21 charge, cooldown, and line-of-sight behavior.
 - **Beastmaster:** Ranged fighter with a scaling animal companion.
-- **Cleric:** Support fighter that heals allies and deals extra damage to undead.
+- **Cleric:** Heals its owner first, then itself, then fires holy sparks before falling back to melee.
 - **Alchemist:** Uses beneficial potions on allies and harmful effects against enemies.
 - **Stormcaller:** Trident fighter who calls lightning and gains strength after striking.
 - **Fire Mage:** Uses precise, non-igniting fireballs and heavier blast attacks.
@@ -148,7 +148,7 @@ Equipment rules keep companions from grabbing unsuitable items:
 
 Every companion has 100 Stamina by default. Sprinting and successful melee attacks consume Stamina. At zero Stamina, sprinting pauses and melee attacks use a slower cadence.
 
-Magic companions also have 100 Mana. Spell costs are applied only after a spell successfully casts.
+Magic companions also have 100 Mana, which regenerates slightly faster during and after combat. Spell costs are applied only after a spell successfully casts. Cleric support spells and holy sparks cost 6 Mana.
 
 Five reusable vessel shapes support six potion types:
 

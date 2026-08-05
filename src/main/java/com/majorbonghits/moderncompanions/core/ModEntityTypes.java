@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.core;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import com.majorbonghits.moderncompanions.entity.*;
+import com.majorbonghits.moderncompanions.entity.projectile.HolySparkProjectile;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
@@ -96,6 +97,11 @@ public final class ModEntityTypes {
                             com.majorbonghits.moderncompanions.entity.projectile.CompanionFishingHook::new, MobCategory.MISC)
                     .sized(0.25F, 0.25F)
                     .build(id("companion_fishing_hook")));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<HolySparkProjectile>> HOLY_SPARK =
+            ENTITY_TYPES.register("holy_spark", () -> EntityType.Builder.<HolySparkProjectile>of(HolySparkProjectile::new, MobCategory.MISC)
+                    .sized(0.2F, 0.2F)
+                    .build(id("holy_spark")));
 
     private static String id(String path) {
         return ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, path).toString();

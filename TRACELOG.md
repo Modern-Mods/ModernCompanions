@@ -1,3 +1,38 @@
+## 2026-08-04 (magical companion Mana pacing)
+- Prompt/task: Reduce Cleric spell costs and slightly increase Mana regeneration for all magical companions.
+- Steps:
+  - Added a shared basic-spell cost hook and set Cleric healing and holy sparks to 6 Mana.
+  - Added faster Mana-only recovery intervals for magical companions while preserving existing Stamina pacing.
+  - Updated the resource regression check, README, and version to 3.59.
+- Rationale: The existing spell and resource seams cover every magical companion, so the change stays shared where it should and avoids altering non-magical Stamina recovery.
+
+## 2026-08-04 (Cleric owner-first healing and support kiting)
+- Prompt/task: Make the Cleric heal its player owner before itself, ranged attacks, or melee, and keep distance from enemies during healing and ranged modes only.
+- Steps:
+  - Replaced the target-ambiguous owner spell cast with a server-side owner heal that spends the existing basic Mana cost; added self-healing with the native spell path and a vanilla fallback.
+  - Disabled the Cleric's unrelated utility spell so it cannot consume Mana ahead of owner/self healing.
+  - Added a healing-distance goal, gated melee on healing completion and Mana availability, and retained the existing ranged kiting behavior; bumped the project version to 3.58.
+- Rationale: Iron's mob spell cast is self-targeted, so changing goal priority alone could never make owner healing reliable. Separate owner/self checks make the requested order explicit, while goal flags ensure kiting disappears when melee is the fallback.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; live owner/self health order and heal/ranged/melee distance smoke testing remains required.
+
+## 2026-08-04 (Cleric holy spark projectile)
+- Prompt/task: Add a holy-colored sparkle projectile for Clerics, increase its damage against undead, prioritize it while Mana is available, and fall back to melee without overriding injured-owner healing priority.
+- Steps:
+  - Added a server-side `HolySparkProjectile` with vanilla End Rod/Wax On sparkle particles, companion-attributed damage, and the `undead` tag multiplier.
+  - Reused `MageRangedAttackGoal`, adding the existing class hook so Cleric ranged combat yields when its 10-Mana holy spark cannot be cast; melee remains available as the fallback.
+  - Registered the projectile and no-texture particle-trail renderer, updated player-facing documentation, and bumped the project version to 3.57.
+- Rationale: One native projectile and the existing ranged-goal seam cover travel, collision, Mana gating, XP attribution, and safety checks without adding an external magic dependency or a second combat scheduler.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; live particle, damage, owner-priority, and Mana depletion smoke testing remains required.
+
+## 2026-08-04 (Cleric owner-aware combat)
+- Prompt/task: Give Clerics an offensive melee fallback so they can damage enemies and gain experience, while prioritizing healing an injured player owner.
+- Steps:
+  - Reused the existing mage basic-spell/mana path for owner healing and added a short successful-cast cooldown.
+  - Disabled the shared ranged combat goal for Clerics and added the vanilla melee goal with owner-health gates for start and continuation.
+  - Updated the player-facing Cleric description, bumped the project version to 3.56, and recorded the remaining dev-world smoke check.
+- Rationale: The existing Cleric kit is support-only, so adding a second ranged spell would not meet the requested behavior. Reusing `MeleeAttackGoal` routes kills through the existing companion damage and experience accounting.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; live injured-owner healing, melee kill/XP, and resume behavior remain to be smoke-tested.
+
 ## 2026-08-03 (cross-mod companion food)
 - Prompt/task: Allow companions to eat food from other mods and sometimes require those foods for recruitment while retaining vanilla foods in the choice pool.
 - Steps:

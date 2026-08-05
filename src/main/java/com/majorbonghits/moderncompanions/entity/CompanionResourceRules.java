@@ -14,4 +14,10 @@ public final class CompanionResourceRules {
         int interval = inCombat ? 40 : (graceTicks >= 100 ? 10 : 20);
         return boosted ? Math.max(5, interval / 2) : interval;
     }
+
+    /** Mana recovers a little faster for magical companions without changing Stamina pacing. */
+    public static int manaRegenInterval(boolean inCombat, int graceTicks, boolean boosted) {
+        int interval = inCombat ? 30 : (graceTicks >= 100 ? 8 : 15);
+        return boosted ? Math.max(5, interval / 2) : interval;
+    }
 }

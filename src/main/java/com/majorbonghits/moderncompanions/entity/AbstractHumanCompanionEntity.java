@@ -3109,6 +3109,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         int interval = CompanionResourceRules.regenInterval(inCombat, combatGraceTicks, hasEffect(MobEffects.REGENERATION));
         if (this.tickCount % interval == 0) {
             if (staminaEnabled) restoreStamina(1);
+        }
+        int manaInterval = CompanionResourceRules.manaRegenInterval(inCombat, combatGraceTicks, hasEffect(MobEffects.REGENERATION));
+        if (this.tickCount % manaInterval == 0) {
             restoreMana(1);
         }
     }

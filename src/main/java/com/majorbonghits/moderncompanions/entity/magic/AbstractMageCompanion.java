@@ -23,8 +23,25 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
 
     protected AbstractMageCompanion(net.minecraft.world.entity.EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
-        Goal castingGoal = new MageRangedAttackGoal<>(this, 1.05D, getLightIntervalTicks(), getPreferredRange());
-        this.goalSelector.addGoal(2, castingGoal);
+        if (usesRangedCombat()) {
+            Goal castingGoal = new MageRangedAttackGoal<>(this, 1.05D, getLightIntervalTicks(), getPreferredRange());
+            this.goalSelector.addGoal(2, castingGoal);
+        }
+    }
+
+    /** Cleric replaces ranged casting with its owner-aware melee fallback. */
+    protected boolean usesRangedCombat() {
+        return true;
+    }
+
+    /** Allows a class-specific ranged attack to yield to another combat goal. */
+    public boolean canUseRangedAttack() {
+        return true;
+    }
+
+    /** Cleric disables its unrelated utility spell so healing keeps Mana available. */
+    protected boolean allowsUtilitySpell() {
+        return true;
     }
 
     @Override

@@ -11,5 +11,9 @@ public final class CompanionResourceRulesTest {
         assert CompanionResourceRules.regenInterval(true, 0, false) == 40;
         assert CompanionResourceRules.regenInterval(false, 100, false) == 10;
         assert CompanionResourceRules.regenInterval(false, 100, true) == 5;
+        assert CompanionResourceRules.manaRegenInterval(true, 0, false) == 30;
+        assert CompanionResourceRules.manaRegenInterval(false, 0, false) == 15;
+        assert CompanionResourceRules.manaRegenInterval(false, 100, false) == 8;
+        assert CompanionResourceRules.manaRegenInterval(false, 100, true) == 5;
     }
 }

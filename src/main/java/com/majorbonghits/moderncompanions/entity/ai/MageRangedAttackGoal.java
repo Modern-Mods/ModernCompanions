@@ -33,12 +33,12 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
 
     @Override
     public boolean canUse() {
-        return this.caster.getTarget() != null;
+        return this.caster.getTarget() != null && this.caster.canUseRangedAttack();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return this.canUse() || !this.caster.getNavigation().isDone();
+        return this.caster.canUseRangedAttack() && (this.canUse() || !this.caster.getNavigation().isDone());
     }
 
     @Override

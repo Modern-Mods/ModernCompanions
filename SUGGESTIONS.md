@@ -1,3 +1,7 @@
+- 2026-08-04: Smoke-test Cleric owner healing, self-healing, holy sparks, and melee fallback with Mana starting full, partial, and empty; confirm the 6-Mana cost and faster regeneration for magical companions without changing non-magical Stamina pacing.
+- 2026-08-04: Smoke-test simultaneous owner and Cleric injuries with Iron's Spellbooks and Ars Nouveau separately; verify owner health rises before Cleric health, then ranged kiting, then melee fallback when Mana is empty.
+- 2026-08-04: Smoke-test Cleric holy sparks against a Zombie, Skeleton, and non-undead target with full and depleted Mana; verify sparkle visibility, doubled undead damage, owner-heal priority, and melee fallback.
+- 2026-08-04: Add a dev-world Cleric smoke check with a full-health owner and an injured owner; confirm melee kills award Cleric XP, healing pauses offense, and combat resumes after the owner is restored.
 - 2026-08-04: Keep config/Explanation.md synchronized with every new ModConfig option; add a runtime smoke step whenever a documented option changes behavior or UI visibility.
 - 2026-08-04: Add a dev-world smoke check proving untouched `allFoods` discovers safe modded foods while a customized `allFoods` list excludes unlisted modded foods from healing, favorites, and random recruitment.
 - 2026-08-04: Add a dev-world smoke check for a wildcard recruitment rule, a per-companion override, three or more required items, save/reload, and an omitted companion retaining the random default.

@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.client;
 
 import com.majorbonghits.moderncompanions.client.renderer.CompanionRenderer;
 import com.majorbonghits.moderncompanions.client.renderer.CompanionFishingHookRenderer;
+import com.majorbonghits.moderncompanions.client.renderer.HolySparkProjectileRenderer;
 import com.majorbonghits.moderncompanions.client.screen.CompanionScreen;
 import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
@@ -57,6 +58,7 @@ public final class ModClientEvents {
         magic(event, ModEntityTypes.ILLUSIONIST);
         magic(event, ModEntityTypes.BATTLEMAGE);
         event.registerEntityRenderer(ModEntityTypes.COMPANION_FISHING_HOOK.get(), CompanionFishingHookRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.HOLY_SPARK.get(), HolySparkProjectileRenderer::new);
     }
 
     @SubscribeEvent

@@ -2553,6 +2553,13 @@
 - Steps: Added four synced cosmetic armor stacks with entity NBT persistence and equip-slot validation; kept cosmetic armor separate from functional equipment while substituting it only during renderer lookup; added off-screen menu-backed cosmetic slots and a client popup with the requested overlay, companion preview, item rendering, hover button, and close button; bumped version to 3.29.
 - Rationale: Entity-owned data preserves cosmetic armor through normal saves, Companion Mover capture, Resurrection Scroll redeployment, and multiplayer tracking without a player-only cache or renderer mixin. The existing humanoid armor layer and equipment render context provide one visual armor path, so cosmetic gear does not affect armor attributes, AI, durability, or inventory behavior.
 - Build/Test: Java 21 `gradlew.bat compileJava --console=plain --no-daemon` passed; full `check`/`build`, popup interaction, cosmetic armor persistence, custom armor rendering, and Epic Fight runtime smoke remain required.
+
+## 2026-08-06 (Soul Reforging)
+
+- Prompt/task: Add a Minecraft-themed way for an owner to change a companion's primary or secondary trait.
+- Steps: Reused the existing Soul Gem/Companion Mover storage item; added Enchanting Table interaction with off-hand catalyst mapping, Lapis Lazuli, Echo Shard, Bond, and XP validation; added a server-rolled three-choice menu for either trait slot; persisted the selected trait inside the stored companion Personality compound; added native-button client UI, localization, README guidance, version 3.63, and a pure selection regression check.
+- Rationale: Mutating the already-persisted companion NBT keeps bond, backstory, equipment, inventory, and memories intact while avoiding a new block, item, or personality framework. Server-side revalidation prevents forged menu selections or resource bypasses.
+- Build/Test: Java 21 `compileJava` and `soulReforgingRulesCheck` passed; full `check`/`build`, multiplayer ownership, capture/redeploy, resource consumption, and live Enchanting Table UI smoke remain required.
 ## Cosmetic armor equipment-panel visibility fix
 
 - Prompt: Hide the standard companion equipment panel, its slots, toggles, and preview while the cosmetic armor popup is open, then restore them on close.

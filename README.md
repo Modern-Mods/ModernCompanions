@@ -267,6 +267,16 @@ The owner-only Companion Mover stores a companion as a glinting item while prese
 
 Soul Gems preserve a companion’s soul through the Companion Mover and allow later redeployment.
 
+### Soul Reforging
+
+Reforge an owned companion's traits without losing its bond, backstory, equipment, or memories:
+
+1. Capture the companion with the Companion Mover.
+2. Hold the Soul Gem in one hand and a trait catalyst in the other.
+3. Right-click an Enchanting Table and choose one of three rolled traits for the primary or secondary slot.
+
+The ritual consumes one Lapis Lazuli, one Echo Shard, the catalyst, and XP levels. Secondary traits require Bond I and 5 levels; primary traits require Bond II and 15 levels. Catalysts follow Minecraft themes: Blaze Rods favor Brave/Reckless, Turtle Scutes favor Cautious/Stalwart, Rabbit's Feet favor Quickstep/Lucky, Phantom Membranes favor Night Owl, Glowstone favors Sun-Blessed, Prismarine favors Guardian/Devoted, Cake favors Glutton/Jokester, and Soul Soil favors Melancholic.
+
 ![Soul Gem](https://i.imgur.com/1FrL94k.png)
 
 ### Summoning Wand

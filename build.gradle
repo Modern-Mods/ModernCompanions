@@ -95,6 +95,12 @@ tasks.register("recruitmentRulesCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("soulReforgingRulesCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.SoulReforgingRulesTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("firearmCategoryCheck", JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.majorbonghits.moderncompanions.compat.firearms.FirearmSupportTest"

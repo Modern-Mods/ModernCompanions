@@ -272,10 +272,13 @@ Soul Gems preserve a companion’s soul through the Companion Mover and allow la
 Reforge an owned companion's traits without losing its bond, backstory, equipment, or memories:
 
 1. Capture the companion with the Companion Mover.
-2. Hold the Soul Gem in one hand and a trait catalyst in the other.
-3. Right-click an Enchanting Table and choose one of three rolled traits for the primary or secondary slot.
+2. Craft and place a Companion Table, then open it.
+3. Place the Soul Gem in the top-left slot, Lapis Lazuli in the top-right slot, an Echo Shard in the lower-left slot, and a trait catalyst in the lower-right slot.
+4. Left-click one of the three rolled traits to replace the primary trait, or right-click it to replace the secondary trait.
 
 The ritual consumes one Lapis Lazuli, one Echo Shard, the catalyst, and XP levels. Secondary traits require Bond I and 5 levels; primary traits require Bond II and 15 levels. Catalysts follow Minecraft themes: Blaze Rods favor Brave/Reckless, Turtle Scutes favor Cautious/Stalwart, Rabbit's Feet favor Quickstep/Lucky, Phantom Membranes favor Night Owl, Glowstone favors Sun-Blessed, Prismarine favors Guardian/Devoted, Cake favors Glutton/Jokester, and Soul Soil favors Melancholic.
+
+The Companion Table uses the enchanting table's animated book, block textures, and particle effects. Its recipe is the enchanting-table pattern with an Echo Shard replacing the center Obsidian: Diamond–Book–Diamond, Obsidian–Echo Shard–Obsidian, Obsidian–Obsidian–Obsidian.
 
 ![Soul Gem](https://i.imgur.com/1FrL94k.png)
 

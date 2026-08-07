@@ -4,6 +4,7 @@ import com.majorbonghits.moderncompanions.client.renderer.CompanionRenderer;
 import com.majorbonghits.moderncompanions.client.renderer.CompanionFishingHookRenderer;
 import com.majorbonghits.moderncompanions.client.renderer.HolySparkProjectileRenderer;
 import com.majorbonghits.moderncompanions.client.screen.CompanionScreen;
+import com.majorbonghits.moderncompanions.client.screen.CompanionTableScreen;
 import com.majorbonghits.moderncompanions.client.screen.TraitReforgingScreen;
 import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
@@ -31,6 +32,7 @@ public final class ModClientEvents {
     public static void onRegisterMenus(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.COMPANION_MENU.get(), CompanionScreen::new);
         event.register(ModMenuTypes.TRAIT_REFORGING_MENU.get(), TraitReforgingScreen::new);
+        event.register(ModMenuTypes.COMPANION_TABLE_MENU.get(), CompanionTableScreen::new);
     }
 
     @SubscribeEvent

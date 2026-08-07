@@ -1,3 +1,31 @@
+## 2026-08-07 (Companion Table tooltip requirements)
+- Prompt/task: Keep the Companion Table XP cost on the trait tooltip instead of displaying it in the GUI, and show “Bond not strong enough” in red when the companion cannot meet the bond requirement.
+- Steps:
+  - Removed the in-GUI XP cost legend while retaining the primary/secondary costs in each trait tooltip.
+  - Exposed the Soul Gem bond level to the client tooltip and added the red warning for companions below Bond II; the tooltip now names the Bond II primary and Bond I secondary requirements.
+  - Bumped the version to 3.66.
+- Rationale: The enchanting-table layout remains visually uncluttered while the tooltip contains the contextual cost and requirement details needed before clicking.
+- Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed.
+
+## 2026-08-07 (Companion Table click feedback)
+- Prompt/task: Trait choices appeared in the Companion Table, but clicking them did not visibly apply a change; identify whether XP was blocking the action and show the required cost.
+- Steps:
+  - Matched the custom screen/menu click path to vanilla enchanting: valid client-side rows now pass the local preflight before the server button packet is sent.
+  - Preserved server-authoritative ownership, bond, material, duplicate-trait, and XP validation, while reporting invalid ownership and expanded material requirements instead of failing silently.
+  - Exposed the shared primary (15 levels) and secondary (5 levels) costs in the table and trait tooltip; bumped the version to 3.65.
+- Rationale: Vanilla suppresses button packets when a menu's local `clickMenuButton` preflight returns false. Keeping the preview permissive and the mutation server-only fixes multiplayer clicks without trusting client inputs, while the visible cost makes level gating discoverable.
+- Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed.
+
+## 2026-08-07 (Companion Table)
+- Prompt/task: Add a bespoke Companion Table that visually matches the enchanting table, opens the supplied companion-table GUI, provides Soul Gem/Lapis/Echo Shard/catalyst slots, supports the trait-reforging flow, has a crafting recipe, and appears in JEI.
+- Steps:
+  - Registered a Companion Table block and item using vanilla enchanting-table properties, model textures, animated block entity, book renderer, and particle behavior; added the block state, item model, loot table, recipe, creative-tab entry, and translations.
+  - Added a four-slot server-authoritative CompanionTableMenu and CompanionTableScreen. Trait rolls synchronize as compact ids; left-click applies a primary trait and right-click applies a secondary trait.
+  - Moved table transactions through StoredCompanionItem validation so ownership, bond level, duplicate-trait protection, Lapis/Echo Shard/catalyst consumption, XP cost, NBT updates, sound, and particles are checked server-side; added an explicit JEI crafting recipe registration.
+  - Updated README usage/recipe documentation and bumped the version to 3.64.
+- Rationale: Extending the vanilla enchanting-table block preserves its established appearance and animation, while a dedicated menu keeps the new material slots and trait operation isolated from vanilla enchanting behavior.
+- Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed.
+
 ## 2026-08-05 (Cleric companion ally healing)
 - Prompt/task: Have Clerics heal their injured player owner, then injured same-owner companion allies, then themselves before ranged or melee combat.
 - Steps: Added nearby same-owner ally selection by lowest health ratio, a direct ally-heal path using the existing 6-Mana support cost, and the matching priority/mana gate; bumped version to 3.6.2.

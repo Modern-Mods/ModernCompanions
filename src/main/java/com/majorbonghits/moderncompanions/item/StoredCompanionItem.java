@@ -2,6 +2,8 @@ package com.majorbonghits.moderncompanions.item;
 
 import com.majorbonghits.moderncompanions.entity.personality.CompanionPersonality;
 import com.majorbonghits.moderncompanions.entity.personality.SoulReforgingRules;
+import com.majorbonghits.moderncompanions.core.ModBlocks;
+import com.majorbonghits.moderncompanions.core.ModItems;
 import com.majorbonghits.moderncompanions.menu.TraitReforgingMenu;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.core.particles.ParticleTypes;
@@ -48,8 +50,9 @@ import java.util.Random;
 public class StoredCompanionItem extends Item {
     private static final String COMPANION_NAME_TAG = "CompanionName";
     private static final String ENTITY_TYPE_TAG = "id";
-    private static final int PRIMARY_REFORGE_COST = 15;
-    private static final int SECONDARY_REFORGE_COST = 5;
+    /** Experience-level costs shared by the table transaction and its client-side display. */
+    public static final int PRIMARY_REFORGE_COST = 15;
+    public static final int SECONDARY_REFORGE_COST = 5;
     private static final Map<Item, List<String>> TRAIT_CATALYSTS = Map.of(
             Items.BLAZE_ROD, List.of("trait_brave", "trait_reckless", "trait_sun_blessed"),
             Items.TURTLE_SCUTE, List.of("trait_cautious", "trait_stalwart", "trait_guardian"),
@@ -116,6 +119,10 @@ public class StoredCompanionItem extends Item {
         ItemStack stack = context.getItemInHand();
         if (level.getBlockState(context.getClickedPos()).is(Blocks.ENCHANTING_TABLE)) {
             return openTraitReforging(context, stack);
+        }
+        // Let the Companion Table's block interaction open its four-input menu instead of deploying the gem.
+        if (level.getBlockState(context.getClickedPos()).is(ModBlocks.COMPANION_TABLE.get())) {
+            return InteractionResult.PASS;
         }
         if (!(level instanceof ServerLevel serverLevel)) {
             return InteractionResult.SUCCESS;
@@ -257,6 +264,82 @@ public class StoredCompanionItem extends Item {
         return true;
     }
 
+    /**
+     * Applies a choice from the four-slot Companion Table. Keeping the transaction here makes
+     * menu clicks and the older interaction path share ownership, bond, cost, and NBT checks.
+     */
+    public static boolean reforgeInTable(Player player, BlockPos tablePos, int traitSlot, String trait,
+            List<String> options, ItemStack soulGem, ItemStack lapis, ItemStack echoShard, ItemStack catalyst) {
+        if (!(player instanceof ServerPlayer) || !player.level().getBlockState(tablePos).is(ModBlocks.COMPANION_TABLE.get())
+                || !player.canInteractWithBlock(tablePos, 4.0D)) {
+            return false;
+        }
+        if (!hasCompanionData(soulGem) || soulGem.getItem() != ModItems.STORED_COMPANION.get()) {
+            return false;
+        }
+        if (!isOwnedBy(soulGem, player)) {
+            player.displayClientMessage(Component.translatable(
+                    "message.modern_companions.soul_reforging.not_owner"), true);
+            return false;
+        }
+        if (!options.contains(trait) || !CompanionPersonality.TRAITS.contains(trait)) {
+            return false;
+        }
+
+        if (traitSlot < 0 || traitSlot > 1) {
+            return false;
+        }
+        CompoundTag entityData = getEntityData(soulGem);
+        CompoundTag personality = entityData.getCompound("Personality");
+        String primary = personality.getString(CompanionPersonality.KEY_PRIMARY);
+        String secondary = personality.getString(CompanionPersonality.KEY_SECONDARY);
+        if (trait.equals(primary) || trait.equals(secondary)) {
+            player.displayClientMessage(Component.translatable(
+                    "message.modern_companions.soul_reforging.same_trait"), true);
+            return false;
+        }
+
+        int requiredBond = traitSlot == 0 ? 2 : 1;
+        int levelCost = traitSlot == 0 ? PRIMARY_REFORGE_COST : SECONDARY_REFORGE_COST;
+        if (getBondLevel(soulGem) < requiredBond) {
+            player.displayClientMessage(Component.translatable(
+                    traitSlot == 0 ? "message.modern_companions.soul_reforging.primary_bond"
+                            : "message.modern_companions.soul_reforging.needs_bond"), true);
+            return false;
+        }
+        if (!lapis.is(Items.LAPIS_LAZULI) || !echoShard.is(Items.ECHO_SHARD) || !isTraitCatalyst(catalyst)
+                || lapis.getCount() < 1 || echoShard.getCount() < 1 || catalyst.getCount() < 1) {
+            player.displayClientMessage(Component.translatable(
+                    "message.modern_companions.soul_reforging.needs_materials"), true);
+            return false;
+        }
+        if (!player.getAbilities().instabuild && player.experienceLevel < levelCost) {
+            player.displayClientMessage(Component.translatable(
+                    "message.modern_companions.soul_reforging.needs_xp", levelCost), true);
+            return false;
+        }
+
+        personality.putString(traitSlot == 0 ? CompanionPersonality.KEY_PRIMARY : CompanionPersonality.KEY_SECONDARY,
+                trait);
+        entityData.put("Personality", personality);
+        CustomData.set(DataComponents.ENTITY_DATA, soulGem, entityData);
+        if (!player.getAbilities().instabuild) {
+            lapis.shrink(1);
+            echoShard.shrink(1);
+            catalyst.shrink(1);
+            player.giveExperienceLevels(-levelCost);
+        }
+
+        player.level().playSound(null, tablePos, SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.BLOCKS, 1.0F, 1.0F);
+        if (player.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.ENCHANT, tablePos.getX() + 0.5D, tablePos.getY() + 1.0D,
+                    tablePos.getZ() + 0.5D, 20, 0.35D, 0.45D, 0.35D, 0.1D);
+        }
+        player.displayClientMessage(Component.translatable(
+                "message.modern_companions.soul_reforging.success"), true);
+        return true;
+    }
+
     public static boolean isTraitCatalyst(ItemStack stack) {
         return !stack.isEmpty() && TRAIT_CATALYSTS.containsKey(stack.getItem());
     }
@@ -271,7 +354,8 @@ public class StoredCompanionItem extends Item {
         return getEntityData(stack).getCompound("Personality").getString(key);
     }
 
-    private static int getBondLevel(ItemStack stack) {
+    /** Exposes the saved bond level for the Companion Table's client-side requirement tooltip. */
+    public static int getBondLevel(ItemStack stack) {
         return getEntityData(stack).getCompound("Personality").getInt(CompanionPersonality.KEY_BOND_LEVEL);
     }
 

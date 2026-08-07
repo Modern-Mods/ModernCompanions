@@ -39,6 +39,8 @@ public final class ModItems {
             () -> new AssignmentWandItem(new Item.Properties().rarity(Rarity.UNCOMMON)));
     public static final DeferredHolder<Item, Item> SUMMONING_WAND = ITEMS.register("summoning_wand",
             () -> new SummoningWandItem(new Item.Properties()));
+    public static final DeferredHolder<Item, Item> COMPANION_TABLE = ITEMS.register("companion_table",
+            () -> new net.minecraft.world.item.BlockItem(ModBlocks.COMPANION_TABLE.get(), new Item.Properties()));
 
     // Intermediate vessels stay out of creative tabs; brewing is their only purpose.
     public static final DeferredHolder<Item, Item> EMPTY_ROUND_VESSEL = vessel("empty_round_vessel");

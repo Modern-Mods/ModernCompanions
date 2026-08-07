@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.core;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.menu.CompanionCuriosMenu;
 import com.majorbonghits.moderncompanions.menu.CompanionMenu;
+import com.majorbonghits.moderncompanions.menu.CompanionTableMenu;
 import com.majorbonghits.moderncompanions.menu.TraitReforgingMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
@@ -26,6 +27,10 @@ public final class ModMenuTypes {
     public static final DeferredHolder<MenuType<?>, MenuType<TraitReforgingMenu>> TRAIT_REFORGING_MENU =
             MENU_TYPES.register("trait_reforging_menu",
                     () -> IMenuTypeExtension.create(TraitReforgingMenu::new));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<CompanionTableMenu>> COMPANION_TABLE_MENU =
+            MENU_TYPES.register("companion_table_menu",
+                    () -> IMenuTypeExtension.create(CompanionTableMenu::new));
 
     /**
      * Populated when Curios is present; left null otherwise to avoid classloading Curios types.

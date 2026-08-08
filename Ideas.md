@@ -11,29 +11,25 @@
     - Ask other companions for food
         - Companions will be able to share edible food between themselves
 
-- Ability to change the beastmaster's animal companion
-    - Implement the 'Beastmaster's Wand' which will use the `animalwand.png` asset. 
-        - Using the wand on any non-hostile mob will 'capture' it - its' item NBT/UUID retained just like the companions are in their soul gems
-            - Captures animals will enter an orb, using the asset; `animalcapsule.png` into 'Soul Orbs'. The captured animal item will have a cyan item name.
-        - Right-Clicking a beastmaster with the Soul Orb, it will place the beastmaster's current pet into its' own respective soul orb overwriting the beastmaster's pet with the one the player 'used' on the beastmaster. Effectively swapping the targeted beastmaster's pet with the orb used on it. 
 
-- Add support for all magical companions to have the ability to use and utilize iron's spell staffs
+- Add support for all magical companions to have the ability to use and utilize iron's spell staffs/wands, spellbooks, etc.
 
-- Using a companion carrier on a beastmaster, their beast stayed, and when you resummon the beastmaster, the beast doesn't follow them anymore
 
 - Gear that increases magical companions maximum mana 
-    - Iron's Gear, etc.
+    - Iron's Gear for example has gear that already adds 'mana' - this should affect the magical companion that equips it 
+
 
 - Ability to swap companion's model from Steve to Alex, and vice versa
     - Option available in 'Bio' edit screen, along with Name, Age, Skin, etc.
 
+
 - Have companions able to get onto mounts and ride along with the player
+    - Player mounts up, Companion searches for nearby mountable mob, mounts it and re-engages follow logic. 
+    - Companiuon dismounts when the player dismounts.
+
 
 - 'Better Combat' support
 
+
 - Bard Class
     - Uses instruments as weapons to buff allies and debuff enemies
-
-
-## Bugs
-- Archer who shoot arrows at other entities gets the server to crash?

@@ -268,6 +268,10 @@ The owner-only Companion Mover stores a companion as a glinting item while prese
 
 Soul Gems preserve a companion’s soul through the Companion Mover and allow later redeployment.
 
+### Beastmaster's Wand and Soul Orbs
+
+Craft the Beastmaster's Wand to capture any non-hostile mob. Captured mobs retain their entity data and UUID in a cyan-named Soul Orb. Use an orb on its owner's Beastmaster to swap pets—the replaced pet becomes the returned Soul Orb—or right-click the ground to release the stored mob. Soul Orbs are consumed when used. Beastmasters also preserve their pet's full state through Companion Mover storage and Resurrection Scroll revival.
+
 ### Soul Reforging
 
 Reforge an owned companion's traits without losing its bond, backstory, equipment, or memories:

@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.item;
 
 import com.majorbonghits.moderncompanions.core.ModItems;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.entity.Beastmaster;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -51,6 +52,10 @@ public class CompanionMoverItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        // Remove the live pet before saving so only the redeployed Beastmaster owns the next one.
+        if (companion instanceof Beastmaster beastmaster) {
+            beastmaster.forceDespawnPet();
+        }
         ItemStack stored = StoredCompanionItem.createFromCompanion(companion, ModItems.STORED_COMPANION.get());
         boolean added = player.getInventory().add(stored);
         if (!added) {

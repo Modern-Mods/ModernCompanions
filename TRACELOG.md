@@ -2711,3 +2711,35 @@
   - Bumped the project version to 3.69.
 - Rationale: Keeps the item name, table UI, reforging feedback, and dynamic trait tooltips localized through Minecraft's normal language lookup instead of adding item-specific naming code.
 - Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed; locale switching and inventory/JEI display remain manual smoke checks.
+## 2026-08-07 (Beastmaster's Wand and Soul Orbs)
+- Prompt/task: Add the Beastmaster's Wand, capture non-hostile mobs into Soul Orbs, swap Beastmaster pets, release orb contents, and keep pets linked through Companion Mover storage.
+- Steps:
+  - Reused `ENTITY_DATA` item persistence to retain captured mob NBT/UUID, added the animal wand registration, model, recipe, JEI entry, cyan dynamic orb names, and all shipped locale keys.
+  - Added owner-only Beastmaster pet swapping with the replaced pet returned as a consumed-orb replacement, plus ground release for captured mobs.
+  - Despawned the live Beastmaster pet before Companion Mover serialization so redeployment respawns the saved pet type and reconnects its follow/owner link; bumped version to 3.70.
+- Rationale: Keeps capture and pet replacement on one validated data path while fixing the mover lifecycle at the point where the orphaned live pet was created.
+- Build: Java 21 `check build` passed; capture, swap, release, relog, and visual/JEI smoke remain manual.
+
+## 2026-08-07 (Beastmaster pet resurrection persistence)
+- Prompt/task: Preserve the Beastmaster's pet through death and Resurrection Scroll revival just like the companion.
+- Steps:
+  - Captured the live pet's full NBT/UUID before death or mover teardown, stored it inside the Beastmaster's serialized data, and restored it after the Beastmaster is recreated.
+  - Kept the existing pet owner tag, follow-goal setup, pet type, and scaling path while avoiding duplicate respawns; bumped version to 3.71.
+- Rationale: The shared death hook creates the Resurrection Scroll after the Beastmaster pet was discarded, so a durable pet checkpoint is the smallest shared save/load repair.
+- Build: Java 21 `check build` passed; death, scroll revival, relog, and pet-follow smoke remain manual.
+
+## 2026-08-07 (Soul Orb companion interaction)
+- Prompt/task: Prevent right-clicking a companion with a Soul Orb from opening the companion inventory instead of using the orb.
+- Steps:
+  - Delegated Soul Orb interaction from `AbstractHumanCompanionEntity.mobInteract` before the normal sit/inventory branch, matching the existing Assignment Wand dispatch seam.
+  - Bumped the project version to 3.72.
+- Rationale: Companion entity interaction runs before `Item#interactLivingEntity`; the missing delegation made the Soul Orb handler unreachable.
+- Build: Java 21 `check build` passed; final 3.72 artifact was rebuilt successfully.
+
+## 2026-08-07 (Beastmaster Soul Orb pet names)
+- Prompt/task: Name Soul Orb animals from the stock Beastmaster pet-name pool when swapping them onto a Beastmaster, while retaining existing stored names.
+- Steps:
+  - Reused `assignRandomPetName`, whose existing `hasCustomName()` guard preserves names serialized into the Soul Orb.
+  - Applied the helper to the replacement pet after ownership is restored and bumped the project version to 3.73.
+- Rationale: One shared helper covers both stock pet creation and Soul Orb replacement without overwriting custom names.
+- Build: Java 21 `check build` and `git diff --check` passed; in-game named/nameless swap smoke remains manual.

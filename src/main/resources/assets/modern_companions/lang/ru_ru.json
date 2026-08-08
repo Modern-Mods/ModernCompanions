@@ -55,5 +55,14 @@
   "trait.modern_companions.trait_sun_blessed": "Благословлённый солнцем\n        Небольшой бонус к скорости и атаке днём",
   "trait.modern_companions.trait_jokester": "Шутник\n        Смягчённые штрафы морали",
   "trait.modern_companions.trait_melancholic": "Меланхолик\n        Небольшой штраф при низкой морали",
-  "trait.modern_companions.trait_devoted": "Преданный\n        +Броня, общий бонус к опыту Связи"
+  "trait.modern_companions.trait_devoted": "Преданный\n        +Броня, общий бонус к опыту Связи",
+  "item.modern_companions.animal_wand": "Жезл укротителя",
+  "item.modern_companions.soul_orb": "Сфера души",
+  "item.modern_companions.soul_orb.named": "%s — сфера души",
+  "tooltip.modern_companions.animal_wand": "Захватывает неагрессивного моба в сферу души.",
+  "tooltip.modern_companions.soul_orb.bound": "Содержит: %s",
+  "tooltip.modern_companions.soul_orb.empty": "Данные животного отсутствуют.",
+  "message.modern_companions.soul_orb.not_owner": "Только владелец Beastmaster может сменить его питомца.",
+  "message.modern_companions.soul_orb.swap_failed": "У этого Beastmaster нет доступного питомца для замены.",
+  "message.modern_companions.soul_orb.invalid": "Эта сфера души содержит неверные данные животного."
 }

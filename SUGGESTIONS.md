@@ -444,3 +444,19 @@
 - 2026-08-07: Smoke-test `/companions bond "NAME"` as the owner and as an operator, including names with spaces, companions in another loaded dimension, relog persistence, and the Bond-disabled config path; verify the Journal shows Bond V / 2,000 XP.
 - 2026-08-07: Playtest the Companion Table block and item from multiple angles and lighting conditions; verify the custom top, side, bottom, and particle textures render correctly while the animated book remains aligned.
 - 2026-08-07: Switch between English, Polish, Brazilian Portuguese, and Russian, then verify the Companion Table name in inventory/JEI, its container title, trait tooltips, Soul Reforging feedback, and Bond requirement warning.
+## 2026-08-07 (Beastmaster's Wand and Soul Orbs)
+
+- Smoke-test cow, wolf, villager, water, and modded non-hostile mobs for NBT/UUID preservation, cyan orb naming, inventory-full drops, and rejection of hostile mobs.
+- Smoke-test owner-only Beastmaster swaps in both directions, pet combat/follow behavior after swapping, ground release, relog, dimension movement, and Companion Mover storage/redeployment.
+
+## 2026-08-07 (Beastmaster pet resurrection persistence)
+
+- Smoke-test a Beastmaster with each pet family through combat death, Resurrection Scroll activation, relog, and Companion Mover storage; verify the same pet UUID, name, taming state, equipment/data, owner link, and follow behavior return without a duplicate pet.
+
+## 2026-08-07 (Soul Orb companion interaction)
+
+- Smoke-test Soul Orb use on Beastmasters and ordinary companions, confirming Beastmaster swapping runs before any inventory GUI opens and ordinary companion right-click behavior remains unchanged for non-orb items.
+
+## 2026-08-07 (Beastmaster Soul Orb pet names)
+
+- Smoke-test swapping a nameless animal Soul Orb onto a Beastmaster and confirm it receives a stock pet name; repeat with a custom-named orb and confirm the stored name is unchanged.

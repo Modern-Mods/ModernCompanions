@@ -3,8 +3,10 @@ package com.majorbonghits.moderncompanions.core;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import com.majorbonghits.moderncompanions.item.AssignmentWandItem;
+import com.majorbonghits.moderncompanions.item.AnimalWandItem;
 import com.majorbonghits.moderncompanions.item.CompanionMoverItem;
 import com.majorbonghits.moderncompanions.item.ResurrectionScrollItem;
+import com.majorbonghits.moderncompanions.item.SoulOrbItem;
 import com.majorbonghits.moderncompanions.item.SummoningWandItem;
 import com.majorbonghits.moderncompanions.item.StoredCompanionItem;
 import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
@@ -39,6 +41,10 @@ public final class ModItems {
             () -> new AssignmentWandItem(new Item.Properties().rarity(Rarity.UNCOMMON)));
     public static final DeferredHolder<Item, Item> SUMMONING_WAND = ITEMS.register("summoning_wand",
             () -> new SummoningWandItem(new Item.Properties()));
+    public static final DeferredHolder<Item, Item> ANIMAL_WAND = ITEMS.register("animal_wand",
+            () -> new AnimalWandItem(new Item.Properties().rarity(Rarity.UNCOMMON)));
+    public static final DeferredHolder<Item, Item> SOUL_ORB = ITEMS.register("soul_orb",
+            () -> new SoulOrbItem(new Item.Properties().rarity(Rarity.RARE)));
     public static final DeferredHolder<Item, Item> COMPANION_TABLE = ITEMS.register("companion_table",
             () -> new net.minecraft.world.item.BlockItem(ModBlocks.COMPANION_TABLE.get(), new Item.Properties()));
 

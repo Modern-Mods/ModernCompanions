@@ -2317,6 +2317,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                         // Entity interaction runs before Item#interactLivingEntity; delegate explicitly.
                         return held.interactLivingEntity(player, this, hand);
                     }
+                    if (held.is(ModItems.SOUL_ORB.get())) {
+                        // Soul Orb swaps must run before the normal companion inventory interaction.
+                        return held.interactLivingEntity(player, this, hand);
+                    }
                     if (player.isShiftKeyDown()) {
                         if (!this.level().isClientSide()) {
                             toggleSit((ServerPlayer) player);

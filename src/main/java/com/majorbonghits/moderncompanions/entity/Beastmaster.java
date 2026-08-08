@@ -4,6 +4,7 @@ import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.ai.ArcherRangedBowAttackGoal;
 import com.majorbonghits.moderncompanions.entity.ai.FollowBeastmasterGoal;
+import com.majorbonghits.moderncompanions.item.SoulOrbItem;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.DifficultyInstance;
@@ -37,6 +38,7 @@ import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.BowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.Item;
 import net.minecraft.network.chat.Component;
 import com.majorbonghits.moderncompanions.item.ClubItem;
 import com.majorbonghits.moderncompanions.item.SpearItem;
@@ -60,6 +62,7 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
     private static final String PET_RESPAWN_TAG = "BeastRespawn";
     private static final String PET_LOOKUP_TAG = "BeastLookup";
     private static final String PET_TYPE_TAG = "BeastPetType";
+    private static final String PET_DATA_TAG = "BeastPetData";
     private static final int PET_LOAD_GRACE_TICKS = 80;
     private static final String[] PET_NAMES = new String[] {
             "Fang", "Ember", "Shadow", "Ash", "Pebble", "Luna", "Mistral", "Bolt", "Blaze", "Copper",
@@ -92,6 +95,7 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
     private int petRespawnTimer;
     private int missingPetGrace;
     private ResourceLocation petTypeId;
+    private CompoundTag pendingPetData;
     private boolean suppressPetRespawn;
 
     /**
@@ -104,8 +108,46 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         return pet instanceof LivingEntity living ? living : null;
     }
 
-    static boolean isBeastmasterPet(Entity entity) {
+    public static boolean isBeastmasterPet(Entity entity) {
         return entity != null && entity.getPersistentData().hasUUID(BEASTMASTER_OWNER_TAG);
+    }
+
+    /** Replaces the live pet atomically and returns its old state for the player's Soul Orb. */
+    @Nullable
+    public ItemStack swapPet(CompoundTag replacementData, Item orbItem) {
+        if (!(this.level() instanceof ServerLevel server)) {
+            return null;
+        }
+        LivingEntity current = getPetEntity(server);
+        if (!(current instanceof Mob currentMob)) {
+            return null;
+        }
+        Mob replacement = SoulOrbItem.createEntity(server, replacementData);
+        if (replacement == null) {
+            return null;
+        }
+
+        ItemStack oldPetOrb = SoulOrbItem.createFromAnimal(currentMob, orbItem);
+        replacement.load(replacementData);
+        replacement.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
+        replacement.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        replacement.setOnGround(true);
+        replacement.setPersistenceRequired();
+        ensurePetOwnership(replacement);
+        // Keep stored names; only nameless replacements use the stock Beastmaster pool.
+        assignRandomPetName(replacement);
+        setupPetGoalsIfNeeded(replacement);
+        if (!server.addFreshEntity(replacement)) {
+            replacement.discard();
+            return null;
+        }
+        current.discard();
+        petId = replacement.getUUID();
+        petTypeId = BuiltInRegistries.ENTITY_TYPE.getKey(replacement.getType());
+        pendingPetData = null;
+        petRespawnTimer = 0;
+        missingPetGrace = 0;
+        return oldPetOrb;
     }
 
     public Beastmaster(EntityType<? extends TamableAnimal> type, Level level) {
@@ -198,6 +240,8 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         tag.putInt(PET_LOOKUP_TAG, missingPetGrace);
         if (petTypeId != null)
             tag.putString(PET_TYPE_TAG, petTypeId.toString());
+        if (pendingPetData != null && !pendingPetData.isEmpty())
+            tag.put(PET_DATA_TAG, pendingPetData.copy());
     }
 
     @Override
@@ -209,6 +253,7 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         missingPetGrace = tag.getInt(PET_LOOKUP_TAG);
         if (tag.contains(PET_TYPE_TAG))
             petTypeId = ResourceLocation.tryParse(tag.getString(PET_TYPE_TAG));
+        pendingPetData = tag.contains(PET_DATA_TAG) ? tag.getCompound(PET_DATA_TAG).copy() : null;
         checkBow();
     }
 
@@ -309,6 +354,9 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         }
         if (petRespawnTimer > 0) {
             petRespawnTimer--;
+            return;
+        }
+        if (pendingPetData != null && spawnStoredPet(server)) {
             return;
         }
         spawnPet(server);
@@ -428,6 +476,47 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
                 }).orElse(null);
     }
 
+    @Nullable
+    private LivingEntity createPetFromData(ServerLevel server, CompoundTag data) {
+        ResourceLocation typeId = ResourceLocation.tryParse(data.getString("id"));
+        if (typeId == null) {
+            return null;
+        }
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(typeId).orElse(null);
+        if (type == null) {
+            return null;
+        }
+        Entity pet = type.create(server);
+        return pet instanceof LivingEntity living && !(living instanceof AbstractHumanCompanionEntity) ? living : null;
+    }
+
+    /** Restores the exact pet state captured when the Beastmaster was moved or killed. */
+    private boolean spawnStoredPet(ServerLevel server) {
+        LivingEntity pet = createPetFromData(server, pendingPetData);
+        if (pet == null) {
+            pendingPetData = null;
+            return false;
+        }
+        pet.load(pendingPetData);
+        pet.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
+        pet.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+        pet.setOnGround(true);
+        ensurePetOwnership(pet);
+        if (pet instanceof Mob mob) {
+            mob.setPersistenceRequired();
+            setupPetGoalsIfNeeded(mob);
+        }
+        pet.getPersistentData().putUUID(BEASTMASTER_OWNER_TAG, this.getUUID());
+        if (!server.addFreshEntity(pet)) {
+            pet.discard();
+            return false;
+        }
+        petId = pet.getUUID();
+        petTypeId = BuiltInRegistries.ENTITY_TYPE.getKey(pet.getType());
+        pendingPetData = null;
+        return true;
+    }
+
     private void spawnPet(ServerLevel server) {
         LivingEntity pet = createPet(server);
         if (pet == null)
@@ -455,6 +544,7 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
 
         server.addFreshEntity(pet);
         this.petId = pet.getUUID();
+        this.pendingPetData = null;
     }
 
     private void ensurePetTypeFromEntity(LivingEntity pet) {
@@ -477,10 +567,14 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         if (petId != null) {
             Entity pet = server.getEntity(petId);
             if (pet != null) {
+                if (pet instanceof LivingEntity living) {
+                    ensurePetTypeFromEntity(living);
+                    rememberPet(living);
+                }
                 pet.discard();
                 removed = true;
+                petId = null;
             }
-            petId = null;
         }
 
         // Fallback: sweep nearby for any pet still marked with this beastmaster's owner tag.
@@ -488,19 +582,34 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
             for (LivingEntity candidate : server.getEntitiesOfClass(LivingEntity.class,
                     this.getBoundingBox().inflate(64))) {
                 if (candidate.getPersistentData().hasUUID(BEASTMASTER_OWNER_TAG)
-                        && candidate.getPersistentData().getUUID(BEASTMASTER_OWNER_TAG).equals(this.getUUID())) {
+                    && candidate.getPersistentData().getUUID(BEASTMASTER_OWNER_TAG).equals(this.getUUID())) {
+                    ensurePetTypeFromEntity(candidate);
+                    rememberPet(candidate);
                     candidate.discard();
                     removed = true;
+                    petId = null;
+                    break;
                 }
             }
         }
     }
 
     /**
-     * External trigger to forcibly despawn the current pet (used when the Beastmaster dies).
+     * External trigger to forcibly despawn the current pet while retaining its full respawn data.
      */
     public void forceDespawnPet() {
         despawnPet();
+    }
+
+    private void rememberPet(LivingEntity pet) {
+        CompoundTag data = new CompoundTag();
+        pet.saveWithoutId(data);
+        ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(pet.getType());
+        data.putString("id", typeId.toString());
+        data.remove("Pos");
+        data.remove("Motion");
+        data.remove("Rotation");
+        pendingPetData = data;
     }
 
     private boolean shouldAllowPetRespawn() {

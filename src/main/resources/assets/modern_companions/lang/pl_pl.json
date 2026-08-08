@@ -50,5 +50,14 @@
   "trait.modern_companions.trait_sun_blessed": "Błogosławiony słońcem\n        Mała premia do ruchu i ataku w dzień",
   "trait.modern_companions.trait_jokester": "Dowcipniś\n        Łagodniejsze kary morale",
   "trait.modern_companions.trait_melancholic": "Melancholik\n        Mała kara przy niskim morale",
-  "trait.modern_companions.trait_devoted": "Oddany\n        +Pancerz, ogólna premia do PD Więzi"
+  "trait.modern_companions.trait_devoted": "Oddany\n        +Pancerz, ogólna premia do PD Więzi",
+  "item.modern_companions.animal_wand": "Różdżka Beastmastera",
+  "item.modern_companions.soul_orb": "Kula Duszy",
+  "item.modern_companions.soul_orb.named": "Kula Duszy: %s",
+  "tooltip.modern_companions.animal_wand": "Chwyta nieagresywnego moba do Kuli Duszy.",
+  "tooltip.modern_companions.soul_orb.bound": "Zawiera: %s",
+  "tooltip.modern_companions.soul_orb.empty": "Brak zapisanych danych zwierzęcia.",
+  "message.modern_companions.soul_orb.not_owner": "Tylko właściciel Beastmastera może zmienić jego zwierzę.",
+  "message.modern_companions.soul_orb.swap_failed": "Ten Beastmaster nie ma zwierzęcia do zamiany.",
+  "message.modern_companions.soul_orb.invalid": "Ta Kula Duszy zawiera nieprawidłowe dane zwierzęcia."
 }

@@ -51,5 +51,14 @@
     "trait.modern_companions.trait_sun_blessed": "Abençoado pelo Sol\n        Pequeno bônus de movimento e ataque durante o dia",
     "trait.modern_companions.trait_jokester": "Brincalhão\n        Penalidades de moral reduzidas",
     "trait.modern_companions.trait_melancholic": "Melancólico\n        Pequena penalidade quando a moral está baixa",
-    "trait.modern_companions.trait_devoted": "Devotado\n        +Armadura, bônus geral de XP de Vínculo"
+    "trait.modern_companions.trait_devoted": "Devotado\n        +Armadura, bônus geral de XP de Vínculo",
+    "item.modern_companions.animal_wand": "Cajado do Mestre das Feras",
+    "item.modern_companions.soul_orb": "Orbe da Alma",
+    "item.modern_companions.soul_orb.named": "Orbe da Alma de %s",
+    "tooltip.modern_companions.animal_wand": "Captura um mob não hostil em um Orbe da Alma.",
+    "tooltip.modern_companions.soul_orb.bound": "Contém: %s",
+    "tooltip.modern_companions.soul_orb.empty": "Nenhum dado de animal armazenado.",
+    "message.modern_companions.soul_orb.not_owner": "Somente o dono do Beastmaster pode trocar seu animal.",
+    "message.modern_companions.soul_orb.swap_failed": "Este Beastmaster não tem um animal disponível para trocar.",
+    "message.modern_companions.soul_orb.invalid": "Este Orbe da Alma contém dados de animal inválidos."
 }

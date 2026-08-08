@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "  E",
+    " A ",
+    " S "
+  ],
+  "key": {
+    "E": { "item": "minecraft:echo_shard" },
+    "A": { "item": "minecraft:amethyst_shard" },
+    "S": { "item": "minecraft:stick" }
+  },
+  "result": { "id": "modern_companions:animal_wand", "count": 1 }
+}

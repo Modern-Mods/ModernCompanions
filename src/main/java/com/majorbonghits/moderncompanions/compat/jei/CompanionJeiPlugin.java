@@ -49,6 +49,14 @@ public final class CompanionJeiPlugin implements IModPlugin {
                 new ItemStack(ModItems.COMPANION_TABLE.get()));
         RecipeHolder<CraftingRecipe> holder = new RecipeHolder<>(
                 ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "companion_table"), companionTableRecipe);
-        registration.addRecipes(RecipeTypes.CRAFTING, List.of(holder));
+        ShapedRecipe animalWandRecipe = new ShapedRecipe("", CraftingBookCategory.MISC,
+                ShapedRecipePattern.of(java.util.Map.of(
+                        'E', Ingredient.of(Items.ECHO_SHARD),
+                        'A', Ingredient.of(Items.AMETHYST_SHARD),
+                        'S', Ingredient.of(Items.STICK)), "  E", " A ", " S "),
+                new ItemStack(ModItems.ANIMAL_WAND.get()));
+        RecipeHolder<CraftingRecipe> animalWandHolder = new RecipeHolder<>(
+                ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "animal_wand"), animalWandRecipe);
+        registration.addRecipes(RecipeTypes.CRAFTING, List.of(holder, animalWandHolder));
     }
 }

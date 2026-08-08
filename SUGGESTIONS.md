@@ -1,3 +1,4 @@
+- 2026-08-08: Smoke-test a clean instance with Apothic Enchanting/Apotheosis: place and open both tables, verify the Companion Table keeps its own animated book, particles, and menu, and confirm enchanting-table compatibility changes do not produce a registry crash.
 - 2026-08-07: Playtest the Companion Table with primary and secondary trait replacement, tooltip-only 15/5-level costs, red bond warnings at Bond 0/I, insufficient XP/materials, invalid-owner Soul Gems, creative mode, shift-click insertion, JEI recipe visibility, and breaking/replacing the table; consider a dedicated icon or button if right-click secondary selection is not discoverable enough.
 - 2026-08-07: In a dev world with Iron's Spellbooks installed, equip each magic companion with an Iron's staff, wand, spellbook/Curios item, scroll, and magical armor set; verify the implement remains equipped, native spells cast, Max Mana/Mana Regeneration/Spell Power/cooldown/cast-time/casting-speed/summon-damage/resistance bonuses change the live behavior, and removing the gear removes only its bonus.
 - 2026-08-05: Smoke-test two same-owner companions with one injured, then test simultaneous player/ally/self injuries; verify player-first, most-injured-ally second, self third, ranged fourth, and melee-only when Mana is unavailable.
@@ -466,3 +467,20 @@
 
 - Smoke-test a stock mage and an optional Ars mage with Iron's and Ars armor, Curios rings/amulets, spellbooks, staffs, scrolls, enchanted weapons, bows, and crossbows; verify attribute changes apply and each stored spell casts.
 - Repeat with Curios absent, each magic mod absent, and both magic mods installed; add a compatibility-specific adapter only if an installed addon does not implement the documented native caster interfaces.
+
+## 2026-08-08 (Steve/Alex companion model toggle)
+
+- Smoke-test the Bio edit button on an owned companion, confirm both model shapes in-world and in the inventory preview, then relog and verify persistence.
+- Repeat once with Epic Fight enabled; add separate slim-arm armor geometry only if live Alex-model armor visibly misaligns.
+
+## 2026-08-08 (visible current Steve/Alex model state)
+
+- Verify the Bio edit Model button reads `Steve` or `Alex` before and after toggling, then reopen the screen and confirm the synchronized state is still correct.
+
+## 2026-08-08 (Alex armor geometry)
+
+- Verify Alex-arm thickness with no armor and with each armor slot equipped; repeat with Steve to confirm the wide armor path is unchanged.
+
+## 2026-08-08 (Epic Fight Alex mesh selection)
+
+- With Epic Fight installed, toggle both models in-world and verify the arm width changes while attack animations and armor remain aligned.

@@ -134,6 +134,10 @@ public final class ModNetwork {
                 case "skin" -> {
                     if (isHttpUrl(value)) companion.setCustomSkinUrl(value);
                 }
+                case "model" -> {
+                    if (value.equalsIgnoreCase("alex")) companion.setUsesAlexModel(true);
+                    else if (value.equalsIgnoreCase("steve")) companion.setUsesAlexModel(false);
+                }
                 default -> { }
             }
         });

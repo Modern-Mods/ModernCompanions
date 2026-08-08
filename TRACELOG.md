@@ -1,3 +1,12 @@
+## 2026-08-08 (Companion Table isolation)
+- Prompt/task: Recreate the vanilla enchanting-table behavior needed by the Companion Table so mods that modify the vanilla enchanting table cannot apply their block-entity assumptions to it.
+- Steps:
+  - Removed the Companion Table from vanilla `BlockEntityType.ENCHANTING_TABLE` and deleted the `BlockEntityTypeAddBlocksEvent` registration.
+  - Made the table a standalone `BaseEntityBlock` with copied vanilla shape, light, pathfinding, bookshelf-particle, and interaction behavior; copied the animated-book state/ticker into a dedicated Companion Table block entity and registered a matching local renderer.
+  - Recreated the vanilla material properties directly, registered the new block-entity type, bumped the version to 3.80, and verified the packaged classes.
+- Rationale: A separate block class, block-entity type, ticker, and renderer keeps Apotheosis/Apothic Enchanting and other vanilla-table integrations from treating the Companion Table as a vanilla enchanting table while preserving the required appearance and menu flow.
+- Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed.
+
 ## 2026-08-07 (Companion Table tooltip requirements)
 - Prompt/task: Keep the Companion Table XP cost on the trait tooltip instead of displaying it in the GUI, and show “Bond not strong enough” in red when the companion cannot meet the bond requirement.
 - Steps:
@@ -2754,3 +2763,36 @@
 - Steps: Registered optional Iron's and Ars attribute holders on every companion entity; kept Curios' native attribute-modifier application; routed Ars Max Mana, Mana Regeneration, Spell Damage, and Warding-compatible attributes through the existing resource/damage paths; recognized stored Iron's spell containers and Ars `ItemCasterProvider` items; cast a held stored spell before the built-in mage kit and consume scrolls only after successful casting; bumped the version to 3.75 and updated the integration documentation.
 - Rationale: The shared entity attribute map is the single path Curios and armor use, while Iron's `ISpellContainer` and Ars `ItemCasterProvider` already cover addon spellbooks, scrolls, staffs, bows, crossbows, and magical weapons without hard-linking either optional API.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed. Installed Iron's/Ars runtime smoke for attribute changes, Curios slot effects, and held-item casting remains required.
+
+## 2026-08-08 (Steve/Alex companion model toggle)
+- Prompt/task: Add a Bio edit-screen option to swap an owned companion between the Steve and Alex player models.
+- Steps:
+  - Added a server-synced `AlexModel` flag with NBT persistence; old companions retain the default Steve model.
+  - Reused the owner-checked journal payload and textured edit-button pattern, then selected the matching wide/slim player model for vanilla and Epic Fight rendering.
+  - Added the English journal label and README coverage, and bumped the version to 3.79.
+- Rationale: One synced entity value keeps world rendering, inventory previews, relogs, and optional renderer integration on the existing companion data path.
+- Build: Java 21 `gradlew check build --console=plain --no-daemon` passed; in-game toggle, relog, inventory preview, and Epic Fight visual smoke remain manual.
+
+## 2026-08-08 (visible current Steve/Alex model state)
+- Prompt/task: Make the companion's current Steve or Alex choice recognizable on the Bio edit screen.
+- Steps:
+  - Reused the existing textured Model button and changed its label to the current `Steve` or `Alex` state.
+  - Update the label immediately after sending the toggle request, then rely on synced entity data when the screen is reopened; bumped the version to 3.80.
+- Rationale: The current model name is the confirmation and avoids adding another dialog or screen.
+- Build: Java 21 `gradlew check build --console=plain --no-daemon` remains required after this follow-up; visual toggle confirmation remains manual.
+
+## 2026-08-08 (Alex armor geometry)
+- Prompt/task: Make the Alex model's slimmer arms visibly render on companions that wear armor.
+- Steps:
+  - Traced the default armor path and found the existing layer always used wide Steve-shaped armor models.
+  - Added conditional wide and slim vanilla armor layers using Minecraft's existing player armor model layers, and bumped the version to 3.81.
+- Rationale: Armor was covering the body-model difference; matching the armor geometry fixes the root render obstruction without changing equipment behavior.
+- Build: Java 21 `gradlew check build --console=plain --no-daemon` required; armor alignment and Epic Fight rendering remain manual smoke checks.
+
+## 2026-08-08 (Epic Fight Alex mesh selection)
+- Prompt/task: Make the Steve/Alex arm-width choice visible when Epic Fight is installed.
+- Steps:
+  - Reused Epic Fight's native `Meshes.ALEX` asset and selected it from the synced companion model flag, retaining `Meshes.BIPED` for Steve.
+  - Bumped the version to 3.82.
+- Rationale: The patched renderer had been fixed to the wide BIPED mesh, so the vanilla model flag could not affect Epic Fight geometry.
+- Build: Java 21 `gradlew check build --console=plain --no-daemon` required; Epic Fight in-world visual smoke remains manual.

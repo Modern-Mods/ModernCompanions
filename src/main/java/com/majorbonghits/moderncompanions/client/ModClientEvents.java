@@ -6,6 +6,8 @@ import com.majorbonghits.moderncompanions.client.renderer.HolySparkProjectileRen
 import com.majorbonghits.moderncompanions.client.screen.CompanionScreen;
 import com.majorbonghits.moderncompanions.client.screen.CompanionTableScreen;
 import com.majorbonghits.moderncompanions.client.screen.TraitReforgingScreen;
+import com.majorbonghits.moderncompanions.client.renderer.CompanionTableRenderer;
+import com.majorbonghits.moderncompanions.core.ModBlockEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.core.ModEffects;
@@ -37,6 +39,7 @@ public final class ModClientEvents {
 
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(ModBlockEntityTypes.COMPANION_TABLE.get(), CompanionTableRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.KNIGHT.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.ARCHER.get(), CompanionRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.ARBALIST.get(), CompanionRenderer::new);

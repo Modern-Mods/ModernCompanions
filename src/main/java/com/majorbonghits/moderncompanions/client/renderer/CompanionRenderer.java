@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
+import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
@@ -24,6 +25,8 @@ import net.minecraft.world.item.UseAnim;
  */
 public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanionEntity, PlayerModel<AbstractHumanCompanionEntity>> {
     private static boolean suppressPreviewNameplate;
+    private final PlayerModel<AbstractHumanCompanionEntity> wideModel;
+    private final PlayerModel<AbstractHumanCompanionEntity> slimModel;
 
     /** Restricts nameplate suppression to the inventory preview, never the world renderer. */
     public static void setPreviewNameplateSuppressed(boolean value) {
@@ -32,10 +35,16 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
 
     public CompanionRenderer(EntityRendererProvider.Context context) {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
-        this.addLayer(new HumanoidArmorLayer<>(this,
+        this.wideModel = this.getModel();
+        this.slimModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), true);
+        this.addLayer(new CompanionArmorLayer(this,
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
-                context.getModelManager()));
+                context.getModelManager(), false));
+        this.addLayer(new CompanionArmorLayer(this,
+                new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_INNER_ARMOR)),
+                new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_OUTER_ARMOR)),
+                context.getModelManager(), true));
     }
 
     @Override
@@ -57,6 +66,8 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
 
     /** Shares the player-model visibility and held-item state with Epic Fight's patched renderer. */
     void setModelProperties(AbstractHumanCompanionEntity companion) {
+        // Select the synced model before either vanilla or Epic Fight reads the render model.
+        this.model = companion.usesAlexModel() ? slimModel : wideModel;
         PlayerModel<AbstractHumanCompanionEntity> model = this.getModel();
         HumanoidModel.ArmPose main = armPose(companion, InteractionHand.MAIN_HAND);
         HumanoidModel.ArmPose off = armPose(companion, InteractionHand.OFF_HAND);
@@ -87,6 +98,29 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
             return HumanoidModel.ArmPose.CROSSBOW_HOLD;
         }
         return HumanoidModel.ArmPose.ITEM;
+    }
+
+    /** Keeps armor arms aligned with the selected Steve/Alex body instead of masking the choice. */
+    private static final class CompanionArmorLayer extends HumanoidArmorLayer<AbstractHumanCompanionEntity,
+            PlayerModel<AbstractHumanCompanionEntity>, HumanoidModel<AbstractHumanCompanionEntity>> {
+        private final boolean alex;
+
+        private CompanionArmorLayer(CompanionRenderer renderer, HumanoidModel<AbstractHumanCompanionEntity> innerModel,
+                                    HumanoidModel<AbstractHumanCompanionEntity> outerModel, ModelManager modelManager,
+                                    boolean alex) {
+            super(renderer, innerModel, outerModel, modelManager);
+            this.alex = alex;
+        }
+
+        @Override
+        public void render(PoseStack poseStack, MultiBufferSource buffer, int packedLight,
+                           AbstractHumanCompanionEntity entity, float limbSwing, float limbSwingAmount,
+                           float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
+            if (entity.usesAlexModel() == alex) {
+                super.render(poseStack, buffer, packedLight, entity, limbSwing, limbSwingAmount,
+                        partialTick, ageInTicks, netHeadYaw, headPitch);
+            }
+        }
     }
 
     @Override

@@ -63,4 +63,9 @@ public final class EpicFightCompanionRenderer extends PHumanoidRenderer<Abstract
     public AssetAccessor<HumanoidMesh> getDefaultMesh() {
         return Meshes.BIPED;
     }
+
+    @Override
+    public AssetAccessor<HumanoidMesh> getMeshProvider(LivingEntityPatch<AbstractHumanCompanionEntity> patch) {
+        return patch.getOriginal().usesAlexModel() ? Meshes.ALEX : Meshes.BIPED;
+    }
 }

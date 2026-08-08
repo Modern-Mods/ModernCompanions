@@ -6,7 +6,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
-/** Owner-only update request from the companion journal's Name, Bio, and Skin forms. */
+/** Owner-only update request from the companion journal's editable identity fields. */
 public record EditCompanionJournalPayload(int entityId, String field, String value) implements CustomPacketPayload {
     public static final Type<EditCompanionJournalPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "edit_companion_journal"));

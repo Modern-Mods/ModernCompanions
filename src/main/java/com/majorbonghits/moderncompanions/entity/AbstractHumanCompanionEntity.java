@@ -120,6 +120,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> CUSTOM_BIO = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> ALEX_MODEL = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> STR = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DEX = SynchedEntityData
@@ -419,6 +421,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(AGE_YEARS, 0);
         builder.define(CUSTOM_SKIN_URL, "");
         builder.define(CUSTOM_BIO, "");
+        builder.define(ALEX_MODEL, false);
         builder.define(LAST_SWING_TICK, 0);
         builder.define(JOB_ID, CompanionJob.NONE.id());
         builder.define(WORK_ENABLED, false);
@@ -1644,6 +1647,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(CUSTOM_BIO, bio == null ? "" : bio.trim());
     }
 
+    /** Selects Minecraft's slim-armed Alex model; false preserves the default Steve model. */
+    public boolean usesAlexModel() {
+        return this.entityData.get(ALEX_MODEL);
+    }
+
+    public void setUsesAlexModel(boolean alex) {
+        this.entityData.set(ALEX_MODEL, alex);
+    }
+
     public int getSex() {
         return this.entityData.get(SEX);
     }
@@ -2482,6 +2494,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("skin", this.getSkinIndex());
         tag.putString("CustomSkinUrl", this.entityData.get(CUSTOM_SKIN_URL));
         tag.putString("CustomBio", this.entityData.get(CUSTOM_BIO));
+        tag.putBoolean("AlexModel", usesAlexModel());
         tag.putBoolean("Eating", this.isEating());
         tag.putBoolean("UntamedGreetingPlayed", untamedGreetingPlayed);
         tag.putBoolean("Alert", this.isAlert());
@@ -2575,6 +2588,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         if (tag.contains("CustomBio")) {
             this.setCustomBio(tag.getString("CustomBio"));
+        }
+        if (tag.contains("AlexModel")) {
+            this.setUsesAlexModel(tag.getBoolean("AlexModel"));
         }
         this.setEating(tag.getBoolean("Eating"));
         untamedGreetingPlayed = tag.getBoolean("UntamedGreetingPlayed");

@@ -227,8 +227,9 @@ The Journal edit menu supports:
 - Age
 - Bio
 - Skin URL
+- Model (Steve or Alex)
 
-Name, Age, and Bio updates are owner-checked and persistent. Skin editing uses HTTP(S) URLs.
+Name, Age, Bio, and model updates are owner-checked and persistent. Skin editing uses HTTP(S) URLs.
 
 ### Trait Effects
 

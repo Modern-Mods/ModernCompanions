@@ -12,8 +12,10 @@
         - Companions will be able to share edible food between themselves
 
 
-- Ability to swap companion's model from `Steve` to `Alex`, and vice versa
-    - Option available in 'Bio' edit screen, along with Name, Age, Skin, etc.
+
+
+
+- Companions are spawning with their equipment in their inventories, not equipped like they should.
 
 
 - Have companions able to get onto mounts and ride along with the player
@@ -31,7 +33,9 @@
     - Inserted into loot tables; dungeons, caves, villages, etc.
     - Craftable
     - Instantly heals to full when consumed
-    - When 'used' on another player or companion - instantly heals them to full
+    - When 'used' on another player or companions - instantly heals them to full
+    - Has a cooldown, cannot spam usage
+
 
 - Ranks
     - Companions increase their 'rank' as they level and gain combat experience. 

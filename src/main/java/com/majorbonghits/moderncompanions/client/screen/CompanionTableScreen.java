@@ -38,8 +38,8 @@ public final class CompanionTableScreen extends AbstractContainerScreen<Companio
             ModernCompanions.MOD_ID, "textures/gui/companion_table.png");
     private static final ResourceLocation ECHO_OUTLINE = ResourceLocation.fromNamespaceAndPath(
             ModernCompanions.MOD_ID, "textures/gui/echo_shard_outline.png");
-    private static final ResourceLocation BOOK_TEXTURE = ResourceLocation.withDefaultNamespace(
-            "textures/entity/enchanting_table_book.png");
+    private static final ResourceLocation BOOK_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/entity/companion_table_book.png");
 
     private final RandomSource random = RandomSource.create();
     private BookModel bookModel;

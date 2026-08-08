@@ -1,11 +1,14 @@
 package com.majorbonghits.moderncompanions.client.screen;
 
+import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.network.EditCompanionJournalPayload;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 
 import static com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID;
@@ -14,6 +17,7 @@ import static com.majorbonghits.moderncompanions.ModernCompanions.MOD_ID;
 public class CompanionJournalEditScreen extends Screen {
     private final Screen parent;
     private final int companionId;
+    private JournalTexturedButton modelButton;
 
     public CompanionJournalEditScreen(Screen parent, int companionId) {
         super(Component.translatable("gui.modern_companions.journal.edit"));
@@ -33,12 +37,38 @@ public class CompanionJournalEditScreen extends Screen {
                 () -> open("bio")));
         addRenderableWidget(new JournalTexturedButton(Component.translatable("gui.modern_companions.journal.edit.skin"), x, y + 72,
                 () -> open("skin")));
+        modelButton = new JournalTexturedButton(currentModelLabel(), x, y + 96, this::toggleModel);
+        addRenderableWidget(modelButton);
         // Keep an explicit visible return path beneath every edit choice.
-        addRenderableWidget(new JournalTexturedButton(Component.translatable("gui.back"), x, y + 96, this::onClose));
+        addRenderableWidget(new JournalTexturedButton(Component.translatable("gui.back"), x, y + 120, this::onClose));
     }
 
     private void open(String field) {
         Minecraft.getInstance().setScreen(new CompanionJournalTextEditScreen(this, companionId, field));
+    }
+
+    private void toggleModel() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getConnection() == null || mc.level == null) return;
+        if (mc.level.getEntity(companionId) instanceof AbstractHumanCompanionEntity companion) {
+            boolean alex = !companion.usesAlexModel();
+            mc.getConnection().send(new ServerboundCustomPayloadPacket(new EditCompanionJournalPayload(
+                    companionId, "model", alex ? "alex" : "steve")));
+            // Show the requested state immediately; the server's synced entity data confirms it on reopen.
+            modelButton.setMessage(modelLabel(alex));
+        }
+    }
+
+    private Component currentModelLabel() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.level.getEntity(companionId) instanceof AbstractHumanCompanionEntity companion) {
+            return modelLabel(companion.usesAlexModel());
+        }
+        return Component.translatable("gui.modern_companions.journal.edit.model");
+    }
+
+    private static Component modelLabel(boolean alex) {
+        return Component.translatable("gui.modern_companions.journal.edit.model." + (alex ? "alex" : "steve"));
     }
 
     @Override

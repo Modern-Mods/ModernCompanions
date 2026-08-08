@@ -1,0 +1,8 @@
+{
+  "sources": [
+    {
+      "type": "single",
+      "resource": "modern_companions:entity/companion_table_book"
+    }
+  ]
+}

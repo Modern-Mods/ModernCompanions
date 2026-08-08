@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions;
 import com.majorbonghits.moderncompanions.registry.ModCreativeTabHandler;
 import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModBlocks;
+import com.majorbonghits.moderncompanions.core.ModBlockEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.core.ModEntityAttributes;
 import com.majorbonghits.moderncompanions.core.ModConfig;
@@ -17,8 +18,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.BlockEntityTypeAddBlocksEvent;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 
 @Mod(Constants.MOD_ID)
 public final class ModernCompanions {
@@ -35,6 +34,7 @@ public final class ModernCompanions {
 
         com.majorbonghits.moderncompanions.registry.ModItems.register(modBus); // weapons
         ModBlocks.register(modBus);
+        ModBlockEntityTypes.register(modBus);
         com.majorbonghits.moderncompanions.core.ModItems.ITEMS.register(modBus); // spawn eggs
         ModEffects.EFFECTS.register(modBus);
         ModSounds.register(modBus);
@@ -42,8 +42,6 @@ public final class ModernCompanions {
         ModCreativeTabs.register(modBus); // dedicated creative tab
         ModEntityTypes.ENTITY_TYPES.register(modBus);
         ModMenuTypes.MENU_TYPES.register(modBus);
-        // Reuse the vanilla animated book entity/renderer for the visually identical table.
-        modBus.addListener(this::addCompanionTableToEnchantingEntity);
         modBus.addListener(ModConfig::migrateAlertExclusions);
         modBus.addListener(ModEntityAttributes::registerAttributes);
         modBus.addListener(this::onCommonSetup);
@@ -61,10 +59,6 @@ public final class ModernCompanions {
                 com.majorbonghits.moderncompanions.compat.epicfight.client.EpicFightClientCompat.register();
             }
         }
-    }
-
-    private void addCompanionTableToEnchantingEntity(BlockEntityTypeAddBlocksEvent event) {
-        event.modify(BlockEntityType.ENCHANTING_TABLE, ModBlocks.COMPANION_TABLE.get());
     }
 
     private void onCommonSetup(FMLCommonSetupEvent event) {

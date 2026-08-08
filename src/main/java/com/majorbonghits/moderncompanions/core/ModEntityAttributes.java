@@ -1,5 +1,6 @@
 package com.majorbonghits.moderncompanions.core;
 
+import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 
@@ -10,7 +11,9 @@ public final class ModEntityAttributes {
     private ModEntityAttributes() {}
 
     public static void registerAttributes(EntityAttributeCreationEvent event) {
-        var attrs = AbstractHumanCompanionEntity.createAttributes().build();
+        var attrsBuilder = AbstractHumanCompanionEntity.createAttributes();
+        MagicCastingCompat.addMagicAttributes(attrsBuilder);
+        var attrs = attrsBuilder.build();
         event.put(ModEntityTypes.KNIGHT.get(), attrs);
         event.put(ModEntityTypes.ARCHER.get(), attrs);
         event.put(ModEntityTypes.ARBALIST.get(), attrs);

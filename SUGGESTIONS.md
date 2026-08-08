@@ -1,4 +1,5 @@
 - 2026-08-07: Playtest the Companion Table with primary and secondary trait replacement, tooltip-only 15/5-level costs, red bond warnings at Bond 0/I, insufficient XP/materials, invalid-owner Soul Gems, creative mode, shift-click insertion, JEI recipe visibility, and breaking/replacing the table; consider a dedicated icon or button if right-click secondary selection is not discoverable enough.
+- 2026-08-07: In a dev world with Iron's Spellbooks installed, equip each magic companion with an Iron's staff, wand, spellbook/Curios item, scroll, and magical armor set; verify the implement remains equipped, native spells cast, Max Mana/Mana Regeneration/Spell Power/cooldown/cast-time/casting-speed/summon-damage/resistance bonuses change the live behavior, and removing the gear removes only its bonus.
 - 2026-08-05: Smoke-test two same-owner companions with one injured, then test simultaneous player/ally/self injuries; verify player-first, most-injured-ally second, self third, ranged fourth, and melee-only when Mana is unavailable.
 - 2026-08-04: Smoke-test a Holy Spark's lethal hit against undead and non-undead targets; verify Cleric kill count, XP progress, level-up behavior, and no duplicate XP award.
 - 2026-08-04: Smoke-test Cleric owner healing, self-healing, holy sparks, and melee fallback with Mana starting full, partial, and empty; confirm the 6-Mana cost and faster regeneration for magical companions without changing non-magical Stamina pacing.
@@ -460,3 +461,8 @@
 ## 2026-08-07 (Beastmaster Soul Orb pet names)
 
 - Smoke-test swapping a nameless animal Soul Orb onto a Beastmaster and confirm it receives a stock pet name; repeat with a custom-named orb and confirm the stored name is unchanged.
+
+## 2026-08-07 (Curios and Ars magic equipment)
+
+- Smoke-test a stock mage and an optional Ars mage with Iron's and Ars armor, Curios rings/amulets, spellbooks, staffs, scrolls, enchanted weapons, bows, and crossbows; verify attribute changes apply and each stored spell casts.
+- Repeat with Curios absent, each magic mod absent, and both magic mods installed; add a compatibility-specific adapter only if an installed addon does not implement the documented native caster interfaces.

@@ -69,7 +69,7 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
         this.seeTime = hasLineOfSight ? this.seeTime + 1 : this.seeTime - 1;
 
         if (distSqr > (double) this.attackRadiusSqr || this.seeTime < 5) {
-            this.caster.getNavigation().moveTo(target, this.speedModifier);
+            this.caster.getNavigation().moveTo(target, this.caster.castingMovementSpeed(this.speedModifier));
         } else {
             this.caster.getNavigation().stop();
             ++this.strafeTime;
@@ -82,7 +82,8 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
             double len = Math.max(0.001D, Math.sqrt(dx * dx + dz * dz));
             double awayX = this.caster.getX() + dx / len * 1.8D;
             double awayZ = this.caster.getZ() + dz / len * 1.8D;
-            this.caster.getNavigation().moveTo(awayX, this.caster.getY(), awayZ, this.speedModifier);
+            this.caster.getNavigation().moveTo(awayX, this.caster.getY(), awayZ,
+                    this.caster.castingMovementSpeed(this.speedModifier));
         }
 
         if (this.strafeTime >= 20) {

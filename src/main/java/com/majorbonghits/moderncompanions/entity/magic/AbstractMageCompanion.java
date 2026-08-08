@@ -1,5 +1,6 @@
 package com.majorbonghits.moderncompanions.entity.magic;
 
+import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.entity.ai.MageRangedAttackGoal;
 import com.majorbonghits.moderncompanions.item.DaggerItem;
@@ -11,6 +12,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.monster.RangedAttackMob;
+import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -89,8 +91,21 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
      * Scales spell damage off Intelligence.
      */
     public final float magicDamage(float base) {
+        return magicDamage(base, null);
+    }
+
+    public final float magicDamage(float base, String school) {
         float scale = 1.0F + Math.max(0.0F, (getIntelligence() - 4) * 0.08F);
-        return base * scale;
+        return base * scale * MagicCastingCompat.spellPowerMultiplier(this, school)
+                + MagicCastingCompat.arsSpellDamage(this);
+    }
+
+    public final double castingMovementSpeed(double base) {
+        return MagicCastingCompat.castingMovementSpeed(this, base);
+    }
+
+    public final int magicCooldownTicks(int base) {
+        return MagicCastingCompat.cooldownTicks(this, base);
     }
 
     /**
@@ -142,9 +157,11 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
     }
 
     private boolean isPreferredWeapon(ItemStack stack) {
-        return stack.getItem() instanceof QuarterstaffItem
+        return !(stack.getItem() instanceof ArmorItem)
+                && (stack.getItem() instanceof QuarterstaffItem
                 || stack.getItem() instanceof DaggerItem
                 || stack.is(Items.STICK) // visual placeholder wand
-                || stack.is(Items.BLAZE_ROD);
+                || stack.is(Items.BLAZE_ROD)
+                || MagicCastingCompat.isMagicItem(stack));
     }
 }

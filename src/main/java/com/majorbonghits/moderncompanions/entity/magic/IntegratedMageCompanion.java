@@ -50,6 +50,11 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
         if (!target.isAlive() || !canSpendMana(manaCost)) return false;
         aimAt(target);
         MagicCompanionKit kit = kit();
+        if (MagicCastingCompat.castHeldItem(this, target)) {
+            spendMana(manaCost);
+            swingCast();
+            return true;
+        }
         if (!MagicCastingCompat.cast(this, target, kit.ironBasic, kit.arsBasic)) return false;
         spendMana(manaCost);
         swingCast();
@@ -63,19 +68,19 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
         MagicCompanionKit kit = kit();
         if (!MagicCastingCompat.cast(this, target, kit.ironHeavy, kit.arsHeavy)) return false;
         spendMana(HEAVY_MANA_COST);
-        heavyCooldown = HEAVY_COOLDOWN_TICKS;
+        heavyCooldown = magicCooldownTicks(HEAVY_COOLDOWN_TICKS);
         swingCast();
         return true;
     }
 
     @Override
     public int getLightIntervalTicks() {
-        return 30;
+        return magicCooldownTicks(30);
     }
 
     @Override
     public int getHeavyRecoveryTicks() {
-        return HEAVY_COOLDOWN_TICKS;
+        return magicCooldownTicks(HEAVY_COOLDOWN_TICKS);
     }
 
     protected final boolean safeTarget(LivingEntity target, float radius) {

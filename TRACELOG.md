@@ -2743,3 +2743,14 @@
   - Applied the helper to the replacement pet after ownership is restored and bumped the project version to 3.73.
 - Rationale: One shared helper covers both stock pet creation and Soul Orb replacement without overwriting custom names.
 - Build: Java 21 `check build` and `git diff --check` passed; in-game named/nameless swap smoke remains manual.
+## 2026-08-07 (Iron's magic equipment for companions)
+- Prompt/task: Let all magical companions use Iron's Spellbooks staffs, wands, spellbooks, scrolls, and compatible magical weapons, and make Iron's magical gear attributes affect companions.
+- Steps: Added optional Iron's attribute holders to the existing magic companion attribute set; routed Max Mana, Mana Regeneration, Spell Power, spell resistance, cooldown/cast pacing, and casting movement through the existing mage/resource/damage paths; expanded the shared equipment validator and shift-equip path to recognize Iron's casting item inheritance; bumped the version to 3.74 and documented the integration.
+- Rationale: Iron's already exposes its gear effects through entity attributes and its casting implements through shared base item classes. Reusing those native seams keeps Iron's optional and covers addon subclasses without an item allowlist or duplicate spell implementation.
+- Build: Java 21 `gradlew.bat compileJava --console=plain --no-daemon` passed. Full `check`/`build` and installed-Iron's runtime smoke remain required.
+
+## 2026-08-07 (Curios and Ars magic equipment)
+- Prompt/task: Make Curios rings, amulets, armor, and other attribute gear affect stock and optional magic companions, and support Ars equipment plus Iron's/Ars caster items, scrolls, and magical weapons.
+- Steps: Registered optional Iron's and Ars attribute holders on every companion entity; kept Curios' native attribute-modifier application; routed Ars Max Mana, Mana Regeneration, Spell Damage, and Warding-compatible attributes through the existing resource/damage paths; recognized stored Iron's spell containers and Ars `ItemCasterProvider` items; cast a held stored spell before the built-in mage kit and consume scrolls only after successful casting; bumped the version to 3.75 and updated the integration documentation.
+- Rationale: The shared entity attribute map is the single path Curios and armor use, while Iron's `ISpellContainer` and Ars `ItemCasterProvider` already cover addon spellbooks, scrolls, staffs, bows, crossbows, and magical weapons without hard-linking either optional API.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed. Installed Iron's/Ars runtime smoke for attribute changes, Curios slot effects, and held-item casting remains required.

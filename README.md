@@ -25,6 +25,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Companion Voices:** Five gender-matched voice actors provide greetings, confirmations, refusals, combat callouts, pain, death, idle, and job-completion cues. Voice playback is configurable and duplicate callouts are suppressed.
 - **Curios and Sophisticated Backpacks:** Optional support adds Curios slots, rendered accessories, backpack storage, and native backpack upgrades/settings.
 - **Companion Resources:** Stamina supports sprinting and melee pacing. Magic companions also use Mana.
+- **Native Magic Equipment:** Iron's and Ars Nouveau caster items can be used by magic companions, including staffs, wands, spellbooks, scrolls, and magical weapons. Iron's Max Mana, Mana Regeneration, Spell Power, school power/resistance, cooldown, cast-time, casting-speed, summon-damage, and spell-resistance attributes—and Ars Max Mana, Mana Regeneration, Spell Damage, and Warding—apply from armor, Curios, and held gear.
 - **Brewing:** Craft reusable vessels and brew Health, Regeneration, Stamina, Mana, Rejuvenation, and Shield potions.
 - **Living Jobs:** Lumberjacks, Hunters, Miners, Fishers, and Chefs can search, travel, work, collect, deliver, and resume jobs. Jobs are experimental and hidden by default.
 - **Safety Controls:** Villager and PvP protection controls are available per companion and default to safe.
@@ -448,8 +449,8 @@ All integrations are optional unless listed under Requirements. Content that dep
 
 | Mod | Integration |
 | --- | --- |
-| **Iron's Spellbooks** | Enables magic companions and their native spell API. |
-| **Ars Nouveau** | Enables magic companions and their native spell API. Install either magic mod for the nine optional magic roles; both can be used together. |
+| **Iron's Spellbooks** | Enables magic companions and their native spell API. Magic companions accept Iron's casting implements, stored-spell weapons, and scrolls; Iron's equipment attributes apply from armor, Curios, and held gear. |
+| **Ars Nouveau** | Enables magic companions and their native spell API. Ars spellbooks, tomes, parchment, bows, crossbows, and enchanted weapons can be used; Ars equipment attributes apply from armor and Curios. Install either magic mod for the nine optional magic roles; both can be used together. |
 | **TacZ** | Adds firearm specialists, category-matched guns and ammunition, native firing/reload behavior, and matching summon gems. |
 | **Curios** | Adds companion Curios slots, accessory rendering, and per-slot render toggles. |
 | **Sophisticated Backpacks** | Adds a native backpack screen, upgrades, settings, and pickup insertion for a backpack equipped in the companion's Curios back slot. Requires Curios. |

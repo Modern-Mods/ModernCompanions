@@ -12,20 +12,35 @@
         - Companions will be able to share edible food between themselves
 
 
-- Add support for all magical companions to have the ability to use and utilize iron's spell staffs/wands, spellbooks, etc.
-
-
-- Gear that increases magical companions maximum mana 
-    - Iron's Gear for example has gear that already adds 'mana' - this should affect the magical companion that equips it 
-
-
-- Ability to swap companion's model from Steve to Alex, and vice versa
+- Ability to swap companion's model from `Steve` to `Alex`, and vice versa
     - Option available in 'Bio' edit screen, along with Name, Age, Skin, etc.
 
 
 - Have companions able to get onto mounts and ride along with the player
-    - Player mounts up, Companion searches for nearby mountable mob, mounts it and re-engages follow logic. 
-    - Companiuon dismounts when the player dismounts.
+    - Player mounts up, Companion searches for nearby mountable mob owned by the player, mounts it and re-engages follow logic. 
+    - Companion dismounts when the player dismounts.
+
+
+- Currencies
+    - Added to vanilla loot tables; dungeons, caves, villages, etc.
+    - Uses `currency.png` which is a 128x16 sprite SHEET with 16x16 sprites
+        - Left to right; Tin, Copper, Silver, Gold, Dollar, Stack, Credit Card, Stack of Gold Coins
+
+
+- Health Pack
+    - Inserted into loot tables; dungeons, caves, villages, etc.
+    - Craftable
+    - Instantly heals to full when consumed
+    - When 'used' on another player or companion - instantly heals them to full
+
+- Ranks
+    - Companions increase their 'rank' as they level and gain combat experience. 
+    - Uses `ranks.png` which is a 80x16 sprite SHEET with 16x16 sprites
+        - Left to Right; Private → Corporal → Sergeant → Captain → Commander
+    - Higher rank companions gain access to more features
+        - Additional equipment slots?
+        - Access to higher tier equipment?
+        - Boost to overall stats?
 
 
 - 'Better Combat' support

@@ -68,7 +68,7 @@ public class HolySparkProjectile extends Projectile {
         if (!level().isClientSide() && owner instanceof AbstractMageCompanion caster
                 && result.getEntity() instanceof LivingEntity target
                 && caster.canHarm(target)) {
-            float damage = caster.magicDamage(BASE_DAMAGE);
+            float damage = caster.magicDamage(BASE_DAMAGE, "holy");
             if (target.getType().is(EntityTypeTags.UNDEAD)) {
                 damage *= UNDEAD_DAMAGE_MULTIPLIER;
             }

@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.entity;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.core.ModSounds;
 import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
+import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.entity.ai.*;
 import com.majorbonghits.moderncompanions.entity.personality.CompanionPersonality;
@@ -1483,7 +1484,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private boolean isMainHandEquipment(ItemStack stack) {
-        return !stack.isEmpty() && (stack.getItem() instanceof TieredItem
+        return !stack.isEmpty() && !(stack.getItem() instanceof ArmorItem) && (MagicCastingCompat.isMagicItem(stack)
+                || stack.getItem() instanceof TieredItem
                 || stack.getItem() instanceof BowItem
                 || stack.getItem() instanceof CrossbowItem
                 || stack.getItem() instanceof TridentItem
@@ -1545,13 +1547,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Nullable
     private EquipmentSlot equipmentSlotFor(ItemStack stack) {
         if (stack.getItem() instanceof ArmorItem armor) return armor.getEquipmentSlot();
-        if (stack.getItem() instanceof SwordItem) return EquipmentSlot.MAINHAND;
+        if (stack.getItem() instanceof SwordItem || MagicCastingCompat.isMagicItem(stack)) return EquipmentSlot.MAINHAND;
         return isShieldItem(stack) ? EquipmentSlot.OFFHAND : null;
     }
 
     private boolean isBetterEquipment(ItemStack candidate, ItemStack current, EquipmentSlot slot) {
         if (current.isEmpty()) return true;
         if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) return CompanionData.isBetterArmor(candidate, current);
+        if (slot == EquipmentSlot.MAINHAND && MagicCastingCompat.isMagicItem(candidate)) {
+            return current.isEmpty() || !MagicCastingCompat.isMagicItem(current);
+        }
         if (slot == EquipmentSlot.MAINHAND && candidate.getItem() instanceof SwordItem sword
                 && current.getItem() instanceof SwordItem equippedSword) return sword.getDamage(candidate) > equippedSword.getDamage(current);
         return false;
@@ -2436,7 +2441,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private int sprintStaminaCost() { return ModConfig.safeGet(ModConfig.STAMINA_SPRINT_COST); }
     private int meleeStaminaCost() { return ModConfig.safeGet(ModConfig.STAMINA_MELEE_COST); }
     public int getMana() { return this.entityData.get(MANA); }
-    public int getManaMax() { return this.entityData.get(MANA_MAX); }
+    public int getManaMax() {
+        int fallback = this.entityData.get(MANA_MAX);
+        return hasMana() ? MagicCastingCompat.maxMana(this, fallback) : fallback;
+    }
     public boolean hasMana() { return this instanceof AbstractMageCompanion; }
     public boolean canSpendMana(int amount) { return hasMana() && getMana() >= amount; }
     public void restoreStamina(int amount) {
@@ -2543,7 +2551,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("Stamina", getStamina());
         tag.putInt("StaminaMax", getStaminaMax());
         tag.putInt("Mana", getMana());
-        tag.putInt("ManaMax", getManaMax());
+        // Curios/armor bonuses are live attributes; persist only the intrinsic pool or
+        // an Ars max-mana bonus would be applied again after a relog.
+        tag.putInt("ManaMax", this.entityData.get(MANA_MAX));
         tag.putInt("EquipmentRenderMask", entityData.get(EQUIPMENT_RENDER_MASK));
         SimpleContainer cosmeticArmor = new SimpleContainer(4);
         cosmeticArmor.setItem(0, getCosmeticArmorItem(EquipmentSlot.HEAD).copy());
@@ -3115,6 +3125,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (staminaEnabled) restoreStamina(1);
         }
         int manaInterval = CompanionResourceRules.manaRegenInterval(inCombat, combatGraceTicks, hasEffect(MobEffects.REGENERATION));
+        manaInterval = MagicCastingCompat.manaRegenInterval(this, manaInterval);
         if (this.tickCount % manaInterval == 0) {
             restoreMana(1);
         }
@@ -3698,6 +3709,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private float applyEnduranceResistance(DamageSource source, float amount) {
+        amount = MagicCastingCompat.reduceSpellDamage(this, source, amount);
         boolean physical = !source.is(net.minecraft.tags.DamageTypeTags.IS_FIRE)
                 && !source.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)
                 && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_ARMOR)

@@ -19,6 +19,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **RPG Stats and Leveling:** Strength, Dexterity, Intelligence, and Endurance affect combat, speed, XP gain, health, defense, and knockback resistance.
 - **No Level Cap:** Companions can continue leveling indefinitely, with no hard party-size limit beyond practical server performance.
 - **Custom Names and Skins:** Companions use expanded male and female name pools, including medieval and fantasy names. Use `/companionskin "NAME" URL` to assign an HTTP(S) skin.
+- **Bond Command:** Owners and operators can use `/companions bond "NAME"` to set a loaded companion to maximum Bond (Bond V).
 - **295 Bundled Skins:** The full bundled male and female skin collection is available for random companion appearances.
 - **Personality and Journal:** Companions have traits, backstories, Morale, Bond, age, favorite foods, and persistent journey statistics.
 - **Companion Voices:** Five gender-matched voice actors provide greetings, confirmations, refusals, combat callouts, pain, death, idle, and job-completion cues. Voice playback is configurable and duplicate callouts are suppressed.

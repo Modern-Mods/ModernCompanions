@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.command;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.entity.personality.CompanionPersonality;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -47,7 +48,17 @@ public final class ModCommands {
                                         .executes(ctx -> setCompanionSkin(
                                                 ctx.getSource(),
                                                 StringArgumentType.getString(ctx, "name"),
-                                                StringArgumentType.getString(ctx, "url")))))
+                                        StringArgumentType.getString(ctx, "url")))))
+        );
+
+        event.getDispatcher().register(
+                Commands.literal("companions")
+                        .then(Commands.literal("bond")
+                                .requires(src -> src.getEntity() instanceof ServerPlayer)
+                                .then(Commands.argument("name", StringArgumentType.greedyString())
+                                        .executes(ctx -> maxCompanionBond(
+                                                ctx.getSource(),
+                                                StringArgumentType.getString(ctx, "name")))))
         );
     }
 
@@ -72,6 +83,22 @@ public final class ModCommands {
 
         companion.setCustomSkinUrl(url);
         source.sendSuccess(() -> Component.translatable("command.modern_companions.skin.updated", companion.getName(), url), false);
+        return 1;
+    }
+
+    private static int maxCompanionBond(CommandSourceStack source, String name) {
+        ServerPlayer player = Objects.requireNonNull(source.getPlayer());
+        AbstractHumanCompanionEntity companion = findOwnedCompanion(source, player, name);
+        if (companion == null) {
+            source.sendFailure(Component.translatable("command.modern_companions.bond.not_found", name));
+            return 0;
+        }
+
+        // Use the existing setter so the max Bond XP, level, persistence, and synced data stay together.
+        companion.setBondXp(CompanionPersonality.MAX_BOND_XP);
+        source.sendSuccess(() -> Component.translatable(
+                "command.modern_companions.bond.updated",
+                companion.getName(), companion.getBondLevel(), companion.getBondXp()), false);
         return 1;
     }
 

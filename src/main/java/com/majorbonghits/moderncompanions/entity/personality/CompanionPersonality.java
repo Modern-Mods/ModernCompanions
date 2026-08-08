@@ -28,6 +28,7 @@ public class CompanionPersonality {
     public static final String KEY_DISTANCE_TRAVELED = "Mem_DistanceTraveled";
     public static final String KEY_AGE_YEARS = "AgeYears";
     public static final String KEY_LAST_AGE_CHECK = "AgeLastCheck";
+    public static final int MAX_BOND_XP = 2000;
 
     // Canonical trait ids from TASK.md
     public static final List<String> TRAITS = List.of(
@@ -227,7 +228,7 @@ public class CompanionPersonality {
     }
 
     private int[] defaultBondThresholds() {
-        return new int[]{100, 250, 500, 1000, 2000};
+        return new int[]{100, 250, 500, 1000, MAX_BOND_XP};
     }
 
     public String getPrimaryTrait() {

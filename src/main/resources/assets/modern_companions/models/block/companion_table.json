@@ -1,3 +1,9 @@
 {
-  "parent": "minecraft:block/enchanting_table"
+  "parent": "minecraft:block/enchanting_table",
+  "textures": {
+    "bottom": "modern_companions:block/companion_table_bottom",
+    "side": "modern_companions:block/companion_table_side",
+    "top": "modern_companions:block/companion_table_top",
+    "particle": "modern_companions:block/companion_table_side"
+  }
 }

@@ -2686,3 +2686,28 @@
   - Called out `averageHouseSeparation` as schema-defined but not currently consumed by the active runtime placement path.
   - Bumped the project version to 3.55 and added the documentation maintenance follow-up.
 - Rationale: Keep the player/modpack-facing reference grounded in shipped behavior, including known configuration boundaries and options that are currently dormant.
+## 2026-08-07 (Maximum Bond command)
+- Prompt/task: Add a command that maxes a target companion's Bond, such as `/companions bond "Clarissa Mao"`.
+- Steps:
+  - Reused the existing all-dimensions companion lookup and owner/operator permission check in `ModCommands`.
+  - Registered `/companions bond <name>` with greedy string parsing so names containing spaces work, then routed the update through the existing Bond XP setter.
+  - Centralized the final Bond threshold as `CompanionPersonality.MAX_BOND_XP`, added localized feedback and README usage, and bumped the version to 3.67.
+- Rationale: Keeps ownership, persistence, and client synchronization on the existing companion path while adding only the requested command surface.
+- Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed; live command/relog smoke remains manual.
+
+## 2026-08-07 (Companion Table block textures)
+- Prompt/task: Use the supplied `companion_table_top.png`, `companion_table_side.png`, and `companion_table_bottom.png` instead of enchanting-table block textures.
+- Steps:
+  - Kept the vanilla enchanting-table model geometry and animated book while overriding its top, side, bottom, and particle texture slots with the Companion Table assets.
+  - Bumped the project version to 3.68.
+- Rationale: Changes only the block's visible faces and particle texture, preserving the existing block shape, item model, and table interaction behavior.
+- Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed; in-world visual angle/lighting smoke remains manual.
+
+## 2026-08-07 (Companion Table internationalization)
+- Prompt/task: Add proper i18n for the new Companion Table additions, especially the broken item name in inventory and JEI.
+- Steps:
+  - Added the `block.modern_companions.companion_table` display key used by the BlockItem, plus the table container and tooltip keys.
+  - Added matching Soul Reforging messages and all trait labels used by the table to the English, Polish, Brazilian Portuguese, and Russian locale files.
+  - Bumped the project version to 3.69.
+- Rationale: Keeps the item name, table UI, reforging feedback, and dynamic trait tooltips localized through Minecraft's normal language lookup instead of adding item-specific naming code.
+- Build: Java 21 `./gradlew check build --console=plain --no-daemon` passed; locale switching and inventory/JEI display remain manual smoke checks.

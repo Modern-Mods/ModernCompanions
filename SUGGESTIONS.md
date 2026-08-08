@@ -441,3 +441,6 @@
 
 - Smoke-test 3.52 with Epic Fight enabled, then repeat with Epic Fight disabled, using a second companion and both vanilla and Farmer’s Delight foods.
 - The refreshed 3.51 logs fail during unrelated mod loading before recruitment; retain a clean successful runtime log if the 3.52 chat still renders blank.
+- 2026-08-07: Smoke-test `/companions bond "NAME"` as the owner and as an operator, including names with spaces, companions in another loaded dimension, relog persistence, and the Bond-disabled config path; verify the Journal shows Bond V / 2,000 XP.
+- 2026-08-07: Playtest the Companion Table block and item from multiple angles and lighting conditions; verify the custom top, side, bottom, and particle textures render correctly while the animated book remains aligned.
+- 2026-08-07: Switch between English, Polish, Brazilian Portuguese, and Russian, then verify the Companion Table name in inventory/JEI, its container title, trait tooltips, Soul Reforging feedback, and Bond requirement warning.

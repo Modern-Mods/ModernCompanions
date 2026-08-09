@@ -163,6 +163,10 @@ Five reusable vessel shapes support six potion types:
 
 Brewing recipes are visible in JEI, and used potions return their matching empty vessels.
 
+### Health Packs
+
+Health Packs are rare, non-craftable chest loot found in dungeons, mineshafts, villages, temples, strongholds, ships, and other structures. Use one on yourself, another player, or a Modern Companions companion to restore that target to full health instantly. Each successful use consumes one pack and starts a 30-second cooldown.
+
 ### Potion Recipes
 
 Craft one of the five reusable empty vessels, fill it with a Water Bottle, and brew it with Nether Wart to create the matching Empty Vessel. Add the listed ingredients in a Brewing Stand to finish the potion.

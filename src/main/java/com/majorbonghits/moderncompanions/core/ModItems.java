@@ -13,6 +13,7 @@ import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
 import com.majorbonghits.moderncompanions.item.CurrencyItem;
 import com.majorbonghits.moderncompanions.item.CreditCardItem;
 import com.majorbonghits.moderncompanions.item.FirearmSpecialistSummonGemItem;
+import com.majorbonghits.moderncompanions.item.HealthPackItem;
 import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
 import com.majorbonghits.moderncompanions.currency.CurrencyService;
 import net.minecraft.core.registries.Registries;
@@ -92,6 +93,8 @@ public final class ModItems {
     public static final DeferredHolder<Item, Item> MANA_POTION = potion("mana_potion", CompanionPotionItem.Kind.MANA);
     public static final DeferredHolder<Item, Item> REJUVENATION_POTION = potion("rejuvenation_potion", CompanionPotionItem.Kind.REJUVENATION);
     public static final DeferredHolder<Item, Item> SHIELD_POTION = potion("shield_potion", CompanionPotionItem.Kind.SHIELD);
+    public static final DeferredHolder<Item, Item> HEALTH_PACK = ITEMS.register("health_pack",
+            () -> new HealthPackItem(new Item.Properties().stacksTo(1).rarity(Rarity.RARE)));
 
     public static final DeferredHolder<Item, Item> ARBALIST_SPAWN_EGG = ITEMS.register("arbalist_spawn_egg",
             () -> new DeferredSpawnEggItem(ModEntityTypes.ARBALIST, 0xE8AF5A, 0xFF0000, new Item.Properties()));

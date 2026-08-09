@@ -516,3 +516,9 @@
 
 - Install 3.92 in the active Testing instance, reload the world, and break stone, ores, and modded blocks; verify no Modern Companions potion, enchanted-book, or legendary loot appears from block drops.
 - Open representative dungeon, mineshaft, temple, mansion, bastion, and End City chests and verify potion, enchanted-book, and legendary additions load after changing the predicate, serializer, and loot-table paths.
+
+## 2026-08-09 (Health Pack)
+
+- Smoke-test self-use, another-player use, owned and unowned companion use, full-health no-op behavior, item consumption, and the 30-second cooldown in a dev world.
+- Open representative dungeon, mineshaft, village, temple, stronghold, ship, and late-game structure chests to confirm the Health Pack modifier resolves only through chest loot.
+- If the pack is too frequent or too scarce in a modpack, tune the single `0.04` random chance in `health_pack.json`; add a config option only if pack-specific balancing is needed.

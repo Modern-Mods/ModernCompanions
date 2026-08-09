@@ -2862,3 +2862,13 @@
   - Bumped the version to 3.92.
 - Rationale: The active log showed malformed predicates and an unregistered modifier serializer, while plural loot paths would prevent referenced tables from resolving. Supported predicates, serializers, and resource paths preserve chest-only scope and restore intended chest/block loot loading.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; the rebuilt jar must be installed in the active instance before the block-break and structure-chest smoke checks.
+
+## 2026-08-09 (Health Pack)
+- Prompt/task: Add a non-craftable Health Pack that appears in structure loot, instantly restores full health, supports self/player/companion use, and cannot be spammed.
+- Steps:
+  - Registered the single-stack Health Pack with the supplied `healthpack.png` model, English name/tooltip, and dedicated creative-tab entry without adding a recipe.
+  - Added a shared item interaction for self-use and player/Modern Companions targets; it consumes only after a real heal and applies a 30-second user cooldown.
+  - Added chest loot coverage for dungeon, mineshaft, village, temple, stronghold, ship, and other vanilla structure tables through the active NeoForge global modifier manifest.
+  - Bumped the version to 3.93.
+- Rationale: Keeping the healing and cooldown in one item class makes self-use and target-use share the same anti-spam and consumption rules, while the explicit target predicate avoids healing arbitrary mobs.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; in-game self/player/companion use, cooldown, creative icon, and representative structure-loot smoke remain manual.

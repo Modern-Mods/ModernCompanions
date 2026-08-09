@@ -2249,6 +2249,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
+        // Health packs must reach their item interaction before the companion GUI/food rules.
+        if (held.is(ModItems.HEALTH_PACK.get())) {
+            return held.interactLivingEntity(player, this, hand);
+        }
         if (hand == InteractionHand.MAIN_HAND) {
             if (!this.isTame() && !this.level().isClientSide()) {
                 if (!untamedGreetingPlayed) {

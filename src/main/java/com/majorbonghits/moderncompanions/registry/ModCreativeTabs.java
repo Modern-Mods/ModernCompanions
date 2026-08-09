@@ -86,6 +86,7 @@ public final class ModCreativeTabs {
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.MANA_POTION.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.REJUVENATION_POTION.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.SHIELD_POTION.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.HEALTH_PACK.get());
 
                         // Attribute enchantment books (I–III)
                         addEnchantBooks(params, output, ModEnchantments.EMPOWER);

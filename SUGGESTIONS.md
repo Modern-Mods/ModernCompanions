@@ -1,3 +1,4 @@
+- 2026-08-08: Smoke-test fresh structure and spawn-egg companions with Spawn Armor/Weapon enabled and autoEquip disabled; confirm armor, main-hand, and offhand gear is equipped live, while only intended ammo/consumables remain in cargo, and repeat after relog.
 - 2026-08-08: Smoke-test a clean instance with Apothic Enchanting/Apotheosis: place and open both tables, verify the Companion Table keeps its own animated book, particles, and menu, and confirm enchanting-table compatibility changes do not produce a registry crash.
 - 2026-08-07: Playtest the Companion Table with primary and secondary trait replacement, tooltip-only 15/5-level costs, red bond warnings at Bond 0/I, insufficient XP/materials, invalid-owner Soul Gems, creative mode, shift-click insertion, JEI recipe visibility, and breaking/replacing the table; consider a dedicated icon or button if right-click secondary selection is not discoverable enough.
 - 2026-08-07: In a dev world with Iron's Spellbooks installed, equip each magic companion with an Iron's staff, wand, spellbook/Curios item, scroll, and magical armor set; verify the implement remains equipped, native spells cast, Max Mana/Mana Regeneration/Spell Power/cooldown/cast-time/casting-speed/summon-damage/resistance bonuses change the live behavior, and removing the gear removes only its bonus.
@@ -484,3 +485,11 @@
 ## 2026-08-08 (Epic Fight Alex mesh selection)
 
 - With Epic Fight installed, toggle both models in-world and verify the arm width changes while attack animations and armor remain aligned.
+
+## 2026-08-08 (legendary items)
+
+- Smoke-test each legendary item's tooltip/model, durability, mining action, native mace smash, trident throw/return, arrow firing, companion equipment, and Epic Fight animation; also open representative common, epic, and mythic structure chests to verify the global modifiers without relying on a biome or dimension-specific rule.
+
+## 2026-08-08 (legendary creative-tab visibility)
+
+- Open the dedicated Modern Companions and vanilla Combat tabs in-game and verify all 34 legendary items appear, including the three arrow variants.

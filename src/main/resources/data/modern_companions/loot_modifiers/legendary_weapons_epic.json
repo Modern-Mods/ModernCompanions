@@ -1,0 +1,15 @@
+{
+  "type": "neoforge:add_table",
+  "conditions": [
+    {"condition":"minecraft:alternative","terms":[
+      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/stronghold_library"},
+      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/woodland_mansion"},
+      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/bastion_treasure"},
+      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/nether_bridge"},
+      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/ancient_city"},
+      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/trial_chambers/reward"}
+    ]},
+    {"condition":"minecraft:random_chance","chance":0.01}
+  ],
+  "table":"modern_companions:chests/legendary_weapons_epic"
+}

@@ -88,8 +88,8 @@ public class Vanguard extends Knight {
             // Lean toward iron shield start; avoids power creep by capping sword quality.
             ItemStack sword = getSpawnSword();
             ItemStack shield = Items.SHIELD.getDefaultInstance();
-            this.inventory.setItem(4, sword);
-            this.inventory.setItem(5, shield);
+            this.setItemSlot(EquipmentSlot.MAINHAND, sword);
+            this.setItemSlot(EquipmentSlot.OFFHAND, shield);
             checkSword();
             checkShield();
         }

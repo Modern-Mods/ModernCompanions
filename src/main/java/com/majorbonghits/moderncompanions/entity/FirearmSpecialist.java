@@ -61,7 +61,7 @@ public class FirearmSpecialist extends AbstractHumanCompanionEntity {
         if (ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
             FirearmSupport.SpawnLoadout loadout = FirearmSupport.createSpawnLoadout(
                     specialty, random, level().registryAccess());
-            if (!loadout.gun().isEmpty()) inventory.setItem(4, loadout.gun());
+            if (!loadout.gun().isEmpty()) setItemSlot(EquipmentSlot.MAINHAND, loadout.gun());
             if (!loadout.ammo().isEmpty()) inventory.setItem(5, loadout.ammo());
         }
         FirearmSupport.equipFirearm(this);
@@ -135,7 +135,7 @@ public class FirearmSpecialist extends AbstractHumanCompanionEntity {
         if (ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
             FirearmSupport.SpawnLoadout loadout = FirearmSupport.createSpawnLoadout(
                     getFirearmSpecialty(), random, level.registryAccess());
-            if (!loadout.gun().isEmpty()) inventory.setItem(4, loadout.gun());
+            if (!loadout.gun().isEmpty()) setItemSlot(EquipmentSlot.MAINHAND, loadout.gun());
             if (!loadout.ammo().isEmpty()) inventory.setItem(5, loadout.ammo());
         }
         return super.finalizeSpawn(level, difficulty, reason, data);

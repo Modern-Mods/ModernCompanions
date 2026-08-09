@@ -2796,3 +2796,21 @@
   - Bumped the version to 3.82.
 - Rationale: The patched renderer had been fixed to the wide BIPED mesh, so the vanilla model flag could not affect Epic Fight geometry.
 - Build: Java 21 `gradlew check build --console=plain --no-daemon` required; Epic Fight in-world visual smoke remains manual.
+
+## 2026-08-08 (Legendary item equipment and loot)
+- Prompt/task: Implement all legendary item sprites as loot-only gear, preserve vanilla behavior for swords, tools, maces, tridents, and arrows, support rare companion loadouts, and assign Epic Fight weapon categories.
+- Steps:
+  - Registered all 34 legendary items with tiered stats, Epic rarity, native vanilla item classes where available, and the existing custom hammer/spear/glaive/dagger/club bases for non-vanilla weapon types.
+  - Added item models and names in every shipped locale, three power-tier chest loot tables with global loot modifiers, and a 1% role-compatible structure-companion loadout chance.
+  - Added Epic Fight capability data for all 31 melee/tool items; arrows intentionally keep vanilla projectile behavior without a melee capability.
+  - Bumped the version to 3.85.
+- Rationale: Centralizing the definitions in the existing weapon registry and structure-spawn hook keeps loot, companion equipment, durability, native throwing/smash/tool actions, and optional Epic Fight integration on their established paths.
+- Build: Java 21 `gradlew.bat compileJava --console=plain --no-daemon` passed; full check/build, loot-table loading, item behavior, companion structure-spawn rarity, and Epic Fight in-world animation/projectile smoke remain required.
+
+## 2026-08-08 (Legendary creative-tab visibility)
+- Prompt/task: Add every legendary item to the creative tab.
+- Steps:
+  - Added one registry-backed legendary-item list and exposed it through both the dedicated Modern Companions tab and the vanilla Combat tab.
+  - Kept the items loot-only by changing creative visibility only; bumped the version to 3.86.
+- Rationale: A single list prevents creative tabs from drifting away from the 34 registered legendary items while preserving their non-craftable status.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; creative-tab visibility remains a manual in-game check.

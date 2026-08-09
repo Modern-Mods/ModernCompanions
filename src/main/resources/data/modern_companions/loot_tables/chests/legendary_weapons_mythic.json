@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {"type":"minecraft:item","name":"modern_companions:crimson_mace","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:crimson_trident","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:ice_mace","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:ice_scythe","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:ice_trident","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:molten_hoe","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:molten_pickaxe","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:molten_scythe","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:molten_shovel","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:molten_sword","weight":3}
+      ]
+    }
+  ]
+}

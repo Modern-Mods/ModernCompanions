@@ -75,7 +75,7 @@ public class Axeguard extends AbstractHumanCompanionEntity {
         if (ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
             ItemStack itemstack = getSpawnAxe();
             if (!itemstack.isEmpty()) {
-                this.inventory.setItem(4, itemstack);
+                this.setItemSlot(EquipmentSlot.MAINHAND, itemstack);
                 checkAxe();
             }
         }

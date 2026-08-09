@@ -49,7 +49,7 @@ public class Stormcaller extends AbstractHumanCompanionEntity {
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData data) {
         if (ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            this.inventory.setItem(4, Items.TRIDENT.getDefaultInstance());
+            this.setItemSlot(EquipmentSlot.MAINHAND, Items.TRIDENT.getDefaultInstance());
             checkTrident();
         }
         return super.finalizeSpawn(level, difficulty, reason, data);

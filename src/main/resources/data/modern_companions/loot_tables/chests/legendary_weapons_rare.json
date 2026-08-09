@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {"type":"minecraft:item","name":"modern_companions:candle_sword","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:fireaxe","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:hammer_head","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:iron_mace","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:sai","weight":4},
+        {"type":"minecraft:item","name":"modern_companions:spoon","weight":4},
+        {"type":"minecraft:item","name":"modern_companions:swordfish","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:xmas_sword","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:crimson_arrow","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:ice_arrow","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:molten_arrow","weight":2}
+      ]
+    }
+  ]
+}

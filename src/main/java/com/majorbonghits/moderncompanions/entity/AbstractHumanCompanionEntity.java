@@ -62,6 +62,7 @@ import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.MaceItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.BowItem;
@@ -927,8 +928,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private boolean shouldRetainForUse(ItemStack stack) {
         if (stack.isEmpty()) return true;
         if (CompanionData.isFood(stack) || stack.has(net.minecraft.core.component.DataComponents.POTION_CONTENTS)) return true;
-        if (stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem
-                || stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem) {
+        if (isMainHandWeapon(stack) || stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem) {
             return true; // keep primary weapons
         }
         return false;
@@ -1492,6 +1492,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 || stack.getItem() instanceof BowItem
                 || stack.getItem() instanceof CrossbowItem
                 || stack.getItem() instanceof TridentItem
+                || stack.getItem() instanceof MaceItem
                 || stack.getItem() instanceof FishingRodItem
                 || FirearmSupport.isFirearm(stack)
                 || stack.is(TagsInit.Items.SWORDS));
@@ -2945,10 +2946,25 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 EquipmentSlot armorType = EquipmentSlot.values()[i + 2]; // FEET..HEAD
                 ItemStack itemstack = CompanionData.getSpawnArmor(armorType);
                 if (!itemstack.isEmpty()) {
-                    this.inventory.setItem(i, itemstack);
+                    // Spawn loadouts go straight to live slots; auto-equip only governs cargo scans.
+                    setItemSlot(armorType, itemstack);
                 }
             }
             checkArmor();
+        }
+
+        // Structure companions very rarely receive a role-compatible legendary item.
+        // Arrows stay in inventory so bows and crossbows retain their native projectile path.
+        if (reason == MobSpawnType.STRUCTURE && this.random.nextFloat() < 0.01F) {
+            ItemStack legendary = com.majorbonghits.moderncompanions.registry.ModItems.structureLegendary(
+                    this.random, this.getMainHandItem());
+            if (!legendary.isEmpty()) {
+                if (legendary.getItem() instanceof net.minecraft.world.item.ArrowItem) {
+                    this.inventory.addItem(legendary);
+                } else {
+                    this.setItemSlot(EquipmentSlot.MAINHAND, legendary);
+                }
+            }
         }
         recomputeEquipmentAttributeBonuses();
         applyRpgAttributeModifiers();

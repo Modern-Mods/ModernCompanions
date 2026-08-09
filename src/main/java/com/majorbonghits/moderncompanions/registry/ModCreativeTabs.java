@@ -92,6 +92,9 @@ public final class ModCreativeTabs {
                         for (WeaponType type : WeaponType.values()) {
                             com.majorbonghits.moderncompanions.registry.ModItems.getItemsByType(type).forEach(output::accept);
                         }
+
+                        // Legendary items are loot-only, but remain available for creative testing and decoration.
+                        com.majorbonghits.moderncompanions.registry.ModItems.getLegendaryItems().forEach(output::accept);
                     })
                     .build());
 

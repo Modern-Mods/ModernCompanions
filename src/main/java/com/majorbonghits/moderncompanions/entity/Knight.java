@@ -84,7 +84,7 @@ public class Knight extends AbstractHumanCompanionEntity {
         if (ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
             ItemStack itemstack = getSpawnSword();
             if (!itemstack.isEmpty()) {
-                this.inventory.setItem(4, itemstack);
+                this.setItemSlot(EquipmentSlot.MAINHAND, itemstack);
                 checkSword();
             }
         }

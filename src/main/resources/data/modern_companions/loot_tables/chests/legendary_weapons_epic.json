@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {"type":"minecraft:item","name":"modern_companions:crimson_axe","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:crimson_hammer","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:crimson_saber","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:crimson_spear","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:crimson_sycthe","weight":2},
+        {"type":"minecraft:item","name":"modern_companions:ice_axe","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:ice_cleaver","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:ice_hammer","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:ice_lance","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:ice_spear","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:molten_axe","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:molten_hammer","weight":3},
+        {"type":"minecraft:item","name":"modern_companions:molten_spear","weight":3}
+      ]
+    }
+  ]
+}

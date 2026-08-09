@@ -139,6 +139,16 @@ tasks.register("epicFightCombatAiCheck", JavaExec) {
 
 tasks.register("epicFightCapabilityCheck") {
     def weaponTypes = [dagger: "dagger", hammer: "axe", club: "axe", spear: "spear", quarterstaff: "longsword", glaive: "spear"]
+    def legendaryTypes = [
+            candle_sword: "spear", fireaxe: "axe", hammer_head: "axe", iron_mace: "axe", sai: "dagger",
+            spoon: "axe", swordfish: "sword", xmas_sword: "sword", crimson_axe: "axe",
+            crimson_hammer: "axe", crimson_mace: "axe", crimson_saber: "sword", crimson_spear: "spear",
+            crimson_sycthe: "spear", crimson_trident: "spear", ice_axe: "axe", ice_cleaver: "longsword",
+            ice_hammer: "axe", ice_lance: "spear", ice_mace: "axe", ice_scythe: "spear",
+            ice_spear: "spear", ice_trident: "spear", molten_axe: "axe", molten_hammer: "axe",
+            molten_hoe: "axe", molten_pickaxe: "axe", molten_scythe: "spear", molten_shovel: "axe",
+            molten_spear: "spear", molten_sword: "sword"
+    ]
     doLast {
         ["wooden", "stone", "iron", "golden", "diamond", "netherite", "bronze"].each { material ->
             weaponTypes.each { weapon, category ->
@@ -146,6 +156,12 @@ tasks.register("epicFightCapabilityCheck") {
                 if (!capability.isFile() || !capability.text.contains("\"type\": \"epicfight:${category}\"")) {
                     throw new GradleException("Missing Epic Fight capability for ${material}_${weapon}")
                 }
+            }
+        }
+        legendaryTypes.each { weapon, category ->
+            def capability = file("src/main/resources/data/modern_companions/capabilities/weapons/${weapon}.json")
+            if (!capability.isFile() || !capability.text.contains("\"type\": \"epicfight:${category}\"")) {
+                throw new GradleException("Missing Epic Fight capability for ${weapon}")
             }
         }
     }

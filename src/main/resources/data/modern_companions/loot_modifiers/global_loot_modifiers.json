@@ -14,6 +14,9 @@
     "modern_companions:vitality_ii",
     "modern_companions:vitality_iii",
     "modern_companions:companion_potions_common",
-    "modern_companions:companion_potions_strong"
+    "modern_companions:companion_potions_strong",
+    "modern_companions:legendary_weapons_rare",
+    "modern_companions:legendary_weapons_epic",
+    "modern_companions:legendary_weapons_mythic"
   ]
 }

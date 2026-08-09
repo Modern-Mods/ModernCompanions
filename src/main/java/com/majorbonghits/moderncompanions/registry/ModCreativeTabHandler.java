@@ -32,5 +32,9 @@ public final class ModCreativeTabHandler {
                 lastItem = item;
             }
         }
+        for (Item item : ModItems.getLegendaryItems()) {
+            event.insertAfter(new ItemStack(lastItem), new ItemStack(item), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+            lastItem = item;
+        }
     }
 }

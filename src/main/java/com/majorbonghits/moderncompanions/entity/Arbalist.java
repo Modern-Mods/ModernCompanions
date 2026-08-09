@@ -104,7 +104,7 @@ public class Arbalist extends AbstractHumanCompanionEntity implements CrossbowAt
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData data) {
         if (ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            this.inventory.setItem(4, Items.CROSSBOW.getDefaultInstance());
+            this.setItemSlot(EquipmentSlot.MAINHAND, Items.CROSSBOW.getDefaultInstance());
             checkCrossbow();
         }
         return super.finalizeSpawn(level, difficulty, reason, data);

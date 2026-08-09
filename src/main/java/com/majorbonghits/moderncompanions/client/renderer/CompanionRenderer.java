@@ -27,6 +27,8 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
     private static boolean suppressPreviewNameplate;
     private final PlayerModel<AbstractHumanCompanionEntity> wideModel;
     private final PlayerModel<AbstractHumanCompanionEntity> slimModel;
+    private final CompanionArmorLayer wideArmorLayer;
+    private final CompanionArmorLayer slimArmorLayer;
 
     /** Restricts nameplate suppression to the inventory preview, never the world renderer. */
     public static void setPreviewNameplateSuppressed(boolean value) {
@@ -37,14 +39,22 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
         this.wideModel = this.getModel();
         this.slimModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), true);
-        this.addLayer(new CompanionArmorLayer(this,
+        this.wideArmorLayer = new CompanionArmorLayer(this,
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
-                context.getModelManager(), false));
-        this.addLayer(new CompanionArmorLayer(this,
+                context.getModelManager(), false);
+        this.addLayer(this.wideArmorLayer);
+        this.slimArmorLayer = new CompanionArmorLayer(this,
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_INNER_ARMOR)),
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_OUTER_ARMOR)),
-                context.getModelManager(), true));
+                context.getModelManager(), true);
+        this.addLayer(this.slimArmorLayer);
+    }
+
+    /** Supplies the matching vanilla armor layer to optional renderer integrations. */
+    public HumanoidArmorLayer<AbstractHumanCompanionEntity, PlayerModel<AbstractHumanCompanionEntity>,
+            HumanoidModel<AbstractHumanCompanionEntity>> getArmorLayer(boolean alex) {
+        return alex ? slimArmorLayer : wideArmorLayer;
     }
 
     @Override

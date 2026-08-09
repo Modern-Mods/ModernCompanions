@@ -18,6 +18,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -66,6 +67,14 @@ public final class ModClientEvents {
         magic(event, ModEntityTypes.BATTLEMAGE);
         event.registerEntityRenderer(ModEntityTypes.COMPANION_FISHING_HOOK.get(), CompanionFishingHookRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.HOLY_SPARK.get(), HolySparkProjectileRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void onAddRendererLayers(EntityRenderersEvent.AddLayers event) {
+        // Mekanism skips wrapped armor-layer subclasses, so attach its special-gear layer explicitly.
+        if (ModList.get().isLoaded("mekanism")) {
+            com.majorbonghits.moderncompanions.compat.mekanism.MekanismClientCompat.addLayers(event);
+        }
     }
 
     @SubscribeEvent

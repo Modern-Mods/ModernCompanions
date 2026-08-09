@@ -2872,3 +2872,12 @@
   - Bumped the version to 3.93.
 - Rationale: Keeping the healing and cooldown in one item class makes self-use and target-use share the same anti-spam and consumption rules, while the explicit target predicate avoids healing arbitrary mobs.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; in-game self/player/companion use, cooldown, creative icon, and representative structure-loot smoke remain manual.
+
+## 2026-08-09 (Mekanism companion armor rendering)
+- Prompt/task: Fix MekaSuit armor making equipped companions lose the corresponding rendered body section.
+- Steps:
+  - Traced the player-shaped companion armor layers and compared them with Mekanism 10.7's `MekanismArmorLayer` registration contract.
+  - Added an optional Mekanism client compatibility layer for every companion renderer, with separate Steve/Alex filtering and the existing vanilla armor models as delegates.
+  - Declared Mekanism as an optional client dependency, added its compile-only Maven coordinate, and bumped the version to 3.94.
+- Rationale: Mekanism's automatic layer discovery requires an exact vanilla `HumanoidArmorLayer`, while Modern Companions wraps that layer to keep Steve/Alex armor aligned. Explicit registration preserves the wrapper and enables Mekanism's native special-gear renderer without hard-loading Mekanism when absent.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; Mekanism-enabled in-world armor visibility and absent-Mekanism startup remain manual smoke checks.

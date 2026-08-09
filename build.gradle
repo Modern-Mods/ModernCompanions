@@ -17,6 +17,7 @@ repositories {
     maven { url = "https://maven.neoforged.net/releases" }
     maven { url = "https://maven.parchmentmc.org" }
     maven { url = "https://maven.theillusivec4.top/" }
+    maven { url = "https://modmaven.dev" }
     maven {
         url = "https://api.modrinth.com/maven"
         content { includeGroup("maven.modrinth") }
@@ -67,6 +68,9 @@ dependencies {
     // Epic Fight supplies the optional companion combat patch and renderer at runtime.
     compileOnly "maven.modrinth:epic-fight:${project.findProperty("epicfight_version")}"
     runtimeOnly "maven.modrinth:epic-fight:${project.findProperty("epicfight_version")}"
+
+    // Mekanism's client-only special-gear layer is loaded only when Mekanism is present.
+    compileOnly "mekanism:Mekanism:${project.findProperty("mekanism_version")}"
 }
 
 java {

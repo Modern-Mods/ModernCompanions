@@ -85,3 +85,7 @@ pointblank-neoforge-1.21-1.11.1/
 build/
 .vscode/
 .gradle/
+
+# Keep the optional Mekanism compatibility source tracked; the support-library rule above is broad.
+!src/main/java/com/majorbonghits/moderncompanions/compat/mekanism/
+!src/main/java/com/majorbonghits/moderncompanions/compat/mekanism/**

@@ -56,3 +56,10 @@ type = "optional"
 versionRange = "[21.17.3,)"
 ordering = "AFTER"
 side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "mekanism"
+type = "optional"
+versionRange = "[10.7.0,)"
+ordering = "AFTER"
+side = "CLIENT"

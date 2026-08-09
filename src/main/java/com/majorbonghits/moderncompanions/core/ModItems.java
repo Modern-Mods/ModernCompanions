@@ -10,17 +10,23 @@ import com.majorbonghits.moderncompanions.item.SoulOrbItem;
 import com.majorbonghits.moderncompanions.item.SummoningWandItem;
 import com.majorbonghits.moderncompanions.item.StoredCompanionItem;
 import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
+import com.majorbonghits.moderncompanions.item.CurrencyItem;
+import com.majorbonghits.moderncompanions.item.CreditCardItem;
 import com.majorbonghits.moderncompanions.item.FirearmSpecialistSummonGemItem;
 import com.majorbonghits.moderncompanions.compat.firearms.FirearmSupport;
+import com.majorbonghits.moderncompanions.currency.CurrencyService;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.DeferredSpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+
+import java.util.List;
 
 /**
  * Deferred registration of mod items (currently companion spawn eggs).
@@ -45,6 +51,17 @@ public final class ModItems {
             () -> new AnimalWandItem(new Item.Properties().rarity(Rarity.UNCOMMON)));
     public static final DeferredHolder<Item, Item> SOUL_ORB = ITEMS.register("soul_orb",
             () -> new SoulOrbItem(new Item.Properties().rarity(Rarity.RARE)));
+    public static final DeferredHolder<Item, Item> TIN = currency("tin", "tin");
+    public static final DeferredHolder<Item, Item> COPPER = currency("copper", "copper");
+    public static final DeferredHolder<Item, Item> SILVER = currency("silver", "silver");
+    public static final DeferredHolder<Item, Item> GOLD = currency("gold", "gold");
+    public static final DeferredHolder<Item, Item> DOLLAR = currency("dollar", "dollar");
+    public static final DeferredHolder<Item, Item> STACK = currency("stack", "stack");
+    public static final DeferredHolder<Item, Item> CREDIT_CARD = ITEMS.register("credit_card",
+            () -> new CreditCardItem(new Item.Properties().rarity(Rarity.RARE)));
+    public static final DeferredHolder<Item, Item> GOLD_STACK = currency("gold_stack", "gold_stack");
+    private static final List<DeferredHolder<Item, Item>> CURRENCIES =
+            List.of(TIN, COPPER, SILVER, GOLD, DOLLAR, STACK, CREDIT_CARD, GOLD_STACK);
     public static final DeferredHolder<Item, Item> COMPANION_TABLE = ITEMS.register("companion_table",
             () -> new net.minecraft.world.item.BlockItem(ModBlocks.COMPANION_TABLE.get(), new Item.Properties()));
 
@@ -150,6 +167,19 @@ public final class ModItems {
 
     private static DeferredHolder<Item, Item> vessel(String id) {
         return ITEMS.register(id, () -> new Item(new Item.Properties().stacksTo(16)));
+    }
+
+    private static DeferredHolder<Item, Item> currency(String id, String valueKey) {
+        return ITEMS.register(id, () -> new CurrencyItem(valueKey, new Item.Properties().stacksTo(64)));
+    }
+
+    /** Keeps the loot modifier independent from registry internals and gives low denominations more room. */
+    public static Item randomCurrency(RandomSource random) {
+        return CurrencyService.randomPhysicalCurrency(random);
+    }
+
+    public static List<DeferredHolder<Item, Item>> getCurrencies() {
+        return CURRENCIES;
     }
 
     private static DeferredHolder<Item, Item> potion(String id, CompanionPotionItem.Kind kind) {

@@ -2814,3 +2814,40 @@
   - Kept the items loot-only by changing creative visibility only; bumped the version to 3.86.
 - Rationale: A single list prevents creative tabs from drifting away from the 34 registered legendary items while preserving their non-craftable status.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; creative-tab visibility remains a manual in-game check.
+
+## 2026-08-08 (Currencies)
+- Prompt/task: Add configurable currency items using the supplied 128x16 currency sprite sheet, vanilla chest loot, and JEI-configured trade displays without crafting recipes.
+- Steps:
+  - Registered Tin, Copper, Silver, Gold, Dollar, Stack, Credit Card, and Stack of Gold Coins as loot-only items with config-backed values, sheet-derived 16x16 models, names, and value tooltips.
+  - Added a common `[currencies]` config section for enable/disable, chest-loot disperse/roll/count controls, denomination values, and validated JEI-only trade rows.
+  - Added one NeoForge global loot modifier for vanilla `minecraft:chests/*` tables, corrected the global modifier manifest namespace, and added a compact parser self-check plus README coverage.
+- Rationale: One shared currency item class, one loot hook, and one JEI category cover the complete player-facing contract while leaving villager trading behavior untouched and keeping currency non-craftable.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; in-game sprite, loot, toggle, and JEI smoke checks remain manual.
+
+## 2026-08-09 (Credit Card wallet)
+- Prompt/task: Implement the attached persistent Credit Card / Wallet contract on top of the currency system, including safe deposits, card combination, rare loot balances, payment selection, and value-preserving physical conversions.
+- Steps:
+  - Added a typed persistent/networked `CardData` component with UUID identity and non-negative `long` balance, plus a non-stackable tooltip-bearing `CreditCardItem`.
+  - Centralized denomination values, overflow-safe deposits, highest-balance shift-click selection, lowest-sufficient payment selection, server-side payment, rare loot initialization, and exact GCD-based conversion counts in `CurrencyService`/`CurrencyRules`.
+  - Added NeoForge cursor deposits/card combining, an `AbstractContainerMenu` quick-move mixin limited to physical currency, rare `5`-to-`7,500` loot cards, and adjacent conversion recipes without a Credit Card recipe.
+  - Expanded the runnable currency check for overflow, card selection, conversion conservation, and CardData clamping/identity; updated player-facing documentation and manual smoke coverage.
+- Rationale: Keep all value mutation behind one server-facing service and use native ItemStack events/data components so inventory movement, persistence, synchronization, and malformed-stack guards share one path.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `build/libs/ModernCompanions-3.88.jar` contains the wallet/component, mixin, loot manifest, currency recipes, and sprite resources, with no Credit Card crafting recipe. In-game persistence, inventory, multiplayer, loot, crafting, and JEI smoke checks remain manual.
+
+## 2026-08-09 (Block loot modifier gating)
+- Prompt/task: Stop companion potions from appearing when blocks are broken.
+- Steps:
+  - Traced the active NeoForge global loot manifest and all chest-only modifier conditions.
+  - Replaced the invalid `minecraft:loot_table_id` condition namespace with NeoForge's registered `neoforge:loot_table_id` across the existing loot modifiers.
+  - Bumped the mod version to 3.89 and validated all loot-modifier JSON files.
+- Rationale: Use the shared loot-table condition at the modifier boundary so potion, enchantment-book, and legendary additions are restricted to their listed structure chest tables and cannot affect block loot.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; block-break and structure-chest behavior remain manual smoke checks.
+
+## 2026-08-09 (Currency validation and localization)
+- Prompt/task: Patch the adjacent currency oversights found during the loot audit.
+- Steps:
+  - Added all 15 currency configuration translation keys to `pl_pl`, `pt_br`, and `ru_ru`.
+  - Tightened the compact trade parser to require the documented `-|0` no-second-input sentinel and added a regression assertion for malformed input.
+  - Bumped the version to 3.90.
+- Rationale: Keep config screens localized across shipped locales and reject malformed trade settings at the existing validation boundary.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `build/libs/ModernCompanions-3.90.jar` contains the localized config keys and parser fix. Localized config rendering and JEI filtering remain manual smoke checks.

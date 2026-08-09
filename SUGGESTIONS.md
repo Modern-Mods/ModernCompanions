@@ -493,3 +493,21 @@
 ## 2026-08-08 (legendary creative-tab visibility)
 
 - Open the dedicated Modern Companions and vanilla Combat tabs in-game and verify all 34 legendary items appear, including the three arrow variants.
+
+## 2026-08-08 (currencies)
+
+- Smoke-test currency items in the dedicated tab, each sprite/tooltip value, vanilla chest loot across dungeons, mineshafts, temples, and villages, the `enabled` toggle, and configured JEI trade rows.
+- If a pack needs denomination-specific loot weighting, add a weighted currency list to `[currencies]`; the shipped distribution currently favors lower denominations with a fixed lightweight table.
+
+## 2026-08-09 (credit card wallets)
+
+- Smoke-test Credit Card UUID/balance persistence through relogging, death, containers, and multiplayer; cursor deposits, highest-balance shift-click deposits, card combining, overflow rejection, and unrelated shift-click behavior.
+- Verify rare loot cards roll balances from `5` through `7,500`, Credit Cards remain uncraftable, exact-value conversions work in a 3x3 grid, and `CurrencyService.pay` deducts only the requested amount from the smallest sufficient card.
+
+## 2026-08-09 (loot modifier gating)
+
+- Smoke-test breaking stone, ores, and custom blocks alongside representative structure chests; confirm potion, enchanted-book, and legendary loot stays chest-only while intended chest additions still roll.
+
+## 2026-08-09 (currency validation and localization)
+
+- Smoke-test the currency config screen in Polish, Brazilian Portuguese, and Russian; verify malformed JEI trade entries such as `-|garbage` are rejected while the documented `-|0` form remains accepted.

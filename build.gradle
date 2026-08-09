@@ -131,6 +131,12 @@ tasks.register("structureSpawnCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("currencyTradeCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.currency.CurrencyTradeTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("epicFightCombatAiCheck", JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.majorbonghits.moderncompanions.compat.epicfight.CompanionEpicFightPatchTest"
@@ -181,6 +187,7 @@ tasks.named("check") {
     dependsOn tasks.named("followLeashCheck")
     dependsOn tasks.named("firearmCategoryCheck")
     dependsOn tasks.named("structureSpawnCheck")
+    dependsOn tasks.named("currencyTradeCheck")
     dependsOn tasks.named("epicFightCombatAiCheck")
 }
 

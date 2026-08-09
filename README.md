@@ -403,6 +403,23 @@ rareResourceItems = minecraft:diamond, minecraft:emerald, minecraft:blaze_rod, m
 huntMobs = minecraft:chicken, minecraft:cow, minecraft:pig, minecraft:rabbit, minecraft:sheep, minecraft:goat
 ```
 
+### Currencies
+
+Currencies are enabled by default, appear in vanilla chest loot such as dungeons, mineshafts, temples, and villages, and are listed in the dedicated Modern Companions creative tab. Set `enabled = false` under `[currencies]` to disable their loot, creative-tab entries, interactions, conversions, and JEI trade display.
+
+| Key | Default | Range / description |
+| --- | ---: | --- |
+| `lootDisperse` | `25` | Percent chance for each vanilla chest loot table to receive currency; `0`-`100`. |
+| `lootRolls` | `1` | Currency stacks added when a chest receives currency; `1`-`5`. |
+| `lootMinCount` / `lootMaxCount` | `1` / `3` | Per-stack item-count range; `1`-`64`. |
+| `cardLootChance` | `2` | Percent chance for one rare Credit Card in each vanilla chest loot table; `0`-`100`. Its starting balance is randomized from `5` to `7,500`. |
+| `tinValue` through `goldStackValue` | `1`, `5`, `10`, `25`, `100`, `500`, `5000` | Player-visible physical-denomination values; each accepts `0` or greater. |
+| `tradeRecipes` | Empty | JEI-only rows formatted `first_id|first_count|second_id|second_count|output_id|output_count`; use `-|0` for no second input. Unknown modded item IDs are skipped until that mod is loaded. |
+
+Credit Cards are non-stackable wallets with a persistent UUID and `long` balance. Click physical currency onto a card to deposit it, shift-click physical currency to deposit into the highest-balance card in the player's inventory, or click one card onto another to transfer and consume the source card. The server-side `CurrencyService.pay` API selects the lowest-balance card that can cover a cost; the card remains and only the cost is deducted. Credit Cards have no crafting recipe.
+
+Physical conversion recipes use the configured values from the same service and preserve value exactly, including multi-output conversions such as `5 Silver -> 2 Gold`. A recipe requiring more than the nine slots in a vanilla crafting grid is intentionally unavailable. For example: `minecraft:emerald|1|-|0|modern_companions:dollar|1` displays an emerald-for-dollar trade in JEI. These rows describe display recipes; they do not inject trades into villagers.
+
 Alert can also be extended by pack authors through `data/modern_companions/tags/entity_type/alert_unsafe.json`. A higher-priority datapack can use `"replace": true` to provide the complete safety policy before `/reload`.
 
 ### Personality

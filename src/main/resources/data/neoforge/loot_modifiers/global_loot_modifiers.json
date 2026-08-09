@@ -17,6 +17,7 @@
     "modern_companions:companion_potions_strong",
     "modern_companions:legendary_weapons_rare",
     "modern_companions:legendary_weapons_epic",
-    "modern_companions:legendary_weapons_mythic"
+    "modern_companions:legendary_weapons_mythic",
+    "modern_companions:currency"
   ]
 }

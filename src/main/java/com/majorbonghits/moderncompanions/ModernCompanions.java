@@ -10,6 +10,8 @@ import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.core.ModEffects;
 import com.majorbonghits.moderncompanions.core.ModSounds;
 import com.majorbonghits.moderncompanions.item.CompanionBrewing;
+import com.majorbonghits.moderncompanions.currency.ModLootModifiers;
+import com.majorbonghits.moderncompanions.currency.CurrencyInteractions;
 import com.majorbonghits.moderncompanions.registry.ModCreativeTabs;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -35,7 +37,9 @@ public final class ModernCompanions {
         com.majorbonghits.moderncompanions.registry.ModItems.register(modBus); // weapons
         ModBlocks.register(modBus);
         ModBlockEntityTypes.register(modBus);
+        com.majorbonghits.moderncompanions.core.ModDataComponents.register(modBus);
         com.majorbonghits.moderncompanions.core.ModItems.ITEMS.register(modBus); // spawn eggs
+        ModLootModifiers.register(modBus);
         ModEffects.EFFECTS.register(modBus);
         ModSounds.register(modBus);
         com.majorbonghits.moderncompanions.core.ModRecipeSerializers.SERIALIZERS.register(modBus);
@@ -46,6 +50,7 @@ public final class ModernCompanions {
         modBus.addListener(ModEntityAttributes::registerAttributes);
         modBus.addListener(this::onCommonSetup);
         NeoForge.EVENT_BUS.addListener(CompanionBrewing::register);
+        CurrencyInteractions.register();
         ModCreativeTabHandler.register(modBus);
 
         // Only load Curios hooks when the mod is present to avoid classloading crashes.

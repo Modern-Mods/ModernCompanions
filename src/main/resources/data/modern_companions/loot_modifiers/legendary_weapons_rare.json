@@ -2,13 +2,13 @@
   "type": "neoforge:add_table",
   "conditions": [
     {"condition":"minecraft:alternative","terms":[
-      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/simple_dungeon"},
-      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/abandoned_mineshaft"},
-      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/desert_pyramid"},
-      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/jungle_temple"},
-      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/shipwreck_treasure"},
-      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/pillager_outpost"},
-      {"condition":"minecraft:loot_table_id","loot_table_id":"minecraft:chests/ruined_portal"}
+      {"condition":"neoforge:loot_table_id","loot_table_id":"minecraft:chests/simple_dungeon"},
+      {"condition":"neoforge:loot_table_id","loot_table_id":"minecraft:chests/abandoned_mineshaft"},
+      {"condition":"neoforge:loot_table_id","loot_table_id":"minecraft:chests/desert_pyramid"},
+      {"condition":"neoforge:loot_table_id","loot_table_id":"minecraft:chests/jungle_temple"},
+      {"condition":"neoforge:loot_table_id","loot_table_id":"minecraft:chests/shipwreck_treasure"},
+      {"condition":"neoforge:loot_table_id","loot_table_id":"minecraft:chests/pillager_outpost"},
+      {"condition":"neoforge:loot_table_id","loot_table_id":"minecraft:chests/ruined_portal"}
     ]},
     {"condition":"minecraft:random_chance","chance":0.0125}
   ],

@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.registry;
 import com.majorbonghits.moderncompanions.Constants;
 import com.majorbonghits.moderncompanions.core.ModEnchantments;
 import com.majorbonghits.moderncompanions.core.ModItems;
+import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.struct.WeaponType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -70,6 +71,10 @@ public final class ModCreativeTabs {
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.SUMMONING_WAND.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.ANIMAL_WAND.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.COMPANION_TABLE.get());
+                        if (ModConfig.safeGet(ModConfig.CURRENCIES_ENABLED)) {
+                            com.majorbonghits.moderncompanions.core.ModItems.getCurrencies()
+                                    .forEach(currency -> output.accept(currency.get()));
+                        }
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_ROUND_VESSEL.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_RECTANGLE_VESSEL.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPTY_PYRAMID_VESSEL.get());

@@ -1,0 +1,6 @@
+{
+  "type": "modern_companions:currency_upgrade",
+  "category": "misc",
+  "from": "modern_companions:silver",
+  "to": "modern_companions:gold"
+}

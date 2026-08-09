@@ -1,0 +1,6 @@
+{
+  "type": "modern_companions:currency_upgrade",
+  "category": "misc",
+  "from": "modern_companions:dollar",
+  "to": "modern_companions:stack"
+}

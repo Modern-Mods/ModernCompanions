@@ -1,13 +1,24 @@
 package com.majorbonghits.moderncompanions.compat.jei;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
+import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.core.ModItems;
+import com.majorbonghits.moderncompanions.currency.CurrencyTrade;
+import com.majorbonghits.moderncompanions.currency.CurrencyTradeResolver;
 import com.majorbonghits.moderncompanions.item.CompanionBrewing;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.RecipeTypes;
+import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
+import mezz.jei.api.helpers.IGuiHelper;
+import mezz.jei.api.recipe.IFocusGroup;
+import mezz.jei.api.recipe.RecipeIngredientRole;
+import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.recipe.category.AbstractRecipeCategory;
+import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.recipe.vanilla.IJeiBrewingRecipe;
 import mezz.jei.api.registration.IRecipeRegistration;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -24,6 +35,8 @@ import java.util.List;
 @JeiPlugin
 public final class CompanionJeiPlugin implements IModPlugin {
     private static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "jei");
+    private static final RecipeType<CurrencyTradeResolver.Resolved> CURRENCY_TRADES = RecipeType.create(
+            ModernCompanions.MOD_ID, "currency_trade", CurrencyTradeResolver.Resolved.class);
 
     @Override
     public ResourceLocation getPluginUid() {
@@ -31,7 +44,24 @@ public final class CompanionJeiPlugin implements IModPlugin {
     }
 
     @Override
+    public void registerCategories(IRecipeCategoryRegistration registration) {
+        if (ModConfig.safeGet(ModConfig.CURRENCIES_ENABLED)) {
+            registration.addRecipeCategories(new CurrencyTradeCategory(registration.getJeiHelpers().getGuiHelper()));
+        }
+    }
+
+    @Override
     public void registerRecipes(IRecipeRegistration registration) {
+        if (ModConfig.safeGet(ModConfig.CURRENCIES_ENABLED)) {
+            List<CurrencyTradeResolver.Resolved> trades = ModConfig.safeGet(ModConfig.CURRENCY_TRADE_RECIPES).stream()
+                    .map(CurrencyTrade::parse)
+                    .flatMap(java.util.Optional::stream)
+                    .map(CurrencyTradeResolver::resolve)
+                    .flatMap(java.util.Optional::stream)
+                    .toList();
+            registration.addRecipes(CURRENCY_TRADES, trades);
+        }
+
         List<IJeiBrewingRecipe> recipes = CompanionBrewing.steps().stream()
                 .map(step -> registration.getVanillaRecipeFactory().createBrewingRecipe(
                         List.of(step.ingredient().copy()), new ItemStack(step.input()), new ItemStack(step.output()),
@@ -58,5 +88,21 @@ public final class CompanionJeiPlugin implements IModPlugin {
         RecipeHolder<CraftingRecipe> animalWandHolder = new RecipeHolder<>(
                 ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "animal_wand"), animalWandRecipe);
         registration.addRecipes(RecipeTypes.CRAFTING, List.of(holder, animalWandHolder));
+    }
+
+    private static final class CurrencyTradeCategory extends AbstractRecipeCategory<CurrencyTradeResolver.Resolved> {
+        private CurrencyTradeCategory(IGuiHelper helper) {
+            super(CURRENCY_TRADES, Component.translatable("jei.modern_companions.currency_trade"),
+                    helper.createBlankDrawable(116, 54), 116, 54);
+        }
+
+        @Override
+        public void setRecipe(IRecipeLayoutBuilder layout, CurrencyTradeResolver.Resolved trade, IFocusGroup focuses) {
+            layout.addSlot(RecipeIngredientRole.INPUT, 5, 19).addItemStack(trade.firstInput());
+            if (!trade.secondInput().isEmpty()) {
+                layout.addSlot(RecipeIngredientRole.INPUT, 29, 19).addItemStack(trade.secondInput());
+            }
+            layout.addSlot(RecipeIngredientRole.OUTPUT, 92, 19).addItemStack(trade.output());
+        }
     }
 }

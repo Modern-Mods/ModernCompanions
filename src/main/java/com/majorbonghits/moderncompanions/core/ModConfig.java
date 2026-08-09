@@ -4,6 +4,7 @@ import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import com.majorbonghits.moderncompanions.entity.CompanionRecruitmentRules;
+import com.majorbonghits.moderncompanions.currency.CurrencyTrade;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 
@@ -92,6 +93,20 @@ public final class ModConfig {
     public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_MINER_DENY_BLOCKS;
     public static ModConfigSpec.BooleanValue JOB_ASSIGNED_CHESTS_CHUNKLOAD;
     public static ModConfigSpec.BooleanValue SHOW_JOBS_BUTTON;
+    public static ModConfigSpec.BooleanValue CURRENCIES_ENABLED;
+    public static ModConfigSpec.IntValue CURRENCY_LOOT_DISPERSE;
+    public static ModConfigSpec.IntValue CURRENCY_LOOT_ROLLS;
+    public static ModConfigSpec.IntValue CURRENCY_LOOT_MIN_COUNT;
+    public static ModConfigSpec.IntValue CURRENCY_LOOT_MAX_COUNT;
+    public static ModConfigSpec.IntValue CURRENCY_CARD_LOOT_CHANCE;
+    public static ModConfigSpec.IntValue CURRENCY_TIN_VALUE;
+    public static ModConfigSpec.IntValue CURRENCY_COPPER_VALUE;
+    public static ModConfigSpec.IntValue CURRENCY_SILVER_VALUE;
+    public static ModConfigSpec.IntValue CURRENCY_GOLD_VALUE;
+    public static ModConfigSpec.IntValue CURRENCY_DOLLAR_VALUE;
+    public static ModConfigSpec.IntValue CURRENCY_STACK_VALUE;
+    public static ModConfigSpec.IntValue CURRENCY_GOLD_STACK_VALUE;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> CURRENCY_TRADE_RECIPES;
 
     /**
      * Safely read a config value even during very early lifecycle (e.g., attribute construction) by
@@ -295,9 +310,65 @@ public final class ModConfig {
                 .define("showJobsButton", false);
         builder.pop();
 
+        builder.translation("modern_companions.configuration.currencies").push("currencies");
+        CURRENCIES_ENABLED = builder.translation("modern_companions.configuration.currencies.enabled")
+                .comment("Enable currency items, chest loot, and configured JEI trade displays.")
+                .define("enabled", true);
+        CURRENCY_LOOT_DISPERSE = builder.translation("modern_companions.configuration.currencies.loot_disperse")
+                .comment("Percent chance for each vanilla chest loot table to receive currency.")
+                .defineInRange("lootDisperse", 25, 0, 100);
+        CURRENCY_LOOT_ROLLS = builder.translation("modern_companions.configuration.currencies.loot_rolls")
+                .comment("Number of currency stacks added when a chest loot table wins a currency roll.")
+                .defineInRange("lootRolls", 1, 1, 5);
+        CURRENCY_LOOT_MIN_COUNT = builder.translation("modern_companions.configuration.currencies.loot_min_count")
+                .comment("Minimum item count per currency stack added to chest loot.")
+                .defineInRange("lootMinCount", 1, 1, 64);
+        CURRENCY_LOOT_MAX_COUNT = builder.translation("modern_companions.configuration.currencies.loot_max_count")
+                .comment("Maximum item count per currency stack added to chest loot.")
+                .defineInRange("lootMaxCount", 3, 1, 64);
+        CURRENCY_CARD_LOOT_CHANCE = builder.translation("modern_companions.configuration.currencies.card_loot_chance")
+                .comment("Percent chance for a vanilla chest loot table to receive one initialized Credit Card.")
+                .defineInRange("cardLootChance", 2, 0, 100);
+        CURRENCY_TIN_VALUE = currencyValue(builder, "tin", 1);
+        CURRENCY_COPPER_VALUE = currencyValue(builder, "copper", 5);
+        CURRENCY_SILVER_VALUE = currencyValue(builder, "silver", 10);
+        CURRENCY_GOLD_VALUE = currencyValue(builder, "gold", 25);
+        CURRENCY_DOLLAR_VALUE = currencyValue(builder, "dollar", 100);
+        CURRENCY_STACK_VALUE = currencyValue(builder, "stack", 500);
+        CURRENCY_GOLD_STACK_VALUE = currencyValue(builder, "gold_stack", 5000);
+        CURRENCY_TRADE_RECIPES = builder.translation("modern_companions.configuration.currencies.trade_recipes")
+                .comment("JEI-only trades: first_id|first_count|second_id|second_count|output_id|output_count. Use -|0 for no second input.")
+                .defineListAllowEmpty("tradeRecipes", List.of(), () -> "minecraft:emerald|1|-|0|modern_companions:dollar|1",
+                        ModConfig::isCurrencyTrade);
+        builder.pop();
+
         COMMON_SPEC = builder.build();
         ModLoadingContext.get().getActiveContainer()
                 .registerConfig(net.neoforged.fml.config.ModConfig.Type.COMMON, COMMON_SPEC);
+    }
+
+    private static ModConfigSpec.IntValue currencyValue(ModConfigSpec.Builder builder, String id, int defaultValue) {
+        String configId = switch (id) {
+            case "credit_card" -> "creditCard";
+            case "gold_stack" -> "goldStack";
+            default -> id;
+        };
+        return builder.translation("modern_companions.configuration.currencies." + id + "_value")
+                .comment("Configured value of the " + id + " denomination.")
+                .defineInRange(configId + "Value", defaultValue, 0, Integer.MAX_VALUE);
+    }
+
+    public static int currencyValue(String id) {
+        return switch (id) {
+            case "tin" -> safeGet(CURRENCY_TIN_VALUE);
+            case "copper" -> safeGet(CURRENCY_COPPER_VALUE);
+            case "silver" -> safeGet(CURRENCY_SILVER_VALUE);
+            case "gold" -> safeGet(CURRENCY_GOLD_VALUE);
+            case "dollar" -> safeGet(CURRENCY_DOLLAR_VALUE);
+            case "stack" -> safeGet(CURRENCY_STACK_VALUE);
+            case "gold_stack" -> safeGet(CURRENCY_GOLD_STACK_VALUE);
+            default -> 0;
+        };
     }
 
     /** Upgrades pre-Creeper-default configs once without overwriting later player choices. */
@@ -331,5 +402,9 @@ public final class ModConfig {
         var rule = parsed.get();
         return ("*".equals(rule.companionId()) || isKnownEntityId(rule.companionId()))
                 && isKnownItemId(rule.itemId());
+    }
+
+    private static boolean isCurrencyTrade(Object value) {
+        return value instanceof String raw && CurrencyTrade.parse(raw).isPresent();
     }
 }

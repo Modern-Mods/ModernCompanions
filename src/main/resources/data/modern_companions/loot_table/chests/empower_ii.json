@@ -1,0 +1,1 @@
+{"type":"minecraft:chest","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"minecraft:enchanted_book","functions":[{"function":"minecraft:set_components","components":{"minecraft:stored_enchantments":{"levels":{"modern_companions:empower":2}},"minecraft:custom_model_data":410002}}]}]}]}

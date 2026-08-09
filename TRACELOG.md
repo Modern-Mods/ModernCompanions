@@ -2851,3 +2851,14 @@
   - Bumped the version to 3.90.
 - Rationale: Keep config screens localized across shipped locales and reject malformed trade settings at the existing validation boundary.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `build/libs/ModernCompanions-3.90.jar` contains the localized config keys and parser fix. Localized config rendering and JEI filtering remain manual smoke checks.
+
+## 2026-08-09 (Loot condition and resource-path correction)
+- Prompt/task: Fix the remaining random potion drops from broken blocks and patch other loot integration oversights.
+- Steps:
+  - Inspected the active `Testing` instance log and confirmed NeoForge rejected the potion modifiers because `minecraft:alternative` is not registered in Minecraft 1.21.1.
+  - Replaced `minecraft:alternative` with the registered `minecraft:any_of` predicate in all 17 chest-only modifiers, including potion, enchanted-book, and legendary-item additions.
+  - Replaced unsupported `neoforge:add_items` modifiers with supported `neoforge:add_table` modifiers and added one singular-path loot table per enchanted book.
+  - Moved the legendary and Companion Table loot tables from obsolete plural `loot_tables` paths to 1.21.1's singular `loot_table` paths.
+  - Bumped the version to 3.92.
+- Rationale: The active log showed malformed predicates and an unregistered modifier serializer, while plural loot paths would prevent referenced tables from resolving. Supported predicates, serializers, and resource paths preserve chest-only scope and restore intended chest/block loot loading.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; the rebuilt jar must be installed in the active instance before the block-break and structure-chest smoke checks.

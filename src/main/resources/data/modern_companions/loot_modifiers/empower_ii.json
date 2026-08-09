@@ -1,8 +1,8 @@
 {
-  "type": "neoforge:add_items",
+  "type": "neoforge:add_table",
   "conditions": [
     {
-      "condition": "minecraft:alternative",
+      "condition": "minecraft:any_of",
       "terms": [
         { "condition": "neoforge:loot_table_id", "loot_table_id": "minecraft:chests/simple_dungeon" },
         { "condition": "neoforge:loot_table_id", "loot_table_id": "minecraft:chests/abandoned_mineshaft" },
@@ -15,20 +15,5 @@
     },
     { "condition": "minecraft:random_chance", "chance": 0.025 }
   ],
-  "items": [
-    {
-      "item": "minecraft:enchanted_book",
-      "functions": [
-        {
-          "function": "minecraft:set_components",
-          "components": {
-            "minecraft:stored_enchantments": {
-              "levels": { "modern_companions:empower": 2 }
-            },
-            "minecraft:custom_model_data": 410002
-          }
-        }
-      ]
-    }
-  ]
+  "table": "modern_companions:chests/empower_ii"
 }

@@ -511,3 +511,8 @@
 ## 2026-08-09 (currency validation and localization)
 
 - Smoke-test the currency config screen in Polish, Brazilian Portuguese, and Russian; verify malformed JEI trade entries such as `-|garbage` are rejected while the documented `-|0` form remains accepted.
+
+## 2026-08-09 (loot condition and resource-path correction)
+
+- Install 3.92 in the active Testing instance, reload the world, and break stone, ores, and modded blocks; verify no Modern Companions potion, enchanted-book, or legendary loot appears from block drops.
+- Open representative dungeon, mineshaft, temple, mansion, bastion, and End City chests and verify potion, enchanted-book, and legendary additions load after changing the predicate, serializer, and loot-table paths.

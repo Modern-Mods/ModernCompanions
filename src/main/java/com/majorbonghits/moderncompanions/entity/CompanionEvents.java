@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -16,7 +17,9 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraft.world.phys.AABB;
 
 import java.util.HashMap;
 import java.util.List;
@@ -123,6 +126,24 @@ public final class CompanionEvents {
         }
     }
 
+    /** Preserve restored companion passengers while a mounted player's vehicle link is rebuilt. */
+    @SubscribeEvent
+    public static void reconcileMountsAfterLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)
+                || !player.isPassenger()
+                || !(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        for (AbstractHumanCompanionEntity companion : level.getEntitiesOfClass(
+                AbstractHumanCompanionEntity.class, player.getBoundingBox().inflate(64.0D),
+                candidate -> candidate.isAlive()
+                        && candidate.isTame()
+                        && player.getUUID().equals(candidate.getOwnerUUID()))) {
+            companion.scheduleMountReconciliation();
+        }
+    }
+
     @SubscribeEvent
     public static void giveExperience(LivingDeathEvent event) {
         if (!(event.getEntity().level() instanceof ServerLevel serverLevel)) return;
@@ -157,5 +178,24 @@ public final class CompanionEvents {
         copy.setCount(Math.max(1, copy.getCount()));
         var extra = new net.minecraft.world.entity.item.ItemEntity(event.getEntity().level(), pick.getX(), pick.getY(), pick.getZ(), copy);
         drops.add(extra);
+    }
+
+    /** Forget a temporary fence before a player break/place can turn it into player-owned terrain. */
+    @SubscribeEvent
+    public static void invalidateTemporaryMountFenceOnBreak(BlockEvent.BreakEvent event) {
+        invalidateTemporaryMountFence(event.getLevel(), event.getPos());
+    }
+
+    @SubscribeEvent
+    public static void invalidateTemporaryMountFenceOnPlace(BlockEvent.EntityPlaceEvent event) {
+        invalidateTemporaryMountFence(event.getLevel(), event.getPos());
+    }
+
+    private static void invalidateTemporaryMountFence(LevelAccessor level, BlockPos pos) {
+        if (!(level instanceof ServerLevel serverLevel)) return;
+        for (AbstractHumanCompanionEntity companion : serverLevel.getEntitiesOfClass(
+                AbstractHumanCompanionEntity.class, new AABB(pos).inflate(16.0D))) {
+            companion.invalidateTemporaryMountFence(pos);
+        }
     }
 }

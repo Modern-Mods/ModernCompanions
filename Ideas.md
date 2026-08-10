@@ -1,6 +1,5 @@
 # Ideas
 
-## Scratch
 - I want to add a new option to the mod; Companions show chat bubbles show over their heard when speaking, instead of chat.
     - This should be a toggle between chat speak and bubble speak, or both so the player can choose.
 - Companions will interact with eachother
@@ -47,34 +46,12 @@
 
 - Essence
     - Companions periodically collect essence from defeated enemies
-    - Essence can act as currency, or as catalysts for crating recipes
-    - Essence stack to 64
+        - Essence does not drop like traditional items, rather instantly transported to the companions inventory
+    - Essence can act as catalysts for crating recipes
+    - Essence stack to 64 per type
     - `essence.png`
-
-- Have companions able to get onto mounts and ride along with the player
-    - Player mounts up, Companion searches for nearby mountable mob owned by the player, mounts it and re-engages follow logic. 
-    - Companion dismounts when the player dismounts.
-- Wand to assign companions to mounts?
-    - When assigned, mount is then attached to respective companion via lead
-    - Lead vanishes when the companion mounts his mount, and returns once they dismount
-    - When companion is instructed to sit with a mount on a lead, they will place down a fence with the mounts lead attached
-        - Instructing the companion to move again makes them re-lead their mount
-
-- Currencies
-    - Currencies can be toggle OFF in config, ON by default.
-    - Added to vanilla loot tables; dungeons, caves, villages, etc.
-    - Uses `currency.png` which is a 128x16 sprite SHEET with 16x16 sprites
-        - Left to right; Tin, Copper, Silver, Gold, Dollar, Stack, Credit Card, Stack of Gold Coins
-    - Allow modpack developers and players to tune knobs for currency such as loot disperse, currency values, etc.
-    - Currencies will not have recipes for crafting, but will have the ability to show trading recipes in JEI, configured by players/modpack developers (for villager trades, etc)
-
-- Health Pack
-    - Inserted into loot tables; dungeons, caves, villages, etc.
-    - NOT Craftable.
-    - Instantly heals to full when consumed
-    - When 'used' on another player or companions - instantly heals them to full
-    - Has a cooldown, cannot spam usage
-
+        - 48x16 sheet, 16x16 sprites
+            - Left to right; Red, Blue, Green
 - Ranks
     - Companions increase their 'rank' as they level and gain combat experience. 
     - Uses `ranks.png` which is a 80x16 sprite SHEET with 16x16 sprites
@@ -83,8 +60,3 @@
         - Additional equipment slots?
         - Access to higher tier equipment?
         - Boost to overall stats?
-
-- `Better Combat` support in tandem with `Epic Fight`
-
-- Bard Class
-    - Uses instruments as weapons to buff allies and debuff enemies?

@@ -527,3 +527,19 @@
 
 - Smoke-test MekaSuit helmet, bodyarmor, pants, and boots on both Steve- and Alex-model companions with Mekanism enabled; verify modules, energy tint, and normal armor remain aligned.
 - Repeat the same world with Mekanism absent to confirm Modern Companions still starts and vanilla armor rendering is unchanged.
+
+## 2026-08-10 (Companion mount travel)
+
+- Smoke-test an owned saddled horse and camel with an actively Following companion: automatic mount selection, assigned-mount selection, shared-seat behavior where supported, owner dismount, switching to Patrol/Guard, relog persistence, mount death/removal, and unassigning with the same Wand target.
+- Test sit anchoring beside an existing fence, safe oak-fence placement on normal terrain, protected/replaceable-block rejection, broken fence recovery, and multiplayer ownership/claim protection.
+- Add a compatibility predicate for a custom mount only if a real modded mount is found that is owned, saddled, and leash-capable without implementing the vanilla `OwnableEntity`, `Saddleable`, and `Leashable` contracts.
+
+## 2026-08-10 (Mounted rider alignment and fence cleanup)
+
+- Smoke-test companion feet against the saddle on adult and baby horse variants, then compare mounted speed, jumping, step-up, and terrain handling with the owner riding alone.
+- Verify an assigned companion-only mount stays led until the owner mounts an eligible vehicle; it should then ride beside the owner and use its own persisted horse movement/jump stats.
+- Verify unsitting removes the companion-created oak fence with no fence drop, while an existing fence, a player-replaced block, and a changed fence state remain untouched.
+
+## 2026-08-10 (Assigned mount relog recovery)
+
+- Smoke-test relogging while the owner is mounted with both an assigned separate horse and an explicitly assigned shared horse; confirm the lead remains until the companion mounts, separate horses follow at their own stats, and owner dismount cleanly restores the lead.

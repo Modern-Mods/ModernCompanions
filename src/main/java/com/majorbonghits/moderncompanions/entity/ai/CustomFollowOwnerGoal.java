@@ -31,7 +31,7 @@ public class CustomFollowOwnerGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!companion.isFollowing() || companion.isOrderedToSit()) {
+        if (!companion.isFollowing() || companion.isOrderedToSit() || companion.isPassenger()) {
             return false;
         }
         LivingEntity livingentity = companion.getOwner();
@@ -51,6 +51,7 @@ public class CustomFollowOwnerGoal extends Goal {
                 && !companion.getNavigation().isDone()
                 && companion.isFollowing()
                 && !companion.isOrderedToSit()
+                && !companion.isPassenger()
                 && owner.level() == companion.level()
                 && companion.distanceToSqr(owner) > returnDistanceSquared();
     }

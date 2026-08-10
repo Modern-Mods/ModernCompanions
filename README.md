@@ -301,7 +301,9 @@ The Summoning Wand recalls all living companions and Beastmaster pets in the cur
 
 ### Assignment Wand
 
-The Assignment Wand links a working companion to a delivery container. Right-click an owned companion with the wand, then sneak-right-click a container. The companion delivers job output there and can withdraw raw inputs when a job supports it.
+The Assignment Wand links an owned companion to a delivery container or a saddled mount. Right-click the companion with the wand, then use it on a container or on the owned mount. The companion delivers job output there and can withdraw raw inputs when a job supports it.
+
+When the owner is actively riding, a following companion mounts its assigned eligible mount, or the nearest other owned eligible mount when none is assigned. An explicitly assigned active horse may share its seat with the player; otherwise the companion rides a separate mount. The companion's mount follows the owner's vehicle using its native movement-speed, step, and jump attributes, and dismounts when the owner dismounts. An assigned mount is led to the companion while traveling or standing. If the companion is ordered to sit, it uses a safe nearby fence when available, placing an oak fence only where normal player placement/protection checks allow it; moving again restores the companion-held lead and removes only an unchanged fence that Modern Companions placed, without dropping it.
 
 ### Spawn Gems
 

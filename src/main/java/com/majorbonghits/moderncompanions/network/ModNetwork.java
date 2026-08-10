@@ -49,18 +49,35 @@ public final class ModNetwork {
                     case "hunt" -> companion.setHunting(payload.value());
                     case "sprint" -> companion.setSprintEnabled(payload.value());
                     case "patrol" -> {
+                        if (payload.value()) companion.resumeMovementOrder();
                         companion.setPatrolPos(companion.blockPosition());
                         companion.setPatrolling(payload.value());
+                        if (payload.value()) {
+                            companion.setFollowing(false);
+                            companion.setGuarding(false);
+                        }
                     }
                     case "guard" -> {
+                        if (payload.value()) companion.resumeMovementOrder();
                         companion.setGuarding(payload.value());
                         companion.setPatrolPos(companion.blockPosition());
+                        if (payload.value()) {
+                            companion.setFollowing(false);
+                            companion.setPatrolling(false);
+                        }
                     }
                     case "work" -> {
                         companion.setWorkEnabled(payload.value());
                         CompanionVoice.play(companion, payload.value() ? ModSounds.Cue.CONFIRMATION : ModSounds.Cue.FAREWELL);
                     }
-                    case "follow" -> companion.setFollowing(payload.value());
+                    case "follow" -> {
+                        if (payload.value()) {
+                            companion.resumeMovementOrder();
+                            companion.setPatrolling(false);
+                            companion.setGuarding(false);
+                        }
+                        companion.setFollowing(payload.value());
+                    }
                     case "pickup" -> companion.setPickupEnabled(payload.value());
                     default -> {}
                 }

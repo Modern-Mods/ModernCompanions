@@ -15,9 +15,11 @@ import com.majorbonghits.moderncompanions.item.ResurrectionScrollItem;
 import com.majorbonghits.moderncompanions.item.CompanionPotionItem;
 import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.core.component.DataComponents;
@@ -47,6 +49,8 @@ import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.ai.goal.target.TargetGoal;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
+import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -72,6 +76,7 @@ import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -79,6 +84,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LanternBlock;
 import net.minecraft.world.level.block.TorchBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.block.ChestBlock;
@@ -87,6 +93,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -331,6 +340,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Nullable private BlockPos jobCheckpointReturn;
     private int committedSwimTicks;
     private net.minecraft.world.phys.Vec3 committedSwimDir = net.minecraft.world.phys.Vec3.ZERO;
+
+    // The assigned mount is durable; the owner vehicle UUID only tracks the current travel pair.
+    @Nullable private UUID assignedMountId;
+    @Nullable private UUID ridingWithOwnerMountId;
+    // Player vehicle/passenger links can be restored over several server ticks after login.
+    private int mountReconciliationTicks;
+    // Only fences placed by this companion are eligible for automatic no-drop cleanup.
+    @Nullable private BlockPos temporaryMountFencePos;
+    @Nullable private BlockState temporaryMountFenceState;
 
     // Client-side tracking of the last swing tick we already applied locally.
     private int lastAppliedSwingTick = -1;
@@ -1191,6 +1209,400 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             patrolGoal.radius = clamped;
         if (moveBackGoal != null)
             moveBackGoal.radius = clamped;
+    }
+
+    /* ---------- Companion mount assignment ---------- */
+
+    public Optional<UUID> getAssignedMountId() {
+        return Optional.ofNullable(assignedMountId);
+    }
+
+    /** Keep a restored passenger relationship alive while the owner's vehicle is reattached. */
+    public void scheduleMountReconciliation() {
+        mountReconciliationTicks = Math.max(mountReconciliationTicks, 40);
+    }
+
+    /** Match the player's native horse seating point; the generic mob fallback is at the feet. */
+    @Override
+    public Vec3 getVehicleAttachmentPoint(Entity vehicle) {
+        return vehicle instanceof AbstractHorse ? Player.DEFAULT_VEHICLE_ATTACHMENT
+                : super.getVehicleAttachmentPoint(vehicle);
+    }
+
+    /** The Assignment Wand uses the same ownership boundary as companion interactions. */
+    public boolean canAssignMount(Entity target, Player owner) {
+        if (!(target instanceof Mob mount) || !isOwnedSaddledMount(mount, owner) || target == this) {
+            return false;
+        }
+        if (!(mount instanceof Leashable leash) || !leash.canBeLeashed()) return false;
+        if (mount.getPassengers().stream().anyMatch(passenger -> passenger instanceof AbstractHumanCompanionEntity
+                && passenger != this)) {
+            return false;
+        }
+        if (leash.getLeashHolder() instanceof AbstractHumanCompanionEntity other
+                && other != this) {
+            return false;
+        }
+        if (mount.level() instanceof ServerLevel level && isAssignedToOtherCompanion(level, mount)) return false;
+        return true;
+    }
+
+    public boolean assignMount(ServerLevel level, Mob mount, ServerPlayer requester) {
+        if (!canAssignMount(mount, requester)) return false;
+        if (Objects.equals(assignedMountId, mount.getUUID())) return false;
+
+        clearAssignedMount(level);
+        assignedMountId = mount.getUUID();
+        ridingWithOwnerMountId = null;
+        if (isOrderedToSit()) {
+            if (!anchorMountAtFence(level, requester, mount)) attachMountToCompanion(mount);
+        } else {
+            attachMountToCompanion(mount);
+        }
+        return true;
+    }
+
+    public boolean clearAssignedMount(ServerLevel level) {
+        if (assignedMountId == null && temporaryMountFencePos == null) return false;
+        Entity mount = assignedMountId == null ? null : level.getEntity(assignedMountId);
+        if (mount != null && this.getVehicle() == mount) {
+            restoreMountedMountAi(mount);
+            this.stopRiding();
+        }
+        if (mount instanceof Leashable leash) {
+            Entity holder = leash.getLeashHolder();
+            if (holder == this || holder instanceof LeashFenceKnotEntity) {
+                // The Assignment Wand owns the relationship, not a physical lead item.
+                leash.dropLeash(true, false);
+            }
+        }
+        releaseTemporaryMountFence(level, mount instanceof Mob mob ? mob : null);
+        assignedMountId = null;
+        ridingWithOwnerMountId = null;
+        return true;
+    }
+
+    /** Movement orders release the sit pose and restore the companion-held leash. */
+    public void resumeMovementOrder() {
+        if (this.level() instanceof ServerLevel level) {
+            Mob mount = resolveAssignedMount(level);
+            releaseTemporaryMountFence(level, mount);
+            if (isOrderedToSit()) this.setOrderedToSit(false);
+            if (mount != null) attachMountToCompanion(mount);
+        } else if (isOrderedToSit()) {
+            this.setOrderedToSit(false);
+        }
+    }
+
+    private static boolean isOwnedSaddledMount(Entity target, LivingEntity owner) {
+        if (!(target instanceof Mob)
+                || !(target instanceof Saddleable saddle)
+                || !saddle.isSaddled()
+                || !(target instanceof OwnableEntity ownable)
+                || !owner.getUUID().equals(ownable.getOwnerUUID())) {
+            return false;
+        }
+        return target.isAlive() && !target.isRemoved();
+    }
+
+    @Nullable
+    private Mob resolveAssignedMount(ServerLevel level) {
+        if (assignedMountId == null) return null;
+        LivingEntity owner = getOwner();
+        if (owner == null) return null;
+        Entity entity = level.getEntity(assignedMountId);
+        if (entity instanceof Mob mount && isOwnedSaddledMount(mount, owner)) return mount;
+        if (entity != null && !entity.isAlive()) assignedMountId = null;
+        return null;
+    }
+
+    private void tickCompanionMount() {
+        if (!(this.level() instanceof ServerLevel level)
+                || !this.isTame()
+                || !(this.getOwner() instanceof ServerPlayer owner)
+                || owner.level() != this.level()) {
+            return;
+        }
+
+        boolean reconciliationPending = mountReconciliationTicks > 0;
+        if (reconciliationPending) mountReconciliationTicks--;
+        Entity ownerVehicle = owner.getVehicle();
+        Mob ownerMount = ownerVehicle instanceof Mob mount && isOwnedSaddledMount(mount, owner) ? mount : null;
+        boolean ownerMounted = ownerMount != null;
+        Entity companionVehicle = this.getVehicle();
+        if (companionVehicle != null) {
+            if (!(companionVehicle instanceof Mob mount) || !isOwnedSaddledMount(mount, owner)) {
+                if (!reconciliationPending) {
+                    restoreMountedMountAi(companionVehicle);
+                    this.stopRiding();
+                    ridingWithOwnerMountId = null;
+                }
+                return;
+            }
+
+            boolean ownerVehicleStillRestoring = reconciliationPending && ridingWithOwnerMountId == null;
+            boolean ownerChangedVehicles = ridingWithOwnerMountId != null
+                    && (!ownerMounted || !ridingWithOwnerMountId.equals(ownerVehicle.getUUID()));
+            if (CompanionMountRules.shouldDismount(true, ownerMounted, ownerVehicleStillRestoring)
+                    || ownerChangedVehicles
+                    || !isFollowing()
+                    || isOrderedToSit()) {
+                restoreMountedMountAi(mount);
+                this.stopRiding();
+                ridingWithOwnerMountId = null;
+                if (assignedMountId != null && assignedMountId.equals(mount.getUUID())) {
+                    attachMountToCompanion(mount);
+                }
+            } else if (ownerMounted) {
+                if (ridingWithOwnerMountId == null) ridingWithOwnerMountId = ownerVehicle.getUUID();
+                if (this.tickCount % 5 == 0) guideMountedMount(mount, ownerVehicle);
+            }
+            return;
+        }
+
+        Mob assignedMount = resolveAssignedMount(level);
+        if (isOrderedToSit()) {
+            if (assignedMount != null && this.tickCount % 20 == 0) {
+                anchorMountAtFence(level, owner, assignedMount);
+            }
+            return;
+        }
+
+        if (!CompanionMountRules.shouldAutoMount(isFollowing(), isOrderedToSit(), ownerMounted,
+                false, this.getTarget() != null, owner.level() == this.level())) {
+            if (assignedMount != null) attachMountToCompanion(assignedMount);
+            return;
+        }
+
+        if (this.tickCount % 5 != 0) {
+            return;
+        }
+
+        // Automatic selection uses a separate horse. An explicitly assigned active horse may
+        // share its seat; force-add keeps the player first, preserving native horse control.
+        Mob mount = assignedMount != null ? assignedMount : findOwnedMount(level, owner, ownerMount);
+        if (mount == null || !hasOnlyOwnerPassengers(mount, owner)
+                || mount.distanceToSqr(this) > 256.0D) {
+            if (assignedMount != null) attachMountToCompanion(assignedMount);
+            return;
+        }
+        boolean sameOwnerMount = ownerMount != null && ownerMount.getUUID().equals(mount.getUUID());
+        boolean boarded = this.startRiding(mount);
+        if (!boarded && sameOwnerMount && mount instanceof AbstractHorse) {
+            boarded = this.startRiding(mount, true);
+        }
+        if (boarded) {
+            if (assignedMount != null) detachMountLeadForRide(mount);
+            this.getNavigation().stop();
+            ridingWithOwnerMountId = ownerVehicle.getUUID();
+            guideMountedMount(mount, ownerVehicle);
+        } else if (assignedMount != null
+                && (ownerMount == null || !ownerMount.getUUID().equals(mount.getUUID()))) {
+            // Keep the lead if a transient passenger/boarding state made this attempt fail.
+            attachMountToCompanion(mount);
+        }
+    }
+
+    @Nullable
+    private Mob findOwnedMount(ServerLevel level, ServerPlayer owner, @Nullable Mob excludedMount) {
+        List<Mob> candidates = level.getEntitiesOfClass(Mob.class, owner.getBoundingBox().inflate(16.0D),
+                mount -> isOwnedSaddledMount(mount, owner) && mount != this
+                        && (excludedMount == null || !excludedMount.getUUID().equals(mount.getUUID()))
+                        && hasOnlyOwnerPassengers(mount, owner));
+        candidates.sort(Comparator.comparingDouble(owner::distanceToSqr));
+        for (Mob mount : candidates) {
+            if (!isAssignedToOtherCompanion(level, mount)) return mount;
+        }
+        return null;
+    }
+
+    private boolean isAssignedToOtherCompanion(ServerLevel level, Mob mount) {
+        for (Entity entity : level.getAllEntities()) {
+            if (entity instanceof AbstractHumanCompanionEntity other
+                    && other != this
+                    && other.assignedMountId != null
+                    && other.assignedMountId.equals(mount.getUUID())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasOnlyOwnerPassengers(Mob mount, Player owner) {
+        return mount.getPassengers().stream().allMatch(passenger -> passenger == owner || passenger == this);
+    }
+
+    /** Drive a companion's separate mount with that mount's native speed and jump attributes. */
+    private void guideMountedMount(Mob mount, Entity ownerVehicle) {
+        if (mount.getUUID().equals(ownerVehicle.getUUID())) return;
+
+        if (mount.distanceToSqr(ownerVehicle) > 9.0D) {
+            // MoveControl multiplies this by the mount's MOVEMENT_SPEED attribute, and its
+            // JumpControl uses the mount's JUMP_STRENGTH attribute just as native riding does.
+            mount.getNavigation().moveTo(ownerVehicle, 1.0D);
+        } else {
+            mount.getNavigation().stop();
+        }
+    }
+
+    private void restoreMountedMountAi(Entity mount) {
+        if (mount instanceof Mob mob) {
+            mob.getNavigation().stop();
+        }
+    }
+
+    private void attachMountToCompanion(@Nullable Mob mount) {
+        if (mount == null || this.isPassenger() || mount.distanceToSqr(this) > 100.0D
+                || !(mount instanceof Leashable leash) || !leash.canBeLeashed()) {
+            return;
+        }
+        Entity holder = leash.getLeashHolder();
+        if (holder == this) return;
+        if (holder != null) leash.dropLeash(true, false);
+        leash.setLeashedTo(this, true);
+    }
+
+    private void detachMountLeadForRide(Mob mount) {
+        if (!(mount instanceof Leashable leash)) return;
+        Entity holder = leash.getLeashHolder();
+        if (holder == this || holder instanceof LeashFenceKnotEntity) {
+            leash.dropLeash(true, false);
+        }
+    }
+
+    /** Called by block events when a player changes a tracked temporary fence. */
+    public void invalidateTemporaryMountFence(BlockPos changedPos) {
+        if (temporaryMountFencePos == null || !temporaryMountFencePos.equals(changedPos)) return;
+        if (this.level() instanceof ServerLevel level) {
+            Mob mount = resolveAssignedMount(level);
+            detachMountFromFence(level, changedPos, mount);
+        }
+        temporaryMountFencePos = null;
+        temporaryMountFenceState = null;
+    }
+
+    @Nullable
+    private BlockPos getValidTemporaryMountFence(ServerLevel level) {
+        if (temporaryMountFencePos == null || temporaryMountFenceState == null) return null;
+        if (level.isLoaded(temporaryMountFencePos)
+                && !level.getBlockState(temporaryMountFencePos).equals(temporaryMountFenceState)) {
+            Mob mount = resolveAssignedMount(level);
+            detachMountFromFence(level, temporaryMountFencePos, mount);
+            temporaryMountFencePos = null;
+            temporaryMountFenceState = null;
+            return null;
+        }
+        return temporaryMountFencePos;
+    }
+
+    /** Remove only the companion-created fence, and only while its exact placed state remains. */
+    private void releaseTemporaryMountFence(ServerLevel level, @Nullable Mob mount) {
+        BlockPos fencePos = temporaryMountFencePos;
+        BlockState placedState = temporaryMountFenceState;
+        if (fencePos == null) return;
+
+        detachMountFromFence(level, fencePos, mount);
+        if (placedState != null && level.isLoaded(fencePos)
+                && level.getBlockState(fencePos).equals(placedState)) {
+            level.destroyBlock(fencePos, false);
+        }
+        temporaryMountFencePos = null;
+        temporaryMountFenceState = null;
+    }
+
+    private void detachMountFromFence(ServerLevel level, BlockPos fencePos, @Nullable Mob mount) {
+        if (mount instanceof Leashable leash
+                && leash.getLeashHolder() instanceof LeashFenceKnotEntity knot
+                && knot.getPos().equals(fencePos)) {
+            leash.dropLeash(true, false);
+        }
+        for (LeashFenceKnotEntity knot : level.getEntitiesOfClass(LeashFenceKnotEntity.class,
+                new AABB(fencePos))) {
+            if (knot.getPos().equals(fencePos)) knot.discard();
+        }
+    }
+
+    private boolean anchorMountAtFence(ServerLevel level, ServerPlayer player, Mob mount) {
+        if (!isOwnedSaddledMount(mount, player) || mount.distanceToSqr(this) > 100.0D
+                || !(mount instanceof Leashable leash) || !leash.canBeLeashed()) {
+            return false;
+        }
+        BlockPos fencePos = getValidTemporaryMountFence(level);
+        if (fencePos == null) fencePos = findExistingFence(level, player, mount);
+        if (fencePos == null) {
+            fencePos = findOrPlaceFence(level, player, mount);
+            if (fencePos != null) {
+                temporaryMountFencePos = fencePos.immutable();
+                temporaryMountFenceState = level.getBlockState(fencePos);
+            }
+        }
+        if (fencePos == null) {
+            attachMountToCompanion(mount);
+            return false;
+        }
+
+        LeashFenceKnotEntity knot = LeashFenceKnotEntity.getOrCreateKnot(level, fencePos);
+        if (leash.getLeashHolder() != knot) {
+            if (leash.getLeashHolder() != null) leash.dropLeash(true, false);
+            leash.setLeashedTo(knot, true);
+        }
+        return true;
+    }
+
+    @Nullable
+    private BlockPos findExistingFence(ServerLevel level, ServerPlayer player, Mob mount) {
+        BlockPos origin = this.blockPosition();
+        BlockPos found = null;
+        double closest = Double.MAX_VALUE;
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -4; dz <= 4; dz++) {
+                    BlockPos candidate = origin.offset(dx, dy, dz);
+                    if (!level.isLoaded(candidate) || !level.getBlockState(candidate).is(BlockTags.FENCES)
+                            || !player.mayInteract(level, candidate)
+                            || mount.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(candidate)) > 64.0D) {
+                        continue;
+                    }
+                    double distance = mount.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(candidate));
+                    if (distance < closest) {
+                        closest = distance;
+                        found = candidate;
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    @Nullable
+    private BlockPos findOrPlaceFence(ServerLevel level, ServerPlayer player, Mob mount) {
+        if (!(Items.OAK_FENCE instanceof BlockItem fenceItem)) return null;
+        BlockPos origin = this.blockPosition();
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -4; dz <= 4; dz++) {
+                    BlockPos candidate = origin.offset(dx, dy, dz);
+                    if (!level.isLoaded(candidate) || !level.getBlockState(candidate).isAir()
+                            || !level.getBlockState(candidate.below()).isFaceSturdy(level, candidate.below(), Direction.UP)
+                            || mount.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(candidate)) > 64.0D
+                            || this.getBoundingBox().intersects(new AABB(candidate))
+                            || mount.getBoundingBox().intersects(new AABB(candidate))
+                            || !player.mayInteract(level, candidate)) {
+                        continue;
+                    }
+                    ItemStack fenceStack = new ItemStack(Items.OAK_FENCE);
+                    if (!player.mayUseItemAt(candidate, Direction.UP, fenceStack)) continue;
+                    BlockHitResult hit = new BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(candidate),
+                            Direction.UP, candidate, false);
+                    BlockPlaceContext context = new BlockPlaceContext(player, InteractionHand.MAIN_HAND, fenceStack, hit);
+                    if (fenceItem.place(context).consumesAction()
+                            && level.getBlockState(candidate).is(BlockTags.FENCES)) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     public void clearPatrol() {
@@ -2364,10 +2776,18 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         CompanionVoice.play(this, ModSounds.Cue.CONFIRMATION);
         if (!this.isOrderedToSit()) {
             this.setOrderedToSit(true);
+            if (this.isPassenger()) {
+                restoreMountedMountAi(this.getVehicle());
+                this.stopRiding();
+            }
+            if (this.getAssignedMountId().isPresent() && this.level() instanceof ServerLevel level) {
+                Mob mount = resolveAssignedMount(level);
+                if (mount != null) anchorMountAtFence(level, player, mount);
+            }
             Component text = Component.translatable("message.modern_companions.sit.stand_here");
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         } else {
-            this.setOrderedToSit(false);
+            resumeMovementOrder();
             Component text = Component.translatable("message.modern_companions.sit.move_around");
             player.sendSystemMessage(Component.translatable("chat.type.text", this.getDisplayName(), text));
         }
@@ -2554,6 +2974,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("MinerPlanUp", getMinerPlanUp());
         tag.putInt("MinerPlanDown", getMinerPlanDown());
         tag.putLong("LastDeliveryTime", lastDeliveryGameTime);
+        if (assignedMountId != null) tag.putUUID("AssignedMount", assignedMountId);
+        if (temporaryMountFencePos != null && temporaryMountFenceState != null) {
+            tag.putLong("TemporaryMountFencePos", temporaryMountFencePos.asLong());
+            tag.put("TemporaryMountFenceState", NbtUtils.writeBlockState(temporaryMountFenceState));
+        }
         getAssignedChest().ifPresent(chest -> tag.putIntArray("AssignedChest", new int[] { chest.getX(), chest.getY(), chest.getZ() }));
         getAssignedChestDimension().ifPresent(dim -> tag.putString("AssignedChestDim", dim.location().toString()));
         if (this.getPatrolPos().isPresent()) {
@@ -2617,6 +3042,19 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.setCanHarmVillagers(tag.getBoolean("AllowVillagerHarm"));
         this.setCanHarmPlayers(tag.getBoolean("AllowPlayerHarm"));
         this.setPatrolRadius(tag.getInt("radius"));
+        assignedMountId = tag.hasUUID("AssignedMount") ? tag.getUUID("AssignedMount") : null;
+        ridingWithOwnerMountId = null;
+        mountReconciliationTicks = 0;
+        temporaryMountFencePos = null;
+        temporaryMountFenceState = null;
+        if (tag.contains("TemporaryMountFencePos") && tag.contains("TemporaryMountFenceState", 10)) {
+            BlockState state = NbtUtils.readBlockState(this.registryAccess().lookupOrThrow(Registries.BLOCK),
+                    tag.getCompound("TemporaryMountFenceState"));
+            if (state.is(Blocks.OAK_FENCE)) {
+                temporaryMountFencePos = BlockPos.of(tag.getLong("TemporaryMountFencePos"));
+                temporaryMountFenceState = state;
+            }
+        }
         this.setSex(tag.getInt("sex"));
         if (tag.contains("VoiceActor")) this.setVoiceActor(tag.getString("VoiceActor"));
         if (!level().isClientSide()) CompanionVoice.ensureActor(this);
@@ -2879,6 +3317,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             trackDistanceNearOwner();
             tickAging();
             tickCommittedSwim();
+            tickCompanionMount();
             if (isPatrolling()) {
                 equipJobToolIfNeeded();
             }
@@ -2982,6 +3421,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     /* ---------- Orders & actions ---------- */
 
     public void cycleOrders() {
+        if (isOrderedToSit()) resumeMovementOrder();
         if (isFollowing()) {
             setPatrolling(true);
             setFollowing(false);
@@ -3020,6 +3460,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public void release() {
         if (!this.level().isClientSide()) CompanionVoice.play(this, ModSounds.Cue.FAREWELL);
+        if (this.level() instanceof ServerLevel level) clearAssignedMount(level);
         this.setTame(false, true);
         this.setOwnerUUID(null);
         setFollowing(false);

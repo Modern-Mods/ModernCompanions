@@ -2881,3 +2881,37 @@
   - Declared Mekanism as an optional client dependency, added its compile-only Maven coordinate, and bumped the version to 3.94.
 - Rationale: Mekanism's automatic layer discovery requires an exact vanilla `HumanoidArmorLayer`, while Modern Companions wraps that layer to keep Steve/Alex armor aligned. Explicit registration preserves the wrapper and enables Mekanism's native special-gear renderer without hard-loading Mekanism when absent.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; Mekanism-enabled in-world armor visibility and absent-Mekanism startup remain manual smoke checks.
+
+## 2026-08-10 (Companion mount travel)
+
+- Prompt/task: Fully implement companion mount travel, optional Assignment Wand mount links, leash hiding/restoration, and safe fence anchoring during sit orders.
+- Steps:
+  - Extended the existing Assignment Wand selection flow to bind or unbind an owned companion to an owned, saddled, leash-capable mount, with durable mount UUID storage and duplicate-link rejection.
+  - Added server-side automatic mount selection for active Follow companions, owner-vehicle tracking, synchronized dismounting, native leash restoration, and persisted assignment cleanup on release.
+  - Added safe existing-fence selection and protected normal-placement checks for an oak fence fallback when a sitting companion has an assigned mount; movement orders restore the companion-held leash.
+  - Added world-free mount state checks, English feedback/documentation, and bumped the version to 3.95.
+- Rationale: Reusing the current server-authoritative order flags, TamableAnimal ownership, Assignment Wand state, vanilla Saddleable/Leashable APIs, and entity NBT keeps mount travel aligned with existing companion behavior without introducing a second order or mount framework.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `build/libs/ModernCompanions-3.95.jar` was generated. In-game mount selection, riding, relog persistence, lead/fence interaction, protection claims, and multiplayer behavior remain manual smoke checks.
+
+## 2026-08-10 (Mounted rider alignment, native horse travel, and fence cleanup)
+
+- Prompt/task: Fix companions sitting too high on horses, moving too slowly, and leaving temporary oak fences behind or dropping them; preserve native horse stats while companions ride.
+- Steps:
+  - Matched the companion's horse vehicle attachment point to `Player.DEFAULT_VEHICLE_ATTACHMENT`, removing the generic mob-at-feet fallback that raised the rider by 0.6 blocks.
+  - Required automatic and assigned riding to use the owner's active eligible saddled vehicle, keeping the player as the first horse passenger so vanilla movement speed, jump strength, and control remain authoritative.
+  - Persisted the exact state of fences placed by the companion, detached and discarded their leash knots, and destroyed only unchanged tracked fences with `destroyBlock(..., false)` so no fence item drops.
+  - Added block break/place invalidation so a player-owned or changed/replaced fence is never treated as the companion's cleanup target; bumped the version to 3.96.
+- Rationale: Vanilla 1.21.1 horse travel is implemented through the first `Player` passenger, and player riding uses a 0.6-block vehicle attachment. Reusing those native seams fixes both visible alignment and slow movement without duplicating horse control or deleting unrelated terrain.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-3.96.jar`. Fence block-event behavior, horse/camel visual alignment, and multiplayer smoke remain manual checks.
+
+## 2026-08-10 (Assigned mount relog recovery)
+
+- Prompt/task: After logging in while mounted, an assigned companion horse remained on its lead instead of mounting when the owner rode.
+- Steps:
+  - Removed the exact-player-vehicle requirement for assigned mounts; vanilla horses accept one passenger, so companions now ride assigned horses beside the owner's horse and automatic selection excludes the occupied player vehicle.
+  - Added an explicit-assignment fallback that force-adds a companion to the active owned horse only after normal boarding rejects its second passenger, keeping the player as the first passenger and preserving native control.
+  - Guided a separate mounted horse with repeated native navigation requests; vanilla MoveControl and JumpControl therefore continue to use the horse's persisted movement speed and jump strength.
+  - Added a bounded PlayerLoggedIn reconciliation window so restored companion passengers are not dismounted while the player's vehicle and saddle/ownership state finish loading; lead restoration remains authoritative after a real owner dismount.
+  - Bumped the version to 3.97 and extended the mount-rules check for the login reconciliation gate.
+- Rationale: Keep the original companion-per-mount behavior, reuse vanilla passenger/navigation/attribute APIs, and cover the login ordering race without introducing a second mount or movement system.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; relog, multi-horse following, horse/camel movement, and multiplayer behavior remain manual smoke checks.

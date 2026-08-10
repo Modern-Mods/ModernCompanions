@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -21,8 +22,8 @@ import net.minecraft.world.Container;
 import java.util.UUID;
 
 /**
- * Wand that links a working companion to a delivery chest.
- * Right-click a companion to select it, then shift-right-click a chest to bind.
+ * Wand that links an owned companion to a delivery chest or saddled mount.
+ * Right-click a companion to select it, then use the wand on the target to bind.
  */
 public class AssignmentWandItem extends Item {
     private static final String TAG_SELECTED = "SelectedCompanion";
@@ -35,19 +36,55 @@ public class AssignmentWandItem extends Item {
 
     @Override
     public InteractionResult interactLivingEntity(ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
-        if (!(target instanceof AbstractHumanCompanionEntity companion)) {
-            return InteractionResult.PASS;
+        if (target instanceof AbstractHumanCompanionEntity companion) {
+            if (player.level().isClientSide()) {
+                return InteractionResult.SUCCESS;
+            }
+            if (!companion.isOwnedBy(player)) {
+                player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.not_owner"));
+                return InteractionResult.CONSUME;
+            }
+            writeSelectionToStack(stack, companion.getUUID(), companion.getDisplayName().getString());
+            writeSelectionToPlayer(player, companion.getUUID(), companion.getDisplayName().getString());
+            player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.selected", companion.getDisplayName()));
+            return InteractionResult.CONSUME;
         }
-        if (player.level().isClientSide()) {
-            return InteractionResult.SUCCESS;
+        if (!(target instanceof Mob mount)) return InteractionResult.PASS;
+        if (player.level().isClientSide()) return InteractionResult.SUCCESS;
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer)
+                || !(player.level() instanceof ServerLevel serverLevel)) {
+            return InteractionResult.CONSUME;
+        }
+
+        Selection selection = readSelection(stack, player);
+        if (selection == null) {
+            player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.no_selection"));
+            return InteractionResult.CONSUME;
+        }
+        var entity = serverLevel.getEntity(selection.id());
+        if (!(entity instanceof AbstractHumanCompanionEntity companion)) {
+            player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.missing_companion"));
+            clearSelection(stack, player);
+            return InteractionResult.CONSUME;
         }
         if (!companion.isOwnedBy(player)) {
             player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.not_owner"));
+            clearSelection(stack, player);
             return InteractionResult.CONSUME;
         }
-        writeSelectionToStack(stack, companion.getUUID(), companion.getDisplayName().getString());
-        writeSelectionToPlayer(player, companion.getUUID(), companion.getDisplayName().getString());
-        player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.selected", companion.getDisplayName()));
+        if (!companion.canAssignMount(mount, player)) {
+            player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.invalid_mount"));
+            return InteractionResult.CONSUME;
+        }
+        if (companion.getAssignedMountId().filter(mount.getUUID()::equals).isPresent()) {
+            companion.clearAssignedMount(serverLevel);
+            player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.mount_unbound",
+                    companion.getDisplayName(), mount.getDisplayName()));
+        } else if (companion.assignMount(serverLevel, mount, serverPlayer)) {
+            player.sendSystemMessage(Component.translatable("message.modern_companions.assignment_wand.mount_bound",
+                    companion.getDisplayName(), mount.getDisplayName()));
+        }
+        clearSelection(stack, player);
         return InteractionResult.CONSUME;
     }
 

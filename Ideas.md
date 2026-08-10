@@ -60,3 +60,10 @@
         - Additional equipment slots?
         - Access to higher tier equipment?
         - Boost to overall stats?
+
+
+
+
+# Urgent
+
+- We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 

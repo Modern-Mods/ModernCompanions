@@ -1,3 +1,14 @@
+## 2026-08-10 (Sorcerer targeting and Battlemage combat)
+
+- Prompt/task: Prevent Sorcerer Chain Lightning from selecting the player or friendly companions/pets, honor companion friendly fire, replace Battlemage's ineffective/crashing spells, and mix Battlemage melee with spellcasting during Mana recovery.
+- Steps:
+  - Added a Sorcerer hostile-only harm gate that always excludes players and applies `friendlyFireCompanions` to companions and tagged/tamed pets; the shared spell target and upstream damage protection paths now use that gate.
+  - Replaced Battlemage's `spectral_hammer`/`fang_ward` kit with targeted `firebolt`/`fang_strike` spells and made optional Iron's/Ars casts swallow runtime reflection failures safely.
+  - Added a Battlemage melee goal that takes priority whenever its basic spell Mana cost is unavailable, then returns to ranged casting as Mana regenerates.
+  - Added a no-world spell-kit regression check and bumped the version to 4.03.
+- Rationale: Keep target and damage safety at the shared magic seams, use already-proven targeted spell IDs, and let the existing melee implementation provide the Mana-refresh fallback without introducing a second combat system.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.03.jar`; optional Iron's/Ars in-world Chain Lightning safety, Battlemage melee/casting transitions, and server-crash smoke checks remain manual.
+
 ## 2026-08-08 (Companion Table isolation)
 - Prompt/task: Recreate the vanilla enchanting-table behavior needed by the Companion Table so mods that modify the vanilla enchanting table cannot apply their block-entity assumptions to it.
 - Steps:

@@ -4,6 +4,7 @@ import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.level.Level;
 
@@ -20,6 +21,11 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
     }
 
     protected abstract MagicCompanionKit kit();
+
+    /** Expose the kit's target contract to the shared ranged and damage guards. */
+    public final boolean requiresHostileTargets() {
+        return kit().hostileTargetsOnly;
+    }
 
     protected int basicManaCost() { return BASIC_MANA_COST; }
 
@@ -84,7 +90,9 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
     }
 
     protected final boolean safeTarget(LivingEntity target, float radius) {
-        if (!target.isAlive() || !getSensing().hasLineOfSight(target) || target instanceof net.minecraft.world.entity.player.Player || isAlliedTo(target) || isOwnerInDanger(target, radius)) return false;
+        if (!target.isAlive() || !getSensing().hasLineOfSight(target) || target instanceof net.minecraft.world.entity.player.Player
+                || !canHarm(target) || (requiresHostileTargets() && target.getType().getCategory() != MobCategory.MONSTER)
+                || isAlliedTo(target) || isOwnerInDanger(target, radius)) return false;
         return level().getEntitiesOfClass(LivingEntity.class, target.getBoundingBox().inflate(radius), this::isAllyNearTarget).isEmpty();
     }
 

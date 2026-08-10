@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.entity;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
+import com.majorbonghits.moderncompanions.entity.magic.IntegratedMageCompanion;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -83,6 +84,9 @@ public final class CompanionProtectionEvents {
 
     static boolean canHarm(AbstractHumanCompanionEntity companion, Entity victim) {
         if (!companion.canHarm(victim)) return false;
+        // Hostile-only integrated kits already resolved their companion/pet policy;
+        // do not let the generic owner check undo friendlyFireCompanions for them.
+        if (companion instanceof IntegratedMageCompanion mage && mage.requiresHostileTargets()) return true;
         // Apply the normal companion friendly-fire switch to tagged Beastmaster pets,
         // including non-tamable pets and damage from upstream summons.
         if (Beastmaster.isBeastmasterPet(victim)) {

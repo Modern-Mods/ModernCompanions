@@ -295,7 +295,7 @@ public final class MagicCastingCompat {
             call(spell, "onCast", level, 1, caster, mob, data);
             call(spell, "onServerCastComplete", level, 1, caster, data, false);
             return true;
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             return false;
         }
     }
@@ -310,7 +310,7 @@ public final class MagicCastingCompat {
             Object context = newInstance(Class.forName("com.hollingsworth.arsnouveau.api.spell.SpellContext", true, loader), caster.level(), spell, caster, wrappedCaster);
             Object resolver = newInstance(Class.forName("com.hollingsworth.arsnouveau.api.spell.EntitySpellResolver", true, loader), context);
             return (boolean) call(resolver, "onCastOnEntity", ItemStack.EMPTY, target, InteractionHand.MAIN_HAND);
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             return false;
         }
     }

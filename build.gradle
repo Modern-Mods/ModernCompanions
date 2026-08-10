@@ -153,6 +153,12 @@ tasks.register("epicFightCombatAiCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("magicCompanionKitCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.magic.MagicCompanionKitTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("epicFightCapabilityCheck") {
     def weaponTypes = [dagger: "dagger", hammer: "axe", club: "axe", spear: "spear", quarterstaff: "longsword", glaive: "spear"]
     def legendaryTypes = [
@@ -200,6 +206,7 @@ tasks.named("check") {
     dependsOn tasks.named("structureSpawnCheck")
     dependsOn tasks.named("currencyTradeCheck")
     dependsOn tasks.named("epicFightCombatAiCheck")
+    dependsOn tasks.named("magicCompanionKitCheck")
 }
 
 tasks.processResources.configure {

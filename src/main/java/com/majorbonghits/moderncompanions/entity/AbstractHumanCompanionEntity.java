@@ -1432,14 +1432,19 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return mount.getPassengers().stream().allMatch(passenger -> passenger == owner || passenger == this);
     }
 
-    /** Drive a companion's separate mount with that mount's native speed and jump attributes. */
+    /** Drive a separate mount without letting a low-stat horse crawl behind the owner. */
     private void guideMountedMount(Mob mount, Entity ownerVehicle) {
         if (mount.getUUID().equals(ownerVehicle.getUUID())) return;
 
         if (mount.distanceToSqr(ownerVehicle) > 9.0D) {
-            // MoveControl multiplies this by the mount's MOVEMENT_SPEED attribute, and its
-            // JumpControl uses the mount's JUMP_STRENGTH attribute just as native riding does.
-            mount.getNavigation().moveTo(ownerVehicle, 1.0D);
+            double mountSpeed = mount.getAttributeValue(Attributes.MOVEMENT_SPEED);
+            double ownerMountSpeed = ownerVehicle instanceof LivingEntity living
+                    ? living.getAttributeValue(Attributes.MOVEMENT_SPEED)
+                    : mountSpeed;
+            double speedModifier = CompanionMountRules.guidedMountSpeedModifier(mountSpeed, ownerMountSpeed);
+            // MoveControl still uses the mount's movement and jump attributes; the bounded
+            // multiplier only prevents a slow separate horse from falling permanently behind.
+            mount.getNavigation().moveTo(ownerVehicle, speedModifier);
         } else {
             mount.getNavigation().stop();
         }

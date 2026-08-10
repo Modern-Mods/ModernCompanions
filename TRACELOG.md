@@ -2915,3 +2915,46 @@
   - Bumped the version to 3.97 and extended the mount-rules check for the login reconciliation gate.
 - Rationale: Keep the original companion-per-mount behavior, reuse vanilla passenger/navigation/attribute APIs, and cover the login ordering race without introducing a second mount or movement system.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` required; relog, multi-horse following, horse/camel movement, and multiplayer behavior remain manual smoke checks.
+
+## 2026-08-10 (Responsive follow recovery)
+
+- Prompt/task: Make following companions respond sooner and recover from distance-based teleporting without velocity anticipation.
+- Steps:
+  - Kept the follow goal active while navigation is temporarily complete but the companion remains outside its comfortable return distance.
+  - Recalculated the owner-centered return path every 5 ticks and added a zero-distance fallback for safe navigation requests.
+  - Added a 20-tick walking grace period and distance-progress check before emergency teleporting, followed by immediate repathing and a 40-tick teleport cooldown.
+  - Bumped the version to 3.98.
+- Rationale: Separate ordinary catch-up from emergency recall so faster owners produce responsive walking instead of a teleport-stop-repeat loop; the existing radius and owner-centered wandering behavior remain unchanged.
+- Build: Java 21 `gradlew.bat build --console=plain --no-daemon` passed, including `followLeashCheck`; in-game walking, sprinting, horse, Speed-potion, obstacle, and repeated-teleport smoke tests remain manual.
+
+## 2026-08-10 (Configurable follow teleport timing)
+
+- Prompt/task: Make the follow teleport delay and repeat-teleport cooldown configurable without adding velocity anticipation.
+- Steps:
+  - Added common `teleportDelayTicks` and `teleportCooldownTicks` settings with defaults of 20 and 40 ticks.
+  - Replaced the follow goal's hard-coded pre-teleport delay, no-progress threshold, and cooldown reads with live config values; kept the 20-tick post-teleport walking grace internal.
+  - Added English config names/tooltips and bumped the version to 4.00.
+- Rationale: Pack authors can tune how long companions attempt ordinary catch-up and how frequently emergency recall may repeat while retaining safe bounded integer settings and the existing follow behavior.
+- Build: Java 21 `gradlew.bat build --console=plain --no-daemon` required; config-file reload and in-game timing changes remain manual smoke checks.
+
+## 2026-08-10 (Mounted companion speed matching)
+
+- Prompt/task: Companions were still moving at crawl speed when riding horses.
+- Steps:
+  - Traced separate companion mounts through `guideMountedMount` and vanilla 1.21.1 `MoveControl` speed handling.
+  - Replaced the fixed `1.0D` navigation multiplier with a bounded ratio that raises a slower separate mount only enough to match the owner's current mount speed, capped at `3.0D`.
+  - Kept shared-seat horses on the vanilla owner-controlled path and added world-free regression checks for normal, faster, slower, capped, and invalid speed inputs.
+  - Updated the Assignment Wand documentation and bumped the version to 4.01.
+- Rationale: Vanilla navigation multiplies the mount's own `MOVEMENT_SPEED`; a low-stat companion horse therefore crawled even while the owner rode a faster horse. Matching the owner speed fixes the travel contract without rewriting horse attributes or jump behavior.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `mountRulesCheck` passed and produced `build/libs/ModernCompanions-4.01.jar`. Separate-horse speed, shared-seat speed, jumping, relog, and multiplayer behavior remain manual smoke checks.
+
+## 2026-08-10 (Mounted horse ridden-speed compensation)
+
+- Prompt/task: The previous mounted-speed adjustment still left companion horses walking at crawl speed instead of reaching ridden horse speed.
+- Steps:
+  - Traced vanilla `MoveControl` and `LivingEntity` movement math: navigation writes the mount speed back into forward input, while player riding supplies full forward input separately.
+  - Changed the shared guide multiplier to target the square root of the owner mount speed, compensating for that AI input factor while retaining navigation, native movement attributes, and jump control.
+  - Expanded the mount-rule regression checks to cover vanilla slow/fast horse ratios, the bounded modded-attribute case, and invalid attributes.
+  - Bumped the version to 4.02.
+- Rationale: A sprint flag does not unlock horse speed in vanilla; the crawl came from the AI navigation input path, not a missing gallop toggle.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `mountRulesCheck` passed and produced `build/libs/ModernCompanions-4.02.jar`. Mounted horse/camel speed, shared-seat behavior, jumping, relog, and multiplayer remain manual smoke checks.

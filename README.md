@@ -303,7 +303,7 @@ The Summoning Wand recalls all living companions and Beastmaster pets in the cur
 
 The Assignment Wand links an owned companion to a delivery container or a saddled mount. Right-click the companion with the wand, then use it on a container or on the owned mount. The companion delivers job output there and can withdraw raw inputs when a job supports it.
 
-When the owner is actively riding, a following companion mounts its assigned eligible mount, or the nearest other owned eligible mount when none is assigned. An explicitly assigned active horse may share its seat with the player; otherwise the companion rides a separate mount. The companion's mount follows the owner's vehicle using its native movement-speed, step, and jump attributes, and dismounts when the owner dismounts. An assigned mount is led to the companion while traveling or standing. If the companion is ordered to sit, it uses a safe nearby fence when available, placing an oak fence only where normal player placement/protection checks allow it; moving again restores the companion-held lead and removes only an unchanged fence that Modern Companions placed, without dropping it.
+When the owner is actively riding, a following companion mounts its assigned eligible mount, or the nearest other owned eligible mount when none is assigned. An explicitly assigned active horse may share its seat with the player; otherwise the companion rides a separate mount. A separate mount follows the owner's vehicle with its native movement and jump attributes, and a bounded speed multiplier prevents a low-stat horse from crawling behind a faster owner mount; shared-seat horses remain vanilla-controlled. The companion dismounts when the owner dismounts. An assigned mount is led to the companion while traveling or standing. If the companion is ordered to sit, it uses a safe nearby fence when available, placing an oak fence only where normal player placement/protection checks allow it; moving again restores the companion-held lead and removes only an unchanged fence that Modern Companions placed, without dropping it.
 
 ### Spawn Gems
 
@@ -369,7 +369,9 @@ Open **Mods → Modern Companions → Config** for the player-facing settings. D
 | `spawnArmor` | `true` | Give newly spawned companions random armor. |
 | `spawnWeapon` | `true` | Give newly spawned companions a weapon. |
 | `autoEquip` | `false` | Automatically equip suitable gear from the companion inventory. |
-| `teleportLeash` | `false` | Teleport a following companion to a safe spot after it exceeds its selected Radius by 5 blocks. |
+| `teleportLeash` | `false` | Teleport a following companion to a safe spot after it exceeds its selected Radius by 5 blocks and fails to close distance. |
+| `teleportDelayTicks` | `20` | Ticks a companion tries to close distance before emergency teleporting; `20` ticks is 1 second. |
+| `teleportCooldownTicks` | `40` | Minimum ticks between emergency teleports; `40` ticks is 2 seconds. |
 | `baseHealth` | `20` | Base health before spawn variance; minimum `5`. |
 | `lowHealthFood` | `true` | Let companions eat and ask for food when low on health. |
 | `lowHealthFoodThreshold` | `0.5` | Health fraction for low-health food behavior; `0.0`–`1.0`. |

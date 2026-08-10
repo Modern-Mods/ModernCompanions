@@ -48,6 +48,8 @@ public final class ModConfig {
     public static ModConfigSpec.BooleanValue SPAWN_WEAPON;
     public static ModConfigSpec.BooleanValue AUTO_EQUIP;
     public static ModConfigSpec.BooleanValue TELEPORT_LEASH;
+    public static ModConfigSpec.IntValue TELEPORT_DELAY_TICKS;
+    public static ModConfigSpec.IntValue TELEPORT_COOLDOWN_TICKS;
     public static ModConfigSpec.IntValue BASE_HEALTH;
     public static ModConfigSpec.BooleanValue LOW_HEALTH_FOOD;
     public static ModConfigSpec.DoubleValue LOW_HEALTH_FOOD_THRESHOLD;
@@ -155,8 +157,14 @@ public final class ModConfig {
                 .comment("Whether companions automatically equip suitable gear from their inventory")
                 .define("autoEquip", false);
         TELEPORT_LEASH = builder.translation("modern_companions.configuration.companion.teleport_leash")
-                .comment("When enabled, following companions teleport to a safe spot near the owner after exceeding the selected Radius by 5 blocks.")
+                .comment("When enabled, following companions teleport to a safe spot near the owner after exceeding the selected Radius by 5 blocks and failing to close distance.")
                 .define("teleportLeash", false);
+        TELEPORT_DELAY_TICKS = builder.translation("modern_companions.configuration.companion.teleport_delay_ticks")
+                .comment("Ticks a companion spends trying to close distance before an emergency teleport; 20 ticks equals 1 second.")
+                .defineInRange("teleportDelayTicks", 20, 0, Integer.MAX_VALUE);
+        TELEPORT_COOLDOWN_TICKS = builder.translation("modern_companions.configuration.companion.teleport_cooldown_ticks")
+                .comment("Minimum ticks between emergency teleports; 20 ticks equals 1 second.")
+                .defineInRange("teleportCooldownTicks", 40, 0, Integer.MAX_VALUE);
         BASE_HEALTH = builder.translation("modern_companions.configuration.companion.base_health")
                 .comment("Base health for companions; a small random variance is applied on spawn")
                 .defineInRange("baseHealth", 20, 5, Integer.MAX_VALUE);

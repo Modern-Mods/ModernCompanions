@@ -11,5 +11,10 @@ public final class CompanionMountRulesTest {
         assert !CompanionMountRules.shouldDismount(true, true);
         assert !CompanionMountRules.shouldDismount(true, false, true);
         assert CompanionMountRules.shouldDismount(true, false, false);
+        assert Math.abs(CompanionMountRules.guidedMountSpeedModifier(0.1125D, 0.225D)
+                - Math.sqrt(0.225D) / 0.1125D) < 1.0E-9D;
+        assert CompanionMountRules.guidedMountSpeedModifier(0.3375D, 0.1125D) == 1.0D;
+        assert CompanionMountRules.guidedMountSpeedModifier(0.05D, 0.3375D) == 6.0D;
+        assert CompanionMountRules.guidedMountSpeedModifier(0.0D, 0.225D) == 1.0D;
     }
 }

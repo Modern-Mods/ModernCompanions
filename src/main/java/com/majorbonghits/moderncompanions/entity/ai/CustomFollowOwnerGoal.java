@@ -15,12 +15,20 @@ import java.util.EnumSet;
 public class CustomFollowOwnerGoal extends Goal {
     private static final int TELEPORT_ATTEMPTS = 10;
     private static final int TELEPORT_RANGE = 3;
+    private static final int PATH_RECALCULATION_INTERVAL = 5;
+    private static final int POST_TELEPORT_FOLLOW_TICKS = 20;
+    private static final double PROGRESS_EPSILON_SQUARED = 0.04D;
 
     private final AbstractHumanCompanionEntity companion;
     private final double speedModifier;
     private final boolean teleport;
     private LivingEntity owner;
     private int timeToRecalc;
+    private int postTeleportFollowTicks;
+    private int noProgressTicks;
+    private double lastDistanceSq = Double.MAX_VALUE;
+    private long teleportGraceUntil;
+    private long teleportCooldownUntil;
 
     public CustomFollowOwnerGoal(AbstractHumanCompanionEntity companion, double speed, boolean teleport) {
         this.companion = companion;
@@ -48,18 +56,30 @@ public class CustomFollowOwnerGoal extends Goal {
     @Override
     public boolean canContinueToUse() {
         return owner != null
-                && !companion.getNavigation().isDone()
                 && companion.isFollowing()
                 && !companion.isOrderedToSit()
                 && !companion.isPassenger()
                 && owner.level() == companion.level()
-                && companion.distanceToSqr(owner) > returnDistanceSquared();
+                && (postTeleportFollowTicks > 0 || companion.distanceToSqr(owner) > returnDistanceSquared());
+    }
+
+    @Override
+    public void start() {
+        timeToRecalc = 0;
+        postTeleportFollowTicks = 0;
+        noProgressTicks = 0;
+        lastDistanceSq = companion.distanceToSqr(owner);
+        // Let navigation try to catch up before an emergency teleport is allowed.
+        teleportGraceUntil = companion.level().getGameTime() + teleportDelayTicks();
     }
 
     @Override
     public void stop() {
         this.owner = null;
         this.companion.getNavigation().stop();
+        this.postTeleportFollowTicks = 0;
+        this.noProgressTicks = 0;
+        this.lastDistanceSq = Double.MAX_VALUE;
     }
 
     @Override
@@ -72,24 +92,62 @@ public class CustomFollowOwnerGoal extends Goal {
             return;
         }
 
+        if (postTeleportFollowTicks > 0) {
+            postTeleportFollowTicks--;
+        }
+
         companion.getLookControl().setLookAt(owner, 10.0F, companion.getMaxHeadXRot());
 
         if (--timeToRecalc <= 0) {
-            timeToRecalc = 10;
+            timeToRecalc = PATH_RECALCULATION_INTERVAL;
+            long gameTime = companion.level().getGameTime();
             double distanceSq = companion.distanceToSqr(owner);
+            if (distanceSq <= lastDistanceSq - PROGRESS_EPSILON_SQUARED) {
+                noProgressTicks = 0;
+            } else {
+                noProgressTicks += PATH_RECALCULATION_INTERVAL;
+            }
+            lastDistanceSq = distanceSq;
+
             if (distanceSq >= FollowLeashRules.teleportDistanceSquared(companion.getPatrolRadius())
                     && teleport
-                    && ModConfig.safeGet(ModConfig.TELEPORT_LEASH)) {
+                    && ModConfig.safeGet(ModConfig.TELEPORT_LEASH)
+                    && gameTime >= teleportGraceUntil
+                    && gameTime >= teleportCooldownUntil
+                    && noProgressTicks >= teleportDelayTicks()) {
                 if (!tryTeleportCloseToOwner()) {
-                    companion.getNavigation().moveTo(owner, speedModifier); // Fallback if no safe spot found.
+                    moveTowardOwner(); // Fallback if no safe spot is found.
+                } else {
+                    // Keep the follow goal active after recall so the companion resumes walking.
+                    postTeleportFollowTicks = POST_TELEPORT_FOLLOW_TICKS;
+                    teleportCooldownUntil = gameTime + teleportCooldownTicks();
+                    noProgressTicks = 0;
+                    lastDistanceSq = companion.distanceToSqr(owner);
+                    moveTowardOwner();
                 }
             } else {
-                // Return to the companion's selected radius, not directly onto the owner.
-                Vec3 direction = companion.position().subtract(owner.position()).multiply(1.0D, 0.0D, 1.0D).normalize();
-                Vec3 returnPoint = owner.position().add(direction.scale(returnDistance()));
-                companion.getNavigation().moveTo(returnPoint.x, returnPoint.y, returnPoint.z, speedModifier);
+                moveTowardOwner();
             }
         }
+    }
+
+    private int teleportDelayTicks() {
+        return ModConfig.safeGet(ModConfig.TELEPORT_DELAY_TICKS);
+    }
+
+    private int teleportCooldownTicks() {
+        return ModConfig.safeGet(ModConfig.TELEPORT_COOLDOWN_TICKS);
+    }
+
+    private void moveTowardOwner() {
+        // Return to the companion's selected radius, not directly onto the owner.
+        Vec3 direction = companion.position().subtract(owner.position()).multiply(1.0D, 0.0D, 1.0D);
+        if (direction.lengthSqr() < 1.0E-4D) {
+            companion.getNavigation().moveTo(owner, speedModifier);
+            return;
+        }
+        Vec3 returnPoint = owner.position().add(direction.normalize().scale(returnDistance()));
+        companion.getNavigation().moveTo(returnPoint.x, returnPoint.y, returnPoint.z, speedModifier);
     }
 
     private double leashDistanceSquared() {

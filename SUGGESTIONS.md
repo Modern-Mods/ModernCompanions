@@ -543,3 +543,25 @@
 ## 2026-08-10 (Assigned mount relog recovery)
 
 - Smoke-test relogging while the owner is mounted with both an assigned separate horse and an explicitly assigned shared horse; confirm the lead remains until the companion mounts, separate horses follow at their own stats, and owner dismount cleanly restores the lead.
+
+## 2026-08-10 (Responsive follow recovery)
+
+- Smoke-test a companion walking, sprinting, riding a horse, and using a Speed potion while Follow is enabled; confirm it begins catching up promptly, keeps moving after a path completes, and does not repeat teleporting every few ticks.
+- Test blocked terrain and unloaded/chunk-edge routes; confirm the companion walks when navigation works, teleports only after failing to close distance, and immediately resumes navigation after a safe recall.
+- If the 20-tick grace or 40-tick cooldown feels too short or long in live play, tune those local constants only after testing normal walking and high-speed owner movement together.
+
+## 2026-08-10 (Configurable follow teleport timing)
+
+- Smoke-test `teleportDelayTicks = 0`, `20`, and a larger value with Teleport Leash enabled; verify companions still attempt navigation and only recall after the configured no-progress delay.
+- Smoke-test `teleportCooldownTicks = 0`, `40`, and a larger value during continuous sprinting; verify the setting controls repeat recalls without reintroducing the post-teleport standing-still loop.
+- Confirm invalid or out-of-range values are rejected by the common config range and the English config screen shows both settings in ticks.
+
+## 2026-08-10 (Mounted companion speed matching)
+
+- Smoke-test a slow and fast owned horse/camel as separate companion mounts while the owner rides; confirm the companion mount keeps pace without changing its saved movement or jump attributes.
+- Compare shared-seat riding with the owner alone to confirm vanilla horse control remains unchanged, then repeat after relog and owner dismount.
+
+## 2026-08-10 (Mounted horse ridden-speed compensation)
+
+- Smoke-test a separate companion horse on grass and ice beside the owner’s ridden horse; compare measured travel distance over 10 seconds and confirm it no longer uses the slow AI-walk pace.
+- Verify horse/camel step-up and jump behavior, shared-seat riding, owner dismount, relog, and multiplayer after the speed compensation.

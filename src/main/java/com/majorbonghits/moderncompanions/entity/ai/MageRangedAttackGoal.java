@@ -33,7 +33,8 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
 
     @Override
     public boolean canUse() {
-        return this.caster.getTarget() != null && this.caster.canUseRangedAttack();
+        return !this.caster.isSpellCasting()
+                && this.caster.getTarget() != null && this.caster.canUseRangedAttack();
     }
 
     @Override
@@ -59,6 +60,12 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
     public void tick() {
         LivingEntity target = this.caster.getTarget();
         if (target == null) return;
+
+        if (this.caster.isSpellCasting()) {
+            this.caster.getNavigation().stop();
+            this.caster.getLookControl().setLookAt(target, 45.0F, 45.0F);
+            return;
+        }
 
         double distSqr = this.caster.distanceToSqr(target);
         boolean hasLineOfSight = this.caster.getSensing().hasLineOfSight(target);
@@ -97,7 +104,7 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
         float normalizedDistance = distance / Mth.sqrt(this.attackRadiusSqr);
         float clamped = Mth.clamp(normalizedDistance, 0.1F, 1.0F);
 
-        // Look control owns tracking; direct spell aim happens only at cast time.
+        // Keep the target centered during the approach; the shared cast lifecycle owns the final aim.
         this.caster.getLookControl().setLookAt(target, 45.0F, 45.0F);
 
         if (--this.attackTime <= 0) {

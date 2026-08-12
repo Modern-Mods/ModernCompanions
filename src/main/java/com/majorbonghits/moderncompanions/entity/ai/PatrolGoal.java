@@ -12,7 +12,6 @@ import javax.annotation.Nullable;
  * Patrolling random stroll constrained to a patrol radius around the patrol position.
  */
 public class PatrolGoal extends RandomStrollGoal {
-    protected final float probability;
     public Vec3 patrolVec;
     public AbstractHumanCompanionEntity companion;
     public int radius;
@@ -23,7 +22,6 @@ public class PatrolGoal extends RandomStrollGoal {
 
     public PatrolGoal(AbstractHumanCompanionEntity mob, double speed, float probability, int interval, int radius) {
         super(mob, speed);
-        this.probability = probability;
         this.companion = mob;
         this.interval = interval;
         this.radius = radius;
@@ -45,15 +43,21 @@ public class PatrolGoal extends RandomStrollGoal {
     @Nullable
     @Override
     protected Vec3 getPosition() {
-        Vec3 candidate = this.mob.getRandom().nextFloat() >= this.probability ? getRandomAroundPatrol() : super.getPosition();
-        if (candidate == null) {
-            candidate = super.getPosition();
+        if (patrolVec == null) return null;
+        double maxDistanceSqr = (double) radius * radius;
+        for (int attempt = 0; attempt < 8; attempt++) {
+            Vec3 candidate = getRandomAroundPatrol();
+            if (candidate != null && candidate.distanceToSqr(patrolVec) <= maxDistanceSqr) {
+                return candidate;
+            }
         }
-        return candidate;
+        // Never fall back to RandomStrollGoal's unbounded world position: returning to the
+        // patrol center lets MoveBackToPatrolGoal recover the companion on the next pass.
+        return patrolVec;
     }
 
     private Vec3 getRandomAroundPatrol() {
         if (patrolVec == null) return null;
-        return LandRandomPos.getPosTowards(this.mob, radius, 7, patrolVec);
+        return LandRandomPos.getPosTowards(this.mob, Math.max(1, radius), 7, patrolVec);
     }
 }

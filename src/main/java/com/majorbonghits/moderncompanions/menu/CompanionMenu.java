@@ -21,8 +21,10 @@ public class CompanionMenu extends AbstractContainerMenu {
     private static final int COMPANION_ROWS = 7;
     private static final int COMPANION_SLOT_COUNT = COMPANION_ROWS * 9;
     private static final int EQUIPMENT_SLOT_COUNT = 6;
+    private static final int SPELLBOOK_SLOT_COUNT = 1;
     private static final int COSMETIC_SLOT_COUNT = 4;
-    private static final int TOTAL_EQUIPMENT_SLOT_COUNT = EQUIPMENT_SLOT_COUNT + COSMETIC_SLOT_COUNT;
+    private static final int TOTAL_EQUIPMENT_SLOT_COUNT = EQUIPMENT_SLOT_COUNT + SPELLBOOK_SLOT_COUNT + COSMETIC_SLOT_COUNT;
+    private static final int SPELLBOOK_SLOT_INDEX = EQUIPMENT_SLOT_COUNT;
     private static final int CONTENT_X_OFFSET = 103;
     private final Container container;
     private final int companionId;
@@ -44,18 +46,22 @@ public class CompanionMenu extends AbstractContainerMenu {
         checkContainerSize(container, COMPANION_SLOT_COUNT);
         container.startOpen(playerInv.player);
 
-        // Equipment slots delegate to the entity's vanilla equipment; the dummy container is client-safe fallback state.
-        Container equipment = new SimpleContainer(EQUIPMENT_SLOT_COUNT);
+        // Functional equipment delegates to the entity; the dummy container is client-safe fallback state.
+        Container equipment = new SimpleContainer(TOTAL_EQUIPMENT_SLOT_COUNT);
         this.addSlot(new CompanionEquipmentSlot(equipment, 0, 9, 37, EquipmentSlot.HEAD, companion, "empty_armor_slot_helmet"));
         this.addSlot(new CompanionEquipmentSlot(equipment, 1, 9, 56, EquipmentSlot.CHEST, companion, "empty_armor_slot_chestplate"));
         this.addSlot(new CompanionEquipmentSlot(equipment, 2, 9, 73, EquipmentSlot.LEGS, companion, "empty_armor_slot_leggings"));
         this.addSlot(new CompanionEquipmentSlot(equipment, 3, 9, 91, EquipmentSlot.FEET, companion, "empty_armor_slot_boots"));
         this.addSlot(new CompanionEquipmentSlot(equipment, 4, 78, 37, EquipmentSlot.MAINHAND, companion, "empty_slot_sword"));
         this.addSlot(new CompanionEquipmentSlot(equipment, 5, 78, 91, EquipmentSlot.OFFHAND, companion, "empty_armor_slot_shield"));
+        boolean magicalCompanion = companion != null && companion.hasMana();
+        this.addSlot(new CompanionSpellbookSlot(equipment, SPELLBOOK_SLOT_INDEX,
+                magicalCompanion ? 78 : -100, magicalCompanion ? 56 : -100, companion));
 
         // Cosmetic slots live off-screen; CompanionScreen draws and clicks them only while its popup is open.
         for (int i = 0; i < COSMETIC_SLOT_COUNT; i++) {
-            this.addSlot(new CompanionCosmeticArmorSlot(equipment, EQUIPMENT_SLOT_COUNT + i, -100, -100,
+            this.addSlot(new CompanionCosmeticArmorSlot(equipment, TOTAL_EQUIPMENT_SLOT_COUNT - COSMETIC_SLOT_COUNT + i,
+                    -100, -100,
                     cosmeticSlot(i), companion));
         }
 
@@ -119,7 +125,7 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     public int getCosmeticArmorSlotIndex(int index) {
         if (index < 0 || index >= COSMETIC_SLOT_COUNT) return -1;
-        return EQUIPMENT_SLOT_COUNT + index;
+        return EQUIPMENT_SLOT_COUNT + SPELLBOOK_SLOT_COUNT + index;
     }
 
     private static EquipmentSlot cosmeticSlot(int index) {
@@ -190,6 +196,48 @@ public class CompanionMenu extends AbstractContainerMenu {
 
         public EquipmentSlot getEquipmentSlot() {
             return equipmentSlot;
+        }
+    }
+
+    /** Dedicated persisted spellbook view; only mana-bearing companions can use it. */
+    public static class CompanionSpellbookSlot extends Slot {
+        private final AbstractHumanCompanionEntity companion;
+
+        CompanionSpellbookSlot(Container container, int index, int x, int y, AbstractHumanCompanionEntity companion) {
+            super(container, index, x, y);
+            this.companion = companion;
+            // The supplied magical equipment panel already contains the empty spellbook slot art.
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return companion != null && companion.canEquipSpellbook(stack);
+        }
+
+        @Override
+        public ItemStack getItem() {
+            return companion == null ? super.getItem() : companion.getSpellbookItem();
+        }
+
+        @Override
+        public boolean hasItem() {
+            return !getItem().isEmpty();
+        }
+
+        @Override
+        public void set(ItemStack stack) {
+            if (companion != null) companion.setSpellbookItem(stack);
+            else super.set(stack);
+        }
+
+        @Override
+        public ItemStack remove(int amount) {
+            return companion == null ? super.remove(amount) : companion.removeSpellbook(amount);
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
         }
     }
 

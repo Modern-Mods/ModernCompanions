@@ -2,9 +2,11 @@ package com.majorbonghits.moderncompanions.entity.ai;
 
 import com.majorbonghits.moderncompanions.entity.Beastmaster;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
@@ -14,6 +16,7 @@ import java.util.EnumSet;
  * even if the mob type does not support taming/following by default.
  */
 public class FollowBeastmasterGoal extends Goal {
+    private static final int MAX_AIRBORNE_MASTER_GROUND_GAP = 4;
     private final Mob pet;
     private final Beastmaster master;
     private final PathNavigation navigation;
@@ -88,6 +91,11 @@ public class FollowBeastmasterGoal extends Goal {
     }
 
     private void tryTeleportCloseToOwner() {
+        if (master.isFallFlying() || !master.onGround()) return;
+        int groundY = pet.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                master.getBlockX(), master.getBlockZ());
+        if (master.getY() - groundY > MAX_AIRBORNE_MASTER_GROUND_GAP) return;
+
         BlockPos masterPos = master.blockPosition();
         for (int i = 0; i < 10; ++i) {
             int dx = this.randomBetween(-3, 3);
@@ -104,6 +112,7 @@ public class FollowBeastmasterGoal extends Goal {
     private boolean isTeleportFriendly(BlockPos pos) {
         return this.pet.level().isEmptyBlock(pos)
                 && this.pet.level().isEmptyBlock(pos.above())
+                && this.pet.level().getBlockState(pos.below()).isFaceSturdy(this.pet.level(), pos.below(), Direction.UP)
                 && this.pet.level().noCollision(this.pet, this.pet.getBoundingBox().move(pos.getX() - this.pet.getX(), pos.getY() - this.pet.getY(), pos.getZ() - this.pet.getZ()));
     }
 

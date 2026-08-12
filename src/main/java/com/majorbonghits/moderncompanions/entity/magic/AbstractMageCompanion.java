@@ -22,6 +22,9 @@ import net.minecraft.world.level.Level;
  */
 public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity implements RangedAttackMob {
     protected int heavyCooldown;
+    private int spellCastTicks;
+    private LivingEntity spellCastTarget;
+    private Runnable spellCastAction;
 
     protected AbstractMageCompanion(net.minecraft.world.entity.EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
@@ -53,6 +56,53 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
             if (heavyCooldown > 0) heavyCooldown--;
         }
         super.tick();
+        if (!this.level().isClientSide()) {
+            tickSpellCast();
+        }
+    }
+
+    /** True while a spell is winding up and has not reached its impact/cast callback. */
+    public final boolean isSpellCasting() {
+        return spellCastAction != null;
+    }
+
+    /**
+     * Starts a shared cast wind-up. The callback is deliberately delayed until the final tick so
+     * native spell APIs, custom projectiles, and support effects all share the same facing window.
+     */
+    protected final boolean beginSpellCast(LivingEntity target, int durationTicks, Runnable action) {
+        if (spellCastAction != null || target == null || !target.isAlive() || action == null) return false;
+        spellCastTarget = target;
+        spellCastTicks = Math.max(2, durationTicks);
+        spellCastAction = action;
+        if (target != this) aimAt(target);
+        return true;
+    }
+
+    private void tickSpellCast() {
+        if (spellCastAction == null) return;
+        if (spellCastTarget == null || !spellCastTarget.isAlive()
+                || (spellCastTarget != this && !getSensing().hasLineOfSight(spellCastTarget))) {
+            spellCastTarget = null;
+            spellCastAction = null;
+            spellCastTicks = 0;
+            return;
+        }
+        if (spellCastTarget != this) {
+            aimAt(spellCastTarget);
+            getLookControl().setLookAt(spellCastTarget, 45.0F, 45.0F);
+        }
+        if (--spellCastTicks > 0) return;
+
+        Runnable action = spellCastAction;
+        spellCastTarget = null;
+        spellCastAction = null;
+        spellCastTicks = 0;
+        action.run();
+    }
+
+    protected final int spellCastTimeTicks(String ironSpell, int fallback) {
+        return MagicCastingCompat.castTimeTicks(this, ironSpell, fallback);
     }
 
     /** Align the real spell API's caster-facing vector with its direct target. */

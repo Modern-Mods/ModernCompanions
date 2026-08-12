@@ -22,10 +22,10 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Bond Command:** Owners and operators can use `/companions bond "NAME"` to set a loaded companion to maximum Bond (Bond V).
 - **295 Bundled Skins:** The full bundled male and female skin collection is available for random companion appearances.
 - **Personality and Journal:** Companions have traits, backstories, Morale, Bond, age, favorite foods, and persistent journey statistics.
-- **Companion Voices:** Five gender-matched voice actors provide greetings, confirmations, refusals, combat callouts, pain, death, idle, and job-completion cues. Voice playback is configurable and duplicate callouts are suppressed.
+- **Companion Voices:** Five gender-matched voice actors provide greetings, confirmations, refusals, combat callouts, pain, death, idle, and job-completion cues. Voice playback is configurable, duplicate callouts are suppressed, and enemy announcements are rate-limited.
 - **Curios and Sophisticated Backpacks:** Optional support adds Curios slots, rendered accessories, backpack storage, and native backpack upgrades/settings.
 - **Companion Resources:** Stamina supports sprinting and melee pacing. Magic companions also use Mana.
-- **Native Magic Equipment:** Iron's and Ars Nouveau caster items can be used by magic companions, including staffs, wands, spellbooks, scrolls, and magical weapons. Iron's Max Mana, Mana Regeneration, Spell Power, school power/resistance, cooldown, cast-time, casting-speed, summon-damage, and spell-resistance attributes—and Ars Max Mana, Mana Regeneration, Spell Damage, and Warding—apply from armor, Curios, and held gear.
+- **Native Magic Equipment:** Iron's and Ars Nouveau caster items can be used by magic companions, including staffs, wands, spellbooks, scrolls, and magical weapons. A magical companion's dedicated spellbook slot persists the native book and lets its active spells supplement the companion's learned repertoire. Spells face their target during a visible wind-up and use the loaded native cast duration when available. Iron's Max Mana, Mana Regeneration, Spell Power, school power/resistance, cooldown, cast-time, casting-speed, summon-damage, and spell-resistance attributes—and Ars Max Mana, Mana Regeneration, Spell Damage, and Warding—apply from armor, Curios, and held gear.
 - **Brewing:** Craft reusable vessels and brew Health, Regeneration, Stamina, Mana, Rejuvenation, and Shield potions.
 - **Living Jobs:** Lumberjacks, Hunters, Miners, Fishers, and Chefs can search, travel, work, collect, deliver, and resume jobs. Jobs are experimental and hidden by default.
 - **Safety Controls:** Villager and PvP protection controls are available per companion and default to safe.
@@ -60,7 +60,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Archer:** Ranged bow specialist that automatically equips bows and arrows.
 - **Arbalist:** Crossbow specialist using 1.21 charge, cooldown, and line-of-sight behavior.
 - **Beastmaster:** Ranged fighter with a scaling animal companion.
-- **Cleric:** Heals its owner first, then itself, then fires holy sparks before falling back to melee.
+- **Cleric:** Uses strong, single-target owner/ally/self heals with a cast wind-up, then fires holy sparks before falling back to melee; it has no area heal or regeneration aura.
 - **Alchemist:** Uses beneficial potions on allies and harmful effects against enemies.
 - **Stormcaller:** Trident fighter who calls lightning and gains strength after striking.
 - **Fire Mage:** Uses precise, non-igniting fireballs and heavier blast attacks.
@@ -133,6 +133,7 @@ Each companion has:
 
 - A 7×9 personal inventory.
 - Dedicated helmet, chestplate, leggings, boots, main-hand, and offhand slots.
+- Magical companions also have a dedicated persisted spellbook slot; its native active spells are used alongside their learned spells.
 - A 3D inventory preview.
 - Automatic armor and weapon selection.
 - Optional automatic gear equip from the companion inventory (disabled by default).
@@ -298,6 +299,10 @@ The Companion Table uses the enchanting table's animated book, block textures, a
 The Summoning Wand recalls all living companions and Beastmaster pets in the current dimension to a safe location near the owner.
 
 ![Summoning Wand](https://i.imgur.com/OClm2Fj.png)
+
+### Placement Wand
+
+The Placement Wand deploys every Soul Gem in the player's inventory around a targeted block. Sneak-use it in the air to store nearby owned companions as Soul Gems; only companions that fit into actual empty inventory slots are captured, so any excess companions remain in the world.
 
 ### Assignment Wand
 

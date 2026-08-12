@@ -7,7 +7,9 @@
     "CurrencyContainerMenuMixin"
   ],
   "client": [
-    "TacZEpicFightCompanionModelMixin"
+    "TacZEpicFightCompanionModelMixin",
+    "client.HeldWeaponItemRendererMixin",
+    "client.HeldWeaponModelBakeryMixin"
   ],
   "injectors": {
     "defaultRequire": 1

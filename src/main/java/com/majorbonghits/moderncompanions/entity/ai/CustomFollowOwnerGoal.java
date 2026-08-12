@@ -3,8 +3,10 @@ package com.majorbonghits.moderncompanions.entity.ai;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.EnumSet;
@@ -17,6 +19,7 @@ public class CustomFollowOwnerGoal extends Goal {
     private static final int TELEPORT_RANGE = 3;
     private static final int PATH_RECALCULATION_INTERVAL = 5;
     private static final int POST_TELEPORT_FOLLOW_TICKS = 20;
+    private static final int MAX_AIRBORNE_OWNER_GROUND_GAP = 4;
     private static final double PROGRESS_EPSILON_SQUARED = 0.04D;
 
     private final AbstractHumanCompanionEntity companion;
@@ -168,6 +171,15 @@ public class CustomFollowOwnerGoal extends Goal {
      * Mimics vanilla pet recall: look for a nearby open spot around the owner before teleporting.
      */
     private boolean tryTeleportCloseToOwner() {
+        if (owner.isFallFlying() || !owner.onGround()) {
+            return false;
+        }
+        int groundY = companion.level().getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                owner.getBlockX(), owner.getBlockZ());
+        if (owner.getY() - groundY > MAX_AIRBORNE_OWNER_GROUND_GAP) {
+            return false;
+        }
+
         BlockPos ownerPos = owner.blockPosition();
         int radius = Math.max(1, Math.min(TELEPORT_RANGE, companion.getPatrolRadius()));
         for (int attempt = 0; attempt < TELEPORT_ATTEMPTS; attempt++) {
@@ -189,6 +201,7 @@ public class CustomFollowOwnerGoal extends Goal {
     private boolean isTeleportFriendly(BlockPos pos) {
         return companion.level().isEmptyBlock(pos)
                 && companion.level().isEmptyBlock(pos.above())
+                && companion.level().getBlockState(pos.below()).isFaceSturdy(companion.level(), pos.below(), Direction.UP)
                 && companion.level().noCollision(companion, companion.getBoundingBox().move(
                 pos.getX() - companion.getX(),
                 pos.getY() - companion.getY(),

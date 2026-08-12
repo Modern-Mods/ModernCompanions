@@ -56,6 +56,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             ModernCompanions.MOD_ID, "textures/gui/cosmeticarmor.png");
     private static final ResourceLocation EQUIPMENT_PANEL = ResourceLocation.fromNamespaceAndPath(
             ModernCompanions.MOD_ID, "textures/gui/equipmentpanel.png");
+    private static final ResourceLocation MAGICAL_EQUIPMENT_PANEL = ResourceLocation.fromNamespaceAndPath(
+            ModernCompanions.MOD_ID, "textures/gui/magical_equipmentpanel.png");
     private static final int EQUIPMENT_PANEL_X = 1;
     private static final int EQUIPMENT_PANEL_Y = 23;
     private static final int COSMETIC_PANEL_WIDTH = 101;
@@ -65,7 +67,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final int COSMETIC_CLOSE_X = 79;
     private static final int COSMETIC_CLOSE_Y = 69;
     private static final int COSMETIC_BUTTON_X = 78;
-    private static final int COSMETIC_BUTTON_Y = 64;
+    // The magical panel uses this gap for its spellbook slot at panel y=33.
+    private static final int COSMETIC_BUTTON_Y = 73;
     private static final int TEXT_COLOR = 0xFF000000;
 
     private boolean cosmeticArmorOpen;
@@ -170,7 +173,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             return;
         }
 
-        gfx.blit(EQUIPMENT_PANEL, leftPos + EQUIPMENT_PANEL_X, topPos + EQUIPMENT_PANEL_Y,
+        ResourceLocation equipmentPanel = isMagicalCompanion() ? MAGICAL_EQUIPMENT_PANEL : EQUIPMENT_PANEL;
+        gfx.blit(equipmentPanel, leftPos + EQUIPMENT_PANEL_X, topPos + EQUIPMENT_PANEL_Y,
                 0, 0, COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT,
                 COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT);
         safeCompanion().ifPresent(companion -> {
@@ -188,7 +192,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     @Override
     protected void renderSlot(GuiGraphics gfx, Slot slot) {
         if (slot instanceof CompanionMenu.CompanionCosmeticArmorSlot
-                || cosmeticArmorOpen && slot instanceof CompanionMenu.CompanionEquipmentSlot) {
+                || cosmeticArmorOpen && (slot instanceof CompanionMenu.CompanionEquipmentSlot
+                || slot instanceof CompanionMenu.CompanionSpellbookSlot)) {
             return;
         }
         super.renderSlot(gfx, slot);
@@ -360,6 +365,10 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     private boolean isSpecialist(AbstractHumanCompanionEntity companion, int index) {
         return companion.getSpecialistAttributeIndex() == index;
+    }
+
+    private boolean isMagicalCompanion() {
+        return safeCompanion().map(AbstractHumanCompanionEntity::hasMana).orElse(false);
     }
 
     private void renderWantedFood(GuiGraphics gfx, AbstractHumanCompanionEntity companion) {

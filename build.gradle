@@ -159,6 +159,12 @@ tasks.register("magicCompanionKitCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("placementWandCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.item.PlacementWandItemTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("epicFightCapabilityCheck") {
     def weaponTypes = [dagger: "dagger", hammer: "axe", club: "axe", spear: "spear", quarterstaff: "longsword", glaive: "spear"]
     def legendaryTypes = [
@@ -207,6 +213,7 @@ tasks.named("check") {
     dependsOn tasks.named("currencyTradeCheck")
     dependsOn tasks.named("epicFightCombatAiCheck")
     dependsOn tasks.named("magicCompanionKitCheck")
+    dependsOn tasks.named("placementWandCheck")
 }
 
 tasks.processResources.configure {

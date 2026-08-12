@@ -413,7 +413,7 @@ public class StoredCompanionItem extends Item {
     }
 
     @Nullable
-    private Entity placeCompanion(ServerLevel level, ItemStack stack, Vec3 pos, @Nullable Player player) {
+    static Entity placeCompanion(ServerLevel level, ItemStack stack, Vec3 pos, @Nullable Player player) {
         ResourceLocation typeId = readEntityId(stack);
         if (typeId == null) {
             return null;
@@ -433,10 +433,12 @@ public class StoredCompanionItem extends Item {
         companion.setHealth(companion.getMaxHealth());
         companion.setDeltaMovement(Vec3.ZERO);
         companion.setOnGround(true);
-        level.addFreshEntity(companion);
+        if (!level.addFreshEntity(companion)) {
+            return null;
+        }
 
         if (player != null) {
-            player.awardStat(net.minecraft.stats.Stats.ITEM_USED.get(this));
+            player.awardStat(net.minecraft.stats.Stats.ITEM_USED.get(ModItems.STORED_COMPANION.get()));
         }
 
         return companion;

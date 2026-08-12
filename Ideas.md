@@ -1,5 +1,24 @@
 # Ideas
 
+- We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 
+
+## Bugs
+- Armor is not displaying?
+
+- These classes seem to have vanished for some players;     
+    ```
+    modern_companions:cleric
+    modern_companions:fire_mage
+    modern_companions:lightning_mage
+    modern_companions:necromancer
+    ```
+
+- Cyromancer should only use his AoE spell when an enemy is within the AoE range, they are running away to do an AoE attack
+
+
+
+## Maybe
+
 - I want to add a new option to the mod; Companions show chat bubbles show over their heard when speaking, instead of chat.
     - This should be a toggle between chat speak and bubble speak, or both so the player can choose.
 - Companions will interact with eachother
@@ -60,10 +79,3 @@
         - Additional equipment slots?
         - Access to higher tier equipment?
         - Boost to overall stats?
-
-
-
-
-# Urgent
-
-- We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 

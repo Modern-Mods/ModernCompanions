@@ -87,7 +87,14 @@ public final class CompanionJeiPlugin implements IModPlugin {
                 new ItemStack(ModItems.ANIMAL_WAND.get()));
         RecipeHolder<CraftingRecipe> animalWandHolder = new RecipeHolder<>(
                 ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "animal_wand"), animalWandRecipe);
-        registration.addRecipes(RecipeTypes.CRAFTING, List.of(holder, animalWandHolder));
+        ShapedRecipe placementWandRecipe = new ShapedRecipe("", CraftingBookCategory.MISC,
+                ShapedRecipePattern.of(java.util.Map.of(
+                        'R', Ingredient.of(Items.REDSTONE),
+                        'S', Ingredient.of(Items.STICK)), "  R", " S ", " S "),
+                new ItemStack(ModItems.PLACEMENT_WAND.get()));
+        RecipeHolder<CraftingRecipe> placementWandHolder = new RecipeHolder<>(
+                ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "placement_wand"), placementWandRecipe);
+        registration.addRecipes(RecipeTypes.CRAFTING, List.of(holder, animalWandHolder, placementWandHolder));
     }
 
     private static final class CurrencyTradeCategory extends AbstractRecipeCategory<CurrencyTradeResolver.Resolved> {

@@ -17,8 +17,10 @@ import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -93,6 +95,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -238,6 +241,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> MANA_MAX = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    // A spellbook is a separate magical-only equipment view, not a vanilla hand slot.
+    private static final EntityDataAccessor<ItemStack> SPELLBOOK = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> EQUIPMENT_RENDER_MASK = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<ItemStack> COSMETIC_HEAD = SynchedEntityData
@@ -456,6 +462,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(STAMINA, STAMINA_MAX_DEFAULT);
         builder.define(MANA_MAX, MANA_MAX_DEFAULT);
         builder.define(MANA, MANA_MAX_DEFAULT);
+        builder.define(SPELLBOOK, ItemStack.EMPTY);
         builder.define(EQUIPMENT_RENDER_MASK, ALL_EQUIPMENT_RENDER_MASK);
         builder.define(COSMETIC_HEAD, ItemStack.EMPTY);
         builder.define(COSMETIC_CHEST, ItemStack.EMPTY);
@@ -1720,6 +1727,29 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return inventory;
     }
 
+    public ItemStack getSpellbookItem() {
+        return hasMana() ? entityData.get(SPELLBOOK) : ItemStack.EMPTY;
+    }
+
+    public boolean canEquipSpellbook(ItemStack stack) {
+        return hasMana() && (stack.isEmpty() || MagicCastingCompat.isSpellbook(stack));
+    }
+
+    /** Keep the spellbook synchronized for the menu while persisting its full native components. */
+    public boolean setSpellbookItem(ItemStack stack) {
+        if (!canEquipSpellbook(stack)) return false;
+        entityData.set(SPELLBOOK, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+        return true;
+    }
+
+    public ItemStack removeSpellbook(int amount) {
+        ItemStack current = getSpellbookItem();
+        if (current.isEmpty() || amount <= 0) return ItemStack.EMPTY;
+        ItemStack removed = current.copyWithCount(Math.min(amount, current.getCount()));
+        setSpellbookItem(ItemStack.EMPTY);
+        return removed;
+    }
+
     private boolean hasDedicatedEquipment(EquipmentSlot slot) {
         int index = dedicatedEquipmentIndex(slot);
         return manuallyEquipped[index] && !super.getItemBySlot(slot).isEmpty();
@@ -1817,6 +1847,41 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (accessor == null || !canEquipCosmeticArmor(slot, stack)) return false;
         this.entityData.set(accessor, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
         return true;
+    }
+
+    /** Restore saved cosmetic data verbatim; load paths must not reject a previously accepted stack. */
+    private void restoreCosmeticArmorItem(EquipmentSlot slot, ItemStack stack) {
+        EntityDataAccessor<ItemStack> accessor = cosmeticAccessor(slot);
+        if (accessor != null) {
+            this.entityData.set(accessor, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+        }
+    }
+
+    /** Reads the pre-indexed format and repairs sparse armor by matching each stack to its armor slot. */
+    private void restoreLegacyCosmeticArmor(ListTag savedItems) {
+        SimpleContainer compactArmor = new SimpleContainer(4);
+        compactArmor.fromTag(savedItems, this.registryAccess());
+        EquipmentSlot[] slots = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+        boolean[] restored = new boolean[slots.length];
+        for (int itemIndex = 0; itemIndex < compactArmor.getContainerSize(); itemIndex++) {
+            ItemStack stack = compactArmor.getItem(itemIndex);
+            if (stack.isEmpty()) continue;
+
+            int targetIndex = -1;
+            for (int slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+                if (!restored[slotIndex] && stack.canEquip(slots[slotIndex], this)) {
+                    targetIndex = slotIndex;
+                    break;
+                }
+            }
+            if (targetIndex < 0 && itemIndex < slots.length && !restored[itemIndex]) {
+                targetIndex = itemIndex;
+            }
+            if (targetIndex >= 0) {
+                restoreCosmeticArmorItem(slots[targetIndex], stack);
+                restored[targetIndex] = true;
+            }
+        }
     }
 
     public ItemStack removeCosmeticArmor(EquipmentSlot slot, int amount) {
@@ -1938,9 +2003,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return tool;
     }
 
-    /** Shift-click equips one better armor piece, sword, or shield without overriding a manual slot. */
+    /** Shift-click equips one better gear piece or fills the magical spellbook slot without overriding a manual slot. */
     public boolean equipBetterFromPlayer(ItemStack stack) {
         if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP)) return false;
+        if (hasMana() && MagicCastingCompat.isSpellbook(stack)) {
+            if (!getSpellbookItem().isEmpty()) return false;
+            setSpellbookItem(stack.copyWithCount(1));
+            stack.shrink(1);
+            return true;
+        }
         EquipmentSlot slot = equipmentSlotFor(stack);
         if (slot == null || hasDedicatedEquipment(slot)) return false;
         ItemStack current = getItemBySlot(slot);
@@ -3002,13 +3073,17 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         // Curios/armor bonuses are live attributes; persist only the intrinsic pool or
         // an Ars max-mana bonus would be applied again after a relog.
         tag.putInt("ManaMax", this.entityData.get(MANA_MAX));
+        SimpleContainer spellbook = new SimpleContainer(1);
+        spellbook.setItem(0, getSpellbookItem().copy());
+        tag.put("Spellbook", spellbook.createTag(this.registryAccess()));
         tag.putInt("EquipmentRenderMask", entityData.get(EQUIPMENT_RENDER_MASK));
-        SimpleContainer cosmeticArmor = new SimpleContainer(4);
-        cosmeticArmor.setItem(0, getCosmeticArmorItem(EquipmentSlot.HEAD).copy());
-        cosmeticArmor.setItem(1, getCosmeticArmorItem(EquipmentSlot.CHEST).copy());
-        cosmeticArmor.setItem(2, getCosmeticArmorItem(EquipmentSlot.LEGS).copy());
-        cosmeticArmor.setItem(3, getCosmeticArmorItem(EquipmentSlot.FEET).copy());
-        tag.put("CosmeticArmor", cosmeticArmor.createTag(this.registryAccess()));
+        // Keep each cosmetic slot's index; a SimpleContainer list compacts around empty slots.
+        NonNullList<ItemStack> cosmeticArmor = NonNullList.withSize(4, ItemStack.EMPTY);
+        cosmeticArmor.set(0, getCosmeticArmorItem(EquipmentSlot.HEAD).copy());
+        cosmeticArmor.set(1, getCosmeticArmorItem(EquipmentSlot.CHEST).copy());
+        cosmeticArmor.set(2, getCosmeticArmorItem(EquipmentSlot.LEGS).copy());
+        cosmeticArmor.set(3, getCosmeticArmorItem(EquipmentSlot.FEET).copy());
+        tag.put("CosmeticArmor", ContainerHelper.saveAllItems(new CompoundTag(), cosmeticArmor, this.registryAccess()));
     }
 
     @Override
@@ -3201,13 +3276,22 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(STAMINA, bounded(tag.contains("Stamina") ? tag.getInt("Stamina") : getStaminaMax(), getStaminaMax()));
         this.entityData.set(MANA_MAX, Math.max(1, tag.contains("ManaMax") ? tag.getInt("ManaMax") : MANA_MAX_DEFAULT));
         this.entityData.set(MANA, bounded(tag.contains("Mana") ? tag.getInt("Mana") : getManaMax(), getManaMax()));
-        if (tag.contains("CosmeticArmor", 9)) {
-            SimpleContainer cosmeticArmor = new SimpleContainer(4);
-            cosmeticArmor.fromTag(tag.getList("CosmeticArmor", 10), this.registryAccess());
-            setCosmeticArmorItem(EquipmentSlot.HEAD, cosmeticArmor.getItem(0));
-            setCosmeticArmorItem(EquipmentSlot.CHEST, cosmeticArmor.getItem(1));
-            setCosmeticArmorItem(EquipmentSlot.LEGS, cosmeticArmor.getItem(2));
-            setCosmeticArmorItem(EquipmentSlot.FEET, cosmeticArmor.getItem(3));
+        this.entityData.set(SPELLBOOK, ItemStack.EMPTY);
+        if (tag.contains("Spellbook", 9)) {
+            SimpleContainer spellbook = new SimpleContainer(1);
+            spellbook.fromTag(tag.getList("Spellbook", 10), this.registryAccess());
+            setSpellbookItem(spellbook.getItem(0));
+        }
+        if (tag.contains("CosmeticArmor", 10)) {
+            NonNullList<ItemStack> cosmeticArmor = NonNullList.withSize(4, ItemStack.EMPTY);
+            ContainerHelper.loadAllItems(tag.getCompound("CosmeticArmor"), cosmeticArmor, this.registryAccess());
+            restoreCosmeticArmorItem(EquipmentSlot.HEAD, cosmeticArmor.get(0));
+            restoreCosmeticArmorItem(EquipmentSlot.CHEST, cosmeticArmor.get(1));
+            restoreCosmeticArmorItem(EquipmentSlot.LEGS, cosmeticArmor.get(2));
+            restoreCosmeticArmorItem(EquipmentSlot.FEET, cosmeticArmor.get(3));
+        } else if (tag.contains("CosmeticArmor", 9)) {
+            // Migrate old compact lists by armor type so sparse leggings/boots do not shift upward.
+            restoreLegacyCosmeticArmor(tag.getList("CosmeticArmor", 10));
         }
         syncPersonalityToData();
         // reset tracking anchors post-load

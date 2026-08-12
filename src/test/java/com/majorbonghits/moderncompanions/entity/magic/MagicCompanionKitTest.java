@@ -11,5 +11,8 @@ public final class MagicCompanionKitTest {
         assert "fang_strike".equals(MagicCompanionKit.BATTLEMAGE.ironHeavy);
         assert !"spectral_hammer".equals(MagicCompanionKit.BATTLEMAGE.ironBasic);
         assert !"fang_ward".equals(MagicCompanionKit.BATTLEMAGE.ironHeavy);
+        assert "greater_heal".equals(MagicCompanionKit.CLERIC.ironHeavy);
+        assert !"healing_circle".equals(MagicCompanionKit.CLERIC.ironHeavy);
+        assert !"regeneration".equals(MagicCompanionKit.CLERIC.ironUtility);
     }
 }

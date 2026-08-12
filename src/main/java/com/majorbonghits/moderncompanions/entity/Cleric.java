@@ -20,7 +20,8 @@ public class Cleric extends IntegratedMageCompanion {
     private static final int OWNER_HEAL_COOLDOWN_TICKS = 30;
     private static final int ALLY_HEAL_COOLDOWN_TICKS = 30;
     private static final int SELF_HEAL_COOLDOWN_TICKS = 30;
-    private static final float HEAL_AMOUNT = 2.5F;
+    private static final float HEAL_AMOUNT = 8.0F;
+    private static final int SUPPORT_CAST_FALLBACK_TICKS = 10;
     private static final double HEALING_DISTANCE = 10.0D;
     private static final double ALLY_HEAL_RADIUS = 32.0D;
     private int ownerHealCooldown;
@@ -76,10 +77,13 @@ public class Cleric extends IntegratedMageCompanion {
     @Override
     public void performRangedAttack(LivingEntity target, float distanceFactor) {
         if (!canUseRangedAttack() || !safeTarget(target, 2.5F)) return;
-        HolySparkProjectile projectile = new HolySparkProjectile(level(), this, target);
-        level().addFreshEntity(projectile);
-        spendMana(CLERIC_SPELL_MANA_COST);
-        swingCast();
+        beginSpellCast(target, spellCastTimeTicks("heal", SUPPORT_CAST_FALLBACK_TICKS), () -> {
+            if (!canUseRangedAttack() || !safeTarget(target, 2.5F)) return;
+            HolySparkProjectile projectile = new HolySparkProjectile(level(), this, target);
+            level().addFreshEntity(projectile);
+            spendMana(CLERIC_SPELL_MANA_COST);
+            swingCast();
+        });
     }
 
     @Override
@@ -99,7 +103,7 @@ public class Cleric extends IntegratedMageCompanion {
 
     @Override
     public void tick() {
-        if (!level().isClientSide()) {
+        if (!level().isClientSide() && !isSpellCasting()) {
             if (ownerHealCooldown > 0) ownerHealCooldown--;
             if (allyHealCooldown > 0) allyHealCooldown--;
             if (selfHealCooldown > 0) selfHealCooldown--;
@@ -130,23 +134,19 @@ public class Cleric extends IntegratedMageCompanion {
     private boolean healDirect(LivingEntity target) {
         if (!canSpendMana(basicManaCost()) || target == null || !target.isAlive()
                 || target.getHealth() >= target.getMaxHealth()) return false;
-        float before = target.getHealth();
-        target.heal(HEAL_AMOUNT);
-        if (target.getHealth() <= before) return false;
-        spendMana(basicManaCost());
-        aimAt(target);
-        swingCast();
-        return true;
+        return beginSpellCast(target, spellCastTimeTicks("heal", SUPPORT_CAST_FALLBACK_TICKS), () -> {
+            if (!target.isAlive() || target.getHealth() >= target.getMaxHealth()
+                    || !canSpendMana(basicManaCost())) return;
+            float before = target.getHealth();
+            target.heal(HEAL_AMOUNT);
+            if (target.getHealth() <= before) return;
+            spendMana(basicManaCost());
+            swingCast();
+        });
     }
 
     private boolean healSelf() {
-        if (!canSpendMana(basicManaCost())) return false;
-        if (castBasicSpellAt(this)) return true;
-        if (!canSpendMana(basicManaCost())) return false;
-        heal(HEAL_AMOUNT);
-        spendMana(basicManaCost());
-        swingCast();
-        return true;
+        return healDirect(this);
     }
 
     private boolean ownerNeedsHealing() {

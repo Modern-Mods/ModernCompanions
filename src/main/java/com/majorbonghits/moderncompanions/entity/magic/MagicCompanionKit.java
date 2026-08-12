@@ -5,7 +5,9 @@ public enum MagicCompanionKit {
     FIRE_MAGE("firebolt", "flaming_barrage", parts("MethodProjectile", "EffectIgnite"), parts("MethodProjectile", "EffectIgnite", "AugmentAmplify"), "evasion", parts("MethodSelf", "EffectBubble")),
     LIGHTNING_MAGE("lightning_bolt", "chain_lightning", parts("MethodProjectile", "EffectLightning"), parts("MethodProjectile", "EffectLightning", "AugmentSplit"), "charge", parts("MethodSelf", "EffectLaunch")),
     NECROMANCER("wither_skull", "raise_dead", parts("MethodProjectile", "EffectWither"), parts("MethodProjectile", "EffectSummonUndead"), "ray_of_siphoning", parts("MethodSelf", "EffectHeal")),
-    CLERIC("heal", "healing_circle", parts("MethodProjectile", "EffectHeal"), parts("MethodSelf", "EffectBubble"), "cleanse", parts("MethodSelf", "EffectDispel")),
+    CLERIC("heal", "greater_heal", parts("MethodProjectile", "EffectHeal"),
+            parts("MethodProjectile", "EffectHeal", "AugmentAmplify"), "cleanse",
+            parts("MethodSelf", "EffectDispel")),
     WIZARD("magic_missile", "summon_swords", parts("MethodProjectile", "EffectHarm"), parts("EffectRune", "EffectHarm"), "counterspell", parts("MethodSelf", "EffectDispel")),
     // Chain Lightning is a hostile-only kit; the caster-level harm gate also protects its chained hits.
     SORCERER("firebolt", "chain_lightning", parts("MethodProjectile", "EffectIgnite"), parts("MethodProjectile", "EffectLightning", "AugmentAmplify"), "evasion", parts("MethodSelf", "EffectBubble"), true),

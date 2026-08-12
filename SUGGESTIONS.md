@@ -569,3 +569,45 @@
 
 - Smoke-test a separate companion horse on grass and ice beside the owner’s ridden horse; compare measured travel distance over 10 seconds and confirm it no longer uses the slow AI-walk pace.
 - Verify horse/camel step-up and jump behavior, shared-seat riding, owner dismount, relog, and multiplayer after the speed compensation.
+
+## 2026-08-11 (magical companion spellbooks)
+
+- Open a mana-bearing companion's inventory with Iron's Spellbooks or Ars Nouveau enabled; verify the magical panel replaces the standard panel, the spellbook slot is at the supplied position, the cosmetic button remains clickable below it, and ordinary companions still show the standard panel.
+- Place a native spellbook in the slot, relog, capture/redeploy, and remove it; confirm its active-spell components persist, the companion mixes native book casts with its learned kit, and the book is rejected for non-magical companions.
+- Repeat with the optional magic mod absent to confirm the base mod still starts and non-magical inventory menus retain their original slot layout.
+
+## 2026-08-11 (magical spellbook follow-up)
+
+- In a live dev world, equip a book containing multiple active spells and confirm the companion can cast more than the first active slot, including when an earlier slot is locked or fails its pre-cast conditions.
+- Verify the empty magical slot shows only the supplied panel art without a missing-texture square, and repeat the visual check at supported GUI scales.
+
+## 2026-08-11 (companion combat and persistence follow-up)
+
+- In a live world with Iron's Spellbooks and Ars Nouveau, verify every magical class visibly turns toward its target, holds the cast wind-up, and cancels safely when line of sight is lost; test native spellbooks and both optional-mod combinations.
+- Test Battlemage with full Mana at arms reach and with zero Mana at range; confirm melee starts in both cases and resumes ranged casting only after it is safely outside melee reach.
+- Test Cleric owner, ally, and self healing at low health; confirm each heal is single-target and strong, no healing-circle/regeneration aura occurs, and the Cleric still fights when no support target needs healing.
+- Patrol a companion through obstructed terrain for several minutes and verify it remains bounded and resumes after returning to its patrol center. Test owner Elytra and hang-glider flight to confirm follow teleport falls back to navigation and never places the companion in mid-air.
+- Put cosmetic armor in all four slots, then relog, capture/redeploy, and resurrect; verify every cosmetic stack and component survives independently of functional armor.
+
+## 2026-08-11 (cosmetic armor slot-index migration)
+
+- Test sparse cosmetic sets, especially leggings plus boots, through relog, soul-gem capture/redeployment, and resurrection; confirm leggings remain in legs and boots remain in feet.
+- Test old 4.06 captures containing sparse cosmetic armor once, then save them again and repeat redeployment to confirm the legacy migration is rewritten in the indexed format.
+
+## 2026-08-11 (long held spear and quarterstaff models)
+
+- In first person, equip each material spear and quarterstaff and confirm the held model is visibly longer while the inventory icon remains unchanged.
+- View the same weapons on a normal companion in third person; repeat with Epic Fight installed and with optional bronze loaded/absent.
+- Verify dropped, ground, GUI, legendary spear, attack reach, damage, and weapon animation behavior did not change.
+
+## 2026-08-11 (Placement Wand)
+
+- In a dev world, put several Soul Gems in the player inventory and use the Placement Wand on open ground, a wall, and a crowded target; verify every gem deploys to separate safe spots and blocked spots remain as gems.
+- Sneak-use the wand in air with owned companions nearby; verify companions become Soul Gems, Beastmaster pet state survives capture/redeployment, non-owned companions are ignored, and companions outside the nearby range remain in the world.
+- Fill all but four inventory slots with five nearby owned companions; verify exactly four are gemmed and the fifth remains present, including after relog and with JEI/recipe discovery.
+
+## 2026-08-11 (conditional magical worldgen)
+
+- Generate fresh worlds with neither optional magic mod, Iron's Spellbooks only, and Ars Nouveau only; confirm magical buildings appear only when their companion integration is available and ordinary house generation remains present.
+- Generate enough terrain around each setup to confirm no `humancompanions:companions` Lithostitched warnings remain, then use `/locate structure #modern_companions:companion_houses` to confirm generated residents match the selected building.
+- Smoke-test `/place structure` separately because it is an explicit operator action and is not the natural-generation gate.

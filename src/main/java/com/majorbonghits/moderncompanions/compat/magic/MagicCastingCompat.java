@@ -17,6 +17,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /** Calls loaded magic-mod APIs without linking Modern Companions to either optional jar. */
@@ -85,6 +86,19 @@ public final class MagicCastingCompat {
         return arsLoaded() && hasType(stack.getItem(), ARS_CASTER_PROVIDER);
     }
 
+    /** Accept native spellbooks and addon subclasses without linking to an optional mod at compile time. */
+    public static boolean isSpellbook(ItemStack stack) {
+        if (!isMagicItem(stack)) return false;
+        for (Class<?> type = stack.getItem().getClass(); type != null; type = type.getSuperclass()) {
+            String name = type.getSimpleName().toLowerCase(Locale.ROOT);
+            if (name.contains("spellbook") || name.contains("spell_book")) return true;
+        }
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) return false;
+        String path = id.getPath().toLowerCase(Locale.ROOT);
+        return path.contains("spellbook") || path.contains("spell_book");
+    }
+
     private static boolean hasIronCasterClass(ItemStack stack) {
         for (Class<?> type = stack.getItem().getClass(); type != null; type = type.getSuperclass()) {
             String name = type.getName();
@@ -110,8 +124,31 @@ public final class MagicCastingCompat {
         return Math.max(1, (int) Math.ceil(fallback / (iron * ars)));
     }
 
+    /**
+     * Reads the loaded Iron's spell cast duration without linking the optional API at compile time.
+     * Instant spells still receive a short server-side wind-up so they cannot fire in the same tick
+     * that a companion turns toward its target.
+     */
+    public static int castTimeTicks(LivingEntity entity, String spellId, int fallback) {
+        int safeFallback = Math.max(2, fallback);
+        if (ironsLoaded() && spellId != null && !spellId.isBlank()) {
+            try {
+                Class<?> registry = Class.forName(
+                        "io.redspace.ironsspellbooks.api.registry.SpellRegistry", true,
+                        MagicCastingCompat.class.getClassLoader());
+                Object spell = registry.getMethod("getSpell", String.class)
+                        .invoke(null, IRONS + ":" + spellId);
+                int duration = (Integer) call(spell, "getEffectiveCastTime", 1, entity);
+                return Math.max(2, duration);
+            } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+                // Optional API drift falls back to the same adjusted timing used by the bridge cadence.
+            }
+        }
+        return adjustedInterval(entity, safeFallback, "cast_time_reduction");
+    }
+
     public static int cooldownTicks(LivingEntity entity, int fallback) {
-        // ponytail: mob casts finish immediately in the existing bridge; apply cast-time gear to cadence until a full cast lifecycle is needed.
+        // Cooldown controls the next attempt; the mage goal owns the separate cast wind-up.
         return adjustedInterval(entity, fallback, "cooldown_reduction", "cast_time_reduction");
     }
 
@@ -164,7 +201,11 @@ public final class MagicCastingCompat {
     }
 
     public static boolean castHeldItem(LivingEntity caster, LivingEntity target) {
-        ItemStack stack = caster.getMainHandItem();
+        return castItem(caster, target, caster.getMainHandItem());
+    }
+
+    /** Cast a native caster item from a companion equipment view without moving it into a hand. */
+    public static boolean castItem(LivingEntity caster, LivingEntity target, ItemStack stack) {
         if (stack.isEmpty() || target == null || !target.isAlive()) return false;
         if (ironsLoaded() && castIronItem(caster, stack)) return true;
         return arsLoaded() && castArsItem(caster, target, stack);
@@ -177,19 +218,37 @@ public final class MagicCastingCompat {
             if (container == null) return false;
             List<?> spells = (List<?>) call(container, "getActiveSpells");
             if (spells == null || spells.isEmpty()) return false;
-            Object slot = spells.get(0);
-            Object spell = call(slot, "getSpell");
-            int level = (Integer) call(slot, "getLevel");
             Object data = Class.forName("io.redspace.ironsspellbooks.api.magic.MagicData")
                     .getMethod("getPlayerMagicData", LivingEntity.class).invoke(null, caster);
-            if (!(Boolean) call(spell, "checkPreCastConditions", caster.level(), level, caster, data)) return false;
             Class<?> sourceType = Class.forName("io.redspace.ironsspellbooks.api.spells.CastSource");
             @SuppressWarnings({"unchecked", "rawtypes"}) Object mob = Enum.valueOf((Class) sourceType, "MOB");
-            call(spell, "onCast", caster.level(), level, caster, mob, data);
-            call(spell, "onServerCastComplete", caster.level(), level, caster, data, false);
-            if (hasType(stack.getItem(), IRON_SCROLL)) stack.shrink(1);
-            return true;
+            int first = caster.getRandom().nextInt(spells.size());
+            for (int offset = 0; offset < spells.size(); offset++) {
+                Object slot = spells.get((first + offset) % spells.size());
+                if (slot == null || isLockedSpellSlot(slot)) continue;
+                try {
+                    Object spell = call(slot, "getSpell");
+                    int level = (Integer) call(slot, "getLevel");
+                    if (!Boolean.TRUE.equals(call(spell, "checkPreCastConditions",
+                            caster.level(), level, caster, data))) continue;
+                    call(spell, "onCast", caster.level(), level, caster, mob, data);
+                    call(spell, "onServerCastComplete", caster.level(), level, caster, data, false);
+                    if (hasType(stack.getItem(), IRON_SCROLL)) stack.shrink(1);
+                    return true;
+                } catch (ReflectiveOperationException | RuntimeException ignored) {
+                    // One unusable spell must not prevent the next active spell from being tried.
+                }
+            }
         } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+        }
+        return false;
+    }
+
+    /** Older Iron's Spellbooks builds may omit the lock accessor; active slots remain usable then. */
+    private static boolean isLockedSpellSlot(Object slot) {
+        try {
+            return Boolean.TRUE.equals(call(slot, "isLocked"));
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
             return false;
         }
     }

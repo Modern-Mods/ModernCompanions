@@ -1,3 +1,13 @@
+## 2026-08-11 (Placement Wand)
+
+- Prompt/task: Add an early-game Placement Wand that deploys all companion Soul Gems around a targeted block and sneak-captures nearby owned companions into available inventory slots.
+- Steps:
+  - Registered the Placement Wand, added the supplied placement-wand texture/model, creative-tab entry, English localization, and a redstone-and-stick crafting recipe mirrored in the JEI crafting category.
+  - Reused StoredCompanionItem redeployment and the Companion Mover's Beastmaster pet teardown seam; added deterministic safe-spot selection around the clicked block and one-at-a-time Soul Gem consumption only after successful placement.
+  - Captured only nearby owned companions, reserved actual main-inventory slots before capture, and left excess companions alive when capacity was exhausted. Added a pure 4-slots/5-companions regression check wired into `check`, then bumped the version to 4.09.
+- Rationale: Reusing the existing Soul Gem serialization preserves companion identity, equipment, inventory, and Beastmaster pet lifecycle while direct slot reservation makes the requested no-data-loss capacity rule transactional.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.09.jar`; the packaged JAR contains the wand classes, model, texture, and recipe. JEI display, fresh-world placement/capture, blocked-area behavior, and relog smoke testing remain manual.
+
 ## 2026-08-10 (Sorcerer targeting and Battlemage combat)
 
 - Prompt/task: Prevent Sorcerer Chain Lightning from selecting the player or friendly companions/pets, honor companion friendly fire, replace Battlemage's ineffective/crashing spells, and mix Battlemage melee with spellcasting during Mana recovery.
@@ -2969,3 +2979,65 @@
   - Bumped the version to 4.02.
 - Rationale: A sprint flag does not unlock horse speed in vanilla; the crawl came from the AI navigation input path, not a missing gallop toggle.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `mountRulesCheck` passed and produced `build/libs/ModernCompanions-4.02.jar`. Mounted horse/camel speed, shared-seat behavior, jumping, relog, and multiplayer remain manual smoke checks.
+
+## 2026-08-11 (magical companion spellbook equipment)
+
+- Prompt/task: Use the supplied magical equipment panel for mana-bearing companions, add its spellbook slot, persist the slot, and let equipped spellbooks supplement the existing magical repertoire.
+- Steps:
+  - Added a synchronized, entity-owned spellbook stack with NBT persistence, native spellbook validation, menu extraction, shift-click support through the existing automatic-equip setting, and capture/redeployment-safe storage.
+  - Added the magical-only menu slot at GUI `(78,56)`, which maps to panel `(77,33)`, selected `magical_equipmentpanel.png` for mana-bearing companions, and moved the cosmetic button to the gap below the new slot.
+  - Reused the optional Iron's Spellbooks/Ars Nouveau casting bridge so the book's native active spell mixes with the existing class kit without adding a new spell system.
+  - Updated the inventory documentation and bumped the version to 4.04.
+- Rationale: The existing entity data, menu slot, NBT, and optional casting seams already cover synchronization, persistence, and native spell execution; keeping the book separate from vanilla hands preserves the companion's weapon and the six existing equipment slots.
+- Build: `gradlew.bat compileJava --console=plain --no-daemon` passed. Full `check build`, magical-panel layout, spellbook casting, relog, capture/redeployment, and absent-optional-mod startup remain required validation.
+
+## 2026-08-11 (magical spellbook casting and empty-slot texture fix)
+
+- Prompt/task: Fix the missing texture shown by an empty magical spellbook slot and make companions use every usable spell in a multi-spell equipped book instead of always using the first spell.
+- Steps:
+  - Removed the nonexistent `minecraft:item/empty_slot_book` background so the supplied magical equipment panel supplies the empty slot artwork.
+  - Updated the reflective Iron's Spellbooks bridge to skip locked or failed spells and cycle through all active slots from a randomized starting point, retaining the existing native cast and scroll-consumption behavior.
+  - Corrected the spellbook documentation and bumped the version to 4.05.
+- Rationale: The panel already contains the intended empty slot, and the native `getActiveSpells()` list is the authoritative spellbook repertoire; trying each active slot preserves optional-mod isolation while allowing every usable spell to participate.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `build/libs/ModernCompanions-4.05.jar` contains `magical_equipmentpanel.png` and the updated menu/casting classes. Empty-slot rendering, multi-spell casting, relog/capture persistence, GUI-scale layout, and absent-optional-mod startup remain manual smoke checks.
+
+## 2026-08-11 (companion combat, casting, patrol, voice, and persistence fixes)
+
+- Prompt/task: Fix magical companions firing while facing away or without a cast delay; restore Battlemage melee fallback; revise Cleric to stronger targeted healing without area/regeneration support; keep patrols active; persist cosmetic armor through death and soul-gem storage; rate-limit Enemy Spotted; and prevent follow teleports during aerial travel.
+- Steps:
+  - Added a shared mage cast lifecycle that reads Iron's effective spell duration reflectively, applies a small minimum wind-up for instant spells and an Ars fallback, continuously aims at the target, cancels on target/line-of-sight loss, and dispatches the existing native or custom cast only at completion.
+  - Made Battlemage yield ranged casting at a 2.5-block direct-threat distance and use its existing melee goal whenever Mana is unavailable or the enemy is within reach. Cleric now schedules stronger 8-health single-target owner/ally/self heals, removes the healing-circle kit entry, disables its utility aura path, and keeps holy sparks delayed and aimed.
+  - Removed PatrolGoal's unbounded random fallback and retry-selected bounded destinations; increased Enemy Spotted cooldown to 200 ticks (10 seconds); restricted follow teleports to grounded owners with a sturdy floor and a four-block maximum terrain gap.
+  - Restored saved cosmetic armor directly into synchronized cosmetic slots during NBT load so valid persisted stacks cannot be discarded by load-time equip validation. Added Cleric kit regression assertions and updated player-facing documentation.
+- Rationale: The fixes reuse the existing mage, goal, voice, follow, entity NBT, and optional-mod bridge seams, so the runtime behavior is corrected once for all callers while keeping upstream game and optional-mod sources untouched.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.06.jar`. Installed optional-mod behavior, visual cast/facing timing, patrol recovery, cosmetic relog/capture/death persistence, and aerial follow remain manual dev-world smoke checks.
+
+## 2026-08-11 (cosmetic armor slot persistence migration)
+
+- Prompt/task: Cosmetic armor was restored into the wrong slots after resurrection or soul-gem redeployment, with boots appearing on the head and leggings in the chest slot.
+- Steps:
+  - Replaced the compact `SimpleContainer` cosmetic list with vanilla `ContainerHelper` serialization over four indexed slots, preserving each item's `Slot` byte and full item components.
+  - Added a legacy reader for pre-4.07 compact lists that matches each saved stack to its valid armor slot before using the former positional order as a fallback.
+  - Bumped the version to 4.07.
+- Rationale: Both soul-gem and resurrection storage call `saveWithoutId`, so fixing the shared entity NBT boundary covers every capture/deployment path and prevents empty cosmetic slots from shifting later items upward.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.07.jar`. Sparse-slot migration, relog, soul-gem, resurrection, and component-preservation behavior remain manual dev-world smoke checks.
+
+## 2026-08-11 (long held spear and quarterstaff models)
+
+- Prompt/task: Extend the spear and quarterstaff visuals when wielded by players or companions without changing their gameplay reach or combat behavior.
+- Steps:
+  - Reused the existing material-specific `*_held` models and textures.
+  - Added client-only model-bakery registration and item-renderer selection for wooden, stone, iron, golden, diamond, netherite, and optional bronze spear/quarterstaff variants.
+  - Kept GUI, ground, fixed, legendary, and unrelated weapon rendering on their existing models, then bumped the version to 4.08.
+- Rationale: The upstream held-model assets already provide the intended longer presentation; wiring them through the shared item-renderer path covers first-person player and third-person companion rendering with the smallest change.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.08.jar`. Player, companion, optional Epic Fight, and visual scale smoke tests remain manual.
+
+## 2026-08-11 (conditional magical worldgen and legacy pool cleanup)
+
+- Prompt/task: Remove stale `humancompanions:companions` jigsaw references and prevent magical buildings from generating unless Iron's Spellbooks or Ars Nouveau can provide the resident companion.
+- Steps:
+  - Rewrote 34 legacy pool fields across 24 compressed NBT structure templates to `minecraft:empty`; the old fields were not redirected to the unused legacy companion pool.
+  - Removed `church`, `cleric_house`, `tower1`, and `tower2` from the unconditional structure set and added them to a NeoForge `mod_loaded` OR-gated structure set with a separate spread.
+  - Bumped the version from the current worktree value 4.09 to 4.10.
+- Rationale: The entity registrations already omit the magical roster when neither optional mod is loaded, so worldgen must use the same availability boundary instead of placing an unoccupied building. Empty pool references preserve the old templates without invalid Lithostitched lookups.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; resource audit found 0 stale pool fields and `build/libs/ModernCompanions-4.10.jar` contains both structure sets. Installed/absent-mod fresh-world generation and `/locate` smoke tests remain manual.

@@ -52,11 +52,7 @@ public class CompanionMoverItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
-        // Remove the live pet before saving so only the redeployed Beastmaster owns the next one.
-        if (companion instanceof Beastmaster beastmaster) {
-            beastmaster.forceDespawnPet();
-        }
-        ItemStack stored = StoredCompanionItem.createFromCompanion(companion, ModItems.STORED_COMPANION.get());
+        ItemStack stored = captureCompanion(companion);
         boolean added = player.getInventory().add(stored);
         if (!added) {
             ItemEntity drop = new ItemEntity(level, position.x(), position.y() + 0.2D, position.z(), stored);
@@ -71,6 +67,15 @@ public class CompanionMoverItem extends Item {
         EquipmentSlot slot = hand == InteractionHand.MAIN_HAND ? EquipmentSlot.MAINHAND : EquipmentSlot.OFFHAND;
         stack.hurtAndBreak(1, player, slot);
         return InteractionResult.CONSUME;
+    }
+
+    /** Shared capture seam so Beastmaster pet state is handled identically by both wands. */
+    static ItemStack captureCompanion(AbstractHumanCompanionEntity companion) {
+        if (companion instanceof Beastmaster beastmaster) {
+            // Remove the live pet before saving so only the redeployed companion owns the next one.
+            beastmaster.forceDespawnPet();
+        }
+        return StoredCompanionItem.createFromCompanion(companion, ModItems.STORED_COMPANION.get());
     }
 
     private static void spawnParticles(Level level, Vec3 position, boolean failedCapture) {

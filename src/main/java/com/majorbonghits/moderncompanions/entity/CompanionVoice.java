@@ -13,6 +13,7 @@ import java.util.Locale;
 public final class CompanionVoice {
     private static final String[] MALE = { "alex", "ian", "sean" };
     private static final String[] FEMALE = { "karen", "meghan" };
+    private static final int ENEMY_SPOTTED_COOLDOWN_TICKS = 200; // 10 seconds at 20 TPS
 
     private CompanionVoice() {}
 
@@ -93,6 +94,7 @@ public final class CompanionVoice {
             case DEATH -> 0;
             case IDLE -> 240;
             case GREETING, CONFIRMATION, REFUSAL -> 35;
+            case ENEMY_SPOTTED -> ENEMY_SPOTTED_COOLDOWN_TICKS;
             default -> 20;
         };
     }

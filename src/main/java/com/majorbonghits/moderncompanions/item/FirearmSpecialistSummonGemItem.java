@@ -28,13 +28,13 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 
 /** A normal summon gem that fixes the spawned specialist's firearm category. */
-public final class FirearmSpecialistSummonGemItem extends net.neoforged.neoforge.common.DeferredSpawnEggItem {
+public final class FirearmSpecialistSummonGemItem extends SummonGemItem {
     private final FirearmSupport.Specialty specialty;
 
     public FirearmSpecialistSummonGemItem(
             java.util.function.Supplier<? extends EntityType<? extends Mob>> type,
-            int backgroundColor, int highlightColor, FirearmSupport.Specialty specialty, Properties properties) {
-        super(type, backgroundColor, highlightColor, properties);
+            FirearmSupport.Specialty specialty, Properties properties) {
+        super(type, properties);
         this.specialty = specialty;
     }
 

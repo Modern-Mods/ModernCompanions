@@ -165,8 +165,9 @@ public class Cleric extends IntegratedMageCompanion {
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
                                         MobSpawnType reason, @Nullable SpawnGroupData data) {
         if (!MagicCastingCompat.available() && ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            this.inventory.setItem(4, Items.GOLDEN_SWORD.getDefaultInstance());
-            this.inventory.setItem(5, Items.TOTEM_OF_UNDYING.getDefaultInstance());
+            // Spawn gear must enter the live vanilla slots so it renders and the totem can trigger.
+            this.setItemSlot(EquipmentSlot.MAINHAND, Items.GOLDEN_SWORD.getDefaultInstance());
+            this.setItemSlot(EquipmentSlot.OFFHAND, Items.TOTEM_OF_UNDYING.getDefaultInstance());
             checkStaff();
         }
         return super.finalizeSpawn(level, difficulty, reason, data);

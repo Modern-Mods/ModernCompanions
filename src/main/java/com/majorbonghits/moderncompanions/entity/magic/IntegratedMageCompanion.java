@@ -97,11 +97,13 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
 
     @Override
     public boolean tryHeavyAttack(LivingEntity target, float distanceFactor) {
-        if (!MagicCastingCompat.available() || heavyCooldown > 0 || !safeTarget(target, 5.0F)
+        if (!MagicCastingCompat.available() || !isWithinHeavyAttackRange(target) || heavyCooldown > 0
+                || !safeTarget(target, 5.0F)
                 || !canSpendMana(HEAVY_MANA_COST)) return false;
         MagicCompanionKit kit = kit();
         return beginSpellCast(target, spellCastTimeTicks(kit.ironHeavy, 10), () -> {
-            if (!safeTarget(target, 5.0F) || !canSpendMana(HEAVY_MANA_COST)) return;
+            if (!isWithinHeavyAttackRange(target) || !safeTarget(target, 5.0F)
+                    || !canSpendMana(HEAVY_MANA_COST)) return;
             aimAt(target);
             if (MagicCastingCompat.cast(this, target, kit.ironHeavy, kit.arsHeavy)) {
                 spendMana(HEAVY_MANA_COST);

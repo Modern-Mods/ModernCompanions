@@ -35,6 +35,8 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - Added configurable Alert exclusions, taming food/resource lists, manual Hunt targets, low-health food thresholds, Stamina costs, voice mode/volume, automatic equipment, and Radius-based teleport leashes.
 - Added Epic Fight combat/rendering compatibility, including companion weapon capabilities and TacZ gun pose handoff.
 - Added TacZ firearm specialists with native gun, ammunition, reload, and category-specific equipment behavior.
+- Fixed spawn loadouts so class weapons enter the live hand slots, expanded offhand support to Totems of Undying and carried lights, and added rare standard-size randomly dyed Sophisticated Backpacks when the optional integration is present.
+- Cryomancer now approaches normally and uses its AoE only against targets within five blocks; it never retreats to cast the AoE.
 - Added resumable profession goals, delivery chests, job status reporting, safe worker actions, and the Assignment Wand.
 - Added cosmetic armor storage and per-slot equipment rendering controls without changing functional armor.
 
@@ -77,7 +79,7 @@ Optional magic companions use the loaded mod’s actual spell systems rather tha
 - **Warlock:** Dark magic specialist.
 - **Witch:** Hexes, curses, and battlefield control.
 - **Hag:** Powerful debuff and damage caster.
-- **Cryomancer:** Ice-themed control and damage magic.
+- **Cryomancer:** Ice-themed control and damage magic; approaches targets normally and only casts its AoE within five blocks without retreating to cast.
 - **Druid:** Nature-themed magical support and offense.
 - **Illusionist:** Deception and ranged spell specialist.
 - **Battlemage:** Close-range fighter with magical attacks.
@@ -145,7 +147,9 @@ Each companion has:
 Equipment rules keep companions from grabbing unsuitable items:
 
 - Main hand: tools and weapons.
-- Offhand: shields, torches, and lanterns.
+- Offhand: Totems of Undying, shields, torches, and lanterns.
+- Spawn weapons are placed directly in the live main-hand slot, so they render and function immediately instead of remaining cargo.
+- Torches and lanterns use the normal offhand renderer and emit temporary light when the companion has an open space above it and normal mob-griefing/owner protection permits the temporary block; the light follows the companion and is removed when the item or companion is removed.
 - Manually equipped items remain protected from automatic replacement.
 
 ## Companion Resources and Potions
@@ -203,7 +207,9 @@ Both integrations are optional.
 
 Equip a Sophisticated Backpack in a companion’s Curios back slot.
 
+- With Sophisticated Backpacks and Curios installed, a newly spawned companion has a deliberately rare chance to receive a standard-size backpack with two random dye colors.
 - Picked-up items are inserted into the backpack before the companion’s normal inventory.
+- Placement Wand captures insert Soul Gems into the player’s equipped backpack before falling back to empty player-inventory slots, and targeted use reads them back from that equipped backpack first; backpacks merely carried in inventory are ignored.
 - The Pack button opens Sophisticated Backpacks’ native storage screen.
 - Backpack upgrades and settings remain available.
 - Backpack equipment persists when companions are captured and redeployed.
@@ -303,7 +309,7 @@ The Summoning Wand recalls all living companions and Beastmaster pets in the cur
 
 ### Placement Wand
 
-The Placement Wand deploys every Soul Gem in the player's inventory around a targeted block. Sneak-use it in the air to store nearby owned companions as Soul Gems; only companions that fit into actual empty inventory slots are captured, so any excess companions remain in the world.
+The Placement Wand deploys every Soul Gem in the equipped Sophisticated Backpack first, then the player's inventory, around a targeted block. Sneak-use it in the air to store nearby owned companions as Soul Gems; the equipped backpack is filled first, then empty player-inventory slots, and any excess companions remain in the world. Backpacks merely carried in player inventory are ignored.
 
 ### Assignment Wand
 

@@ -16,7 +16,6 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
     private final T caster;
     private final double speedModifier;
     private final float attackRadiusSqr;
-    private final float preferredMinRange = 12.0F;
     private final int baseLightInterval;
     private int attackTime = -1;
     private int seeTime;
@@ -83,7 +82,8 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
         }
 
         // Back off when too close to keep casting from range
-        if (distSqr < (double) (preferredMinRange * preferredMinRange)) {
+        float minimumCastingRange = this.caster.getMinimumCastingRange();
+        if (minimumCastingRange > 0.0F && distSqr < (double) (minimumCastingRange * minimumCastingRange)) {
             double dx = this.caster.getX() - target.getX();
             double dz = this.caster.getZ() - target.getZ();
             double len = Math.max(0.001D, Math.sqrt(dx * dx + dz * dz));
@@ -112,7 +112,8 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
                 this.attackTime = 1;
                 return;
             }
-            boolean heavy = this.caster.tryHeavyAttack(target, clamped);
+            boolean heavy = this.caster.isWithinHeavyAttackRange(target)
+                    && this.caster.tryHeavyAttack(target, clamped);
             if (!heavy) {
                 this.caster.performRangedAttack(target, clamped);
             }

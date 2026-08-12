@@ -117,7 +117,8 @@ public class Vanguard extends Knight {
     private void checkShield() {
         if (isEating()) return;
         ItemStack offhand = this.getItemBySlot(EquipmentSlot.OFFHAND);
-        if (!isShield(offhand)) {
+        // Vanguard's shield AI must not evict other valid offhand equipment.
+        if (!offhand.isEmpty() && !isShield(offhand) && !canEquipInSlot(EquipmentSlot.OFFHAND, offhand)) {
             offhand = ItemStack.EMPTY;
             this.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
         }

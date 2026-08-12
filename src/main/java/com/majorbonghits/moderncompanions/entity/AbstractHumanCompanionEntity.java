@@ -85,10 +85,12 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LanternBlock;
+import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.TorchBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.Container;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -302,6 +304,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     // Vanilla LivingEntity equipment is the single source of truth; only manual locks need extra state.
     private final boolean[] manuallyEquipped = new boolean[6];
     private ItemStack savedOffhand = ItemStack.EMPTY;
+    /** Position of the temporary invisible light block used while a torch or lantern is held. */
+    @Nullable
+    private BlockPos heldLightPos;
     protected final Map<Item, Integer> foodRequirements = new LinkedHashMap<>();
     private boolean resourceRequirementResolved;
     private boolean untamedGreetingPlayed;
@@ -1972,8 +1977,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         return switch (slot) {
             case MAINHAND -> isMainHandEquipment(stack) && (!FirearmSupport.isFirearm(stack) || isFirearmAllowed(stack));
-            case OFFHAND -> isShieldItem(stack) || stack.getItem() instanceof BlockItem blockItem
-                    && (blockItem.getBlock() instanceof TorchBlock || blockItem.getBlock() instanceof LanternBlock);
+            case OFFHAND -> isOffhandEquipment(stack);
             default -> false;
         };
     }
@@ -2021,6 +2025,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 || stack.getItem() instanceof MaceItem
                 || stack.getItem() instanceof FishingRodItem
                 || FirearmSupport.isFirearm(stack)
+                || stack.is(Items.STICK) || stack.is(Items.BLAZE_ROD)
                 || stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.HOES)
                 || stack.is(ItemTags.SWORDS)
                 || stack.is(TagsInit.Items.SWORDS));
@@ -2047,6 +2052,24 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (tool.isEmpty() && isMainHandEquipment(candidate)) tool = candidate;
         }
         return tool;
+    }
+
+    /** Equips one valid defensive/light offhand item when no offhand is already occupied. */
+    private void equipOffhandFromInventory() {
+        if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP)
+                || !getItemBySlot(EquipmentSlot.OFFHAND).isEmpty()) return;
+        ItemStack fallback = ItemStack.EMPTY;
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack candidate = inventory.getItem(i);
+            if (!isOffhandEquipment(candidate)) continue;
+            // A totem is the only offhand item that can prevent a lethal hit, so it wins.
+            if (candidate.is(Items.TOTEM_OF_UNDYING)) {
+                fallback = candidate;
+                break;
+            }
+            if (fallback.isEmpty()) fallback = candidate;
+        }
+        if (!fallback.isEmpty()) setItemSlot(EquipmentSlot.OFFHAND, fallback);
     }
 
     /** Shift-click equips one better gear piece or fills the magical spellbook slot without overriding a manual slot. */
@@ -2086,7 +2109,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private EquipmentSlot equipmentSlotFor(ItemStack stack) {
         if (stack.getItem() instanceof ArmorItem armor) return armor.getEquipmentSlot();
         if (stack.getItem() instanceof SwordItem || MagicCastingCompat.isMagicItem(stack)) return EquipmentSlot.MAINHAND;
-        return isShieldItem(stack) ? EquipmentSlot.OFFHAND : null;
+        return isOffhandEquipment(stack) ? EquipmentSlot.OFFHAND : null;
     }
 
     private boolean isBetterEquipment(ItemStack candidate, ItemStack current, EquipmentSlot slot) {
@@ -3147,6 +3170,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             tag.putLong("TemporaryMountFencePos", temporaryMountFencePos.asLong());
             tag.put("TemporaryMountFenceState", NbtUtils.writeBlockState(temporaryMountFenceState));
         }
+        if (heldLightPos != null) tag.putLong("HeldLightPos", heldLightPos.asLong());
         getAssignedChest().ifPresent(chest -> tag.putIntArray("AssignedChest", new int[] { chest.getX(), chest.getY(), chest.getZ() }));
         getAssignedChestDimension().ifPresent(dim -> tag.putString("AssignedChestDim", dim.location().toString()));
         if (this.getPatrolPos().isPresent()) {
@@ -3181,6 +3205,13 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        heldLightPos = null;
+        if (tag.contains("HeldLightPos") && this.level() instanceof ServerLevel server) {
+            BlockPos savedLight = BlockPos.of(tag.getLong("HeldLightPos"));
+            if (server.hasChunkAt(savedLight) && isTemporaryHeldLight(server.getBlockState(savedLight))) {
+                server.setBlock(savedLight, Blocks.AIR.defaultBlockState(), 3);
+            }
+        }
         float savedHealth = this.getHealth();
         boolean hasFullHealthMarker = tag.contains(HEALTH_WAS_FULL_TAG);
         boolean wasFullAtSave = hasFullHealthMarker && tag.getBoolean(HEALTH_WAS_FULL_TAG);
@@ -3488,6 +3519,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             boostWaterMovement();
             updateSprintState();
             tickCompanionResources();
+            equipOffhandFromInventory();
+            if (this.tickCount % 2 == 0) updateHeldLight();
             if (this.tickCount % 20 == 0) consumeUsefulCompanionPotion();
             tickBondAndMorale();
             if (this.tickCount % 10 == 0) {
@@ -3601,7 +3634,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         lastTrackX = this.getX();
         lastTrackY = this.getY();
         lastTrackZ = this.getZ();
-        return super.finalizeSpawn(level, difficulty, reason, spawnDataIn);
+        SpawnGroupData result = super.finalizeSpawn(level, difficulty, reason, spawnDataIn);
+        if (!this.level().isClientSide()
+                && net.neoforged.fml.ModList.get().isLoaded("curios")
+                && net.neoforged.fml.ModList.get().isLoaded("sophisticatedbackpacks")) {
+            com.majorbonghits.moderncompanions.compat.sophisticatedbackpacks.SophisticatedBackpackCompat
+                    .tryEquipSpawnBackpack(this);
+        }
+        return result;
     }
 
     /* ---------- Orders & actions ---------- */
@@ -3850,6 +3890,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     @Override
     public void die(DamageSource source) {
+        clearHeldLight();
         if (!this.level().isClientSide()) {
             CompanionVoice.play(this, ModSounds.Cue.DEATH);
             clearNegativeEffectsBeforeResurrectionSave();
@@ -3859,6 +3900,61 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             dropResurrectionScroll();
         }
         super.die(source);
+    }
+
+    @Override
+    public void remove(Entity.RemovalReason reason) {
+        clearHeldLight();
+        super.remove(reason);
+    }
+
+    /**
+     * Vanilla held torches and lanterns render correctly but do not emit light while carried.
+     * Keep one invisible, server-authoritative Light block beside the companion and remove it
+     * whenever the item, entity, chunk, or world state changes.
+     */
+    private void updateHeldLight() {
+        if (!(this.level() instanceof ServerLevel server)) return;
+        ItemStack offhand = getItemBySlot(EquipmentSlot.OFFHAND);
+        if (!isHandheldLight(offhand) || !isAlive()
+                || !server.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)) {
+            clearHeldLight();
+            return;
+        }
+
+        BlockPos desired = blockPosition().above();
+        if (getOwner() instanceof Player player && !player.mayInteract(server, desired)) {
+            clearHeldLight();
+            return;
+        }
+        if (!server.hasChunkAt(desired)) {
+            clearHeldLight();
+            return;
+        }
+        if (desired.equals(heldLightPos) && isTemporaryHeldLight(server.getBlockState(desired))) return;
+
+        clearHeldLight();
+        if (!server.getBlockState(desired).isAir()) return;
+        BlockState light = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, LightBlock.MAX_LEVEL);
+        if (server.setBlock(desired, light, 3)) heldLightPos = desired.immutable();
+    }
+
+    private void clearHeldLight() {
+        if (heldLightPos == null) return;
+        if (this.level() instanceof ServerLevel server && server.hasChunkAt(heldLightPos)
+                && isTemporaryHeldLight(server.getBlockState(heldLightPos))) {
+            server.setBlock(heldLightPos, Blocks.AIR.defaultBlockState(), 3);
+        }
+        heldLightPos = null;
+    }
+
+    private static boolean isHandheldLight(ItemStack stack) {
+        if (stack.isEmpty() || !(stack.getItem() instanceof BlockItem blockItem)) return false;
+        return blockItem.getBlock() instanceof TorchBlock || blockItem.getBlock() instanceof LanternBlock;
+    }
+
+    private static boolean isTemporaryHeldLight(BlockState state) {
+        return state.is(Blocks.LIGHT) && state.getValue(LightBlock.LEVEL) == LightBlock.MAX_LEVEL;
     }
 
     /** Prevent death-invalid harmful state from being copied into a resurrection scroll. */
@@ -3887,6 +3983,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     @Override
     public void onRemovedFromLevel() {
+        clearHeldLight();
         if (!this.level().isClientSide() && this.level() instanceof ServerLevel server) {
             releaseDeliveryChunkTicket(server);
         }
@@ -4110,6 +4207,13 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return stack.getItem().builtInRegistryHolder().unwrapKey()
                 .map(key -> key.location().getPath().toLowerCase(Locale.ROOT).contains("shield"))
                 .orElse(false);
+    }
+
+    private boolean isOffhandEquipment(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        if (stack.is(Items.TOTEM_OF_UNDYING) || isShieldItem(stack)) return true;
+        return stack.getItem() instanceof BlockItem blockItem
+                && (blockItem.getBlock() instanceof TorchBlock || blockItem.getBlock() instanceof LanternBlock);
     }
 
     /**

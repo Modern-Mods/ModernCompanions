@@ -1,5 +1,6 @@
 ## 2026-08-12
 
+- 2026-08-12 (held legendary weapon loading): Keep shared held-model registries outside Mixin-owned packages; add a small package-boundary check if future client helpers are added near mixin classes.
 - Verify the legacy caster Mana/facing contract in a no-provider dev world: Fire Mage light/heavy fireballs, Necromancer wither skulls/summons, Cleric owner/self healing and holy sparks, Lightning Mage parity, Mana depletion/regeneration, and no back-facing casts.
 - Add a fresh-world smoke matrix for the four legacy magical companions with neither optional magic mod, Iron's only, Ars only, and both installed. Verify spawn eggs, cleric house/church/towers, native-versus-bespoke attacks, Cleric healing/blessings, Necromancer minion ownership, and no missing client renderers.
 
@@ -647,3 +648,22 @@
 - Upgrade a world containing pre-4.14 structure-spawn SavedData; load each magical building with all intersecting chunks, confirm an existing resident is not duplicated, and confirm an empty legacy record receives a resident.
 - Generate a structure across a chunk boundary, obstruct its center, unload/reload one edge chunk, and confirm the retry uses another safe interior position without a duplicate.
 - Exercise a cancelled entity-join event and deliberate pregeneration while watching server TPS; confirm the request remains pending and the one-resident-per-tick budget is preserved.
+
+## 2026-08-12 (companion equipment and carried lights)
+
+- In a fresh world, spawn representative structure and spawn-egg companions with Spawn Armor/Spawn Weapon enabled and automatic equipment disabled; verify every class weapon is visibly in the live main hand rather than cargo, then relog and redeploy one through a Soul Gem.
+- Put a Totem of Undying in a Cleric and another companion’s offhand, trigger lethal damage, and confirm vanilla totem activation consumes the totem and applies its rescue effects. Repeat manual GUI equipping with shields, torches, and lanterns, including replacement and removal.
+- Walk torch- and lantern-bearing companions through open terrain, a low ceiling, blocked spaces, chunk unload/reload, death, relog, and multiplayer; verify the item renders in the offhand, light follows it, no stale Light blocks remain, and `mobGriefing=false`/protected terrain does not modify the world.
+- With Curios plus Sophisticated Backpacks installed, sample enough fresh spawns to confirm the rare standard-size, two-color backpack roll lands in the back slot and opens native storage; repeat with both optional mods absent and with only one present to confirm startup and normal spawning.
+- With Iron’s Spellbooks and Ars Nouveau tested separately, put Cryomancers at targets inside and outside five blocks and record movement/casts; confirm the AoE never starts outside range or during a retreat, then repeat with line-of-sight loss during the cast wind-up.
+
+## 2026-08-12 (Placement Wand backpack capture)
+
+- With Curios and Sophisticated Backpacks installed, fill an equipped backpack partially and capture several owned companions; confirm Soul Gems fill the backpack first, then player inventory, and stop safely when both are full.
+- Put a Sophisticated Backpack in ordinary player inventory without equipping it; confirm Placement Wand capture ignores it and uses only normal inventory slots.
+- Repeat with no backpack and with a completely full equipped backpack to verify the normal-inventory fallback and overflow companion preservation.
+- With Soul Gems stored in the equipped backpack, use the wand on open ground and confirm the backpack's valid gems deploy first, then player-inventory gems; block the target area and confirm unplaced backpack gems remain stored.
+
+## 2026-08-12 (untinted summon gems)
+
+- In the creative tabs, inspect every fixed and optional spawn gem plus a captured Soul Gem in the GUI, held first-person, held third-person, and dropped-item views; confirm each uses the source `gem_*.png` colors without a runtime spawn-egg palette.

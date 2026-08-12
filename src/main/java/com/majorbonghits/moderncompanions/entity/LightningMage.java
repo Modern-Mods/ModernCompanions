@@ -95,9 +95,9 @@ public class LightningMage extends IntegratedMageCompanion {
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
                                         MobSpawnType reason, @Nullable SpawnGroupData data) {
         if (!MagicCastingCompat.available() && ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            this.inventory.setItem(4, Items.STICK.getDefaultInstance());
+            // Keep the primary wand in the live hand; the alternate dagger remains cargo.
+            this.setItemSlot(EquipmentSlot.MAINHAND, Items.STICK.getDefaultInstance());
             this.inventory.setItem(5, new ItemStack(BuiltInRegistries.ITEM.get(Constants.id("iron_dagger"))));
-            this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
         return super.finalizeSpawn(level, difficulty, reason, data);
     }

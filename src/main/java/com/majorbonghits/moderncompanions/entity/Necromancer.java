@@ -100,9 +100,10 @@ public class Necromancer extends IntegratedMageCompanion {
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
                                         MobSpawnType reason, @Nullable SpawnGroupData data) {
         if (!MagicCastingCompat.available() && ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            this.inventory.setItem(4, new ItemStack(BuiltInRegistries.ITEM.get(Constants.id("stone_dagger"))));
+            // The dagger is visible immediately; the bone remains a summon component in cargo.
+            this.setItemSlot(EquipmentSlot.MAINHAND,
+                    new ItemStack(BuiltInRegistries.ITEM.get(Constants.id("stone_dagger"))));
             this.inventory.setItem(5, Items.BONE.getDefaultInstance());
-            this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
         return super.finalizeSpawn(level, difficulty, reason, data);
     }

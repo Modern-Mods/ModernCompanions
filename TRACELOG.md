@@ -3117,3 +3117,33 @@
   - Kept the retry contract: no safe candidate, entity construction failure, or cancelled entity insertion leaves the request queued and does not consume the per-tick spawn budget. Bumped the version to 4.14.
 - Rationale: A valid resident can be away from the structure center, an old tracker key can represent a failed pre-fix attempt, and static queues survive longer than one server instance. Each case must remain retryable without introducing duplicate natural-generation residents.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.14.jar`. Fresh-world, upgrade-world, cancellation, and pregeneration smoke tests remain manual.
+
+## 2026-08-12 (companion combat equipment and carried lights)
+
+- Prompt/task: Make Cryomancer use its AoE only when an enemy is within the spell’s target range, ensure companion weapons spawn equipped, add rare Sophisticated Backpacks, allow Totems of Undying in the offhand, and make carried torches/lanterns visible and useful as lights.
+- Steps:
+  - Routed Cryomancer through the shared mage range hooks: it no longer retreats to maintain a casting minimum, and its heavy/AoE cast is limited to a five-block caster-to-target distance, including a final range check after the cast wind-up.
+  - Moved the affected Cleric and legacy mage spawn loadouts into live vanilla equipment slots, expanded the shared offhand contract to totems and lights, and added automatic offhand selection with totems prioritized.
+  - Added an invisible server-side Light block that follows a carried torch or lantern only through open, permitted space, with cleanup on item changes, death, removal, unload, and save/load recovery.
+  - Added a one-percent standard Sophisticated Backpack spawn roll with two random dye colors, placed through the Curios back slot; conditionally loaded Curios entity resources now cover optional magic companions and TacZ specialists without absent-mod registry errors.
+  - Updated the equipment/integration documentation and validated the current worktree release version 4.19.
+- Rationale: The shared live equipment and offhand seams already feed rendering, AI, vanilla totem handling, and the companion menu, while the existing optional compatibility boundaries and Curios data loader provide the smallest absent-mod-safe integration points.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed with all repository checks and produced `build/libs/ModernCompanions-4.19.jar`. Fresh-spawn, installed/absent-optional-mod, carried-light, relog/unload, and multiplayer behavior remain manual smoke checks.
+
+## 2026-08-12 (Placement Wand backpack capture routing)
+
+- Prompt/task: Route Placement Wand Soul Gems into the player's equipped Sophisticated Backpack before the normal inventory, with inventory fallback and no traversal into backpacks merely carried in inventory.
+- Steps:
+  - Added optional compatibility helpers that inspect only the Curios `back` slot, resolve Sophisticated Backpacks' native input/output handler, count insertable Soul Gem slots, and insert each captured gem before using the normal inventory.
+  - Preserved the existing no-data-loss capacity limit and left ordinary inventory backpacks untouched; bumped the project version from 4.21 to 4.22.
+- Rationale: The Curios equipped-slot boundary distinguishes a worn backpack from an item in cargo, while the native handler keeps Sophisticated Backpacks filters, upgrades, and storage rules authoritative.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.22.jar`; installed-mod capture/fallback behavior remains a manual smoke test.
+
+## 2026-08-12 (Placement Wand equipped-backpack deployment)
+
+- Prompt/task: Allow Placement Wand targeted use to deploy Soul Gems from the player's equipped Sophisticated Backpack, while retaining player-inventory fallback and ignoring backpacks carried in inventory.
+- Steps:
+  - Reused the equipped Curios back-slot handler and native Sophisticated Backpacks input/output inventory for deployment, scanning it before the normal player inventory.
+  - Removed a backpack gem only after its companion was successfully placed, then bumped the project version from 4.22 to 4.23.
+- Rationale: The same equipped-only handler boundary used by capture provides symmetric storage behavior without recursively opening arbitrary backpack items in player cargo.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.23.jar`; installed-mod deployment/fallback behavior remains a manual smoke test.

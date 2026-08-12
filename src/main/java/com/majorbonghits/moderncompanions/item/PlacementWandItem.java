@@ -1,5 +1,6 @@
 package com.majorbonghits.moderncompanions.item;
 
+import com.majorbonghits.moderncompanions.compat.sophisticatedbackpacks.SophisticatedBackpackCompat;
 import com.majorbonghits.moderncompanions.core.ModItems;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.core.BlockPos;
@@ -21,6 +22,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -86,6 +89,36 @@ public class PlacementWandItem extends Item {
     }
 
     private int deployGems(ServerLevel level, Player player, BlockPos origin) {
+        Set<BlockPos> occupiedSpots = new HashSet<>();
+        int placed = 0;
+        boolean backpackIntegrationLoaded = ModList.get().isLoaded("curios")
+                && ModList.get().isLoaded("sophisticatedbackpacks");
+        if (backpackIntegrationLoaded) {
+            IItemHandler backpack = SophisticatedBackpackCompat.getEquippedBackpackInventory(player);
+            if (backpack != null) {
+                List<Integer> gemSlots = new ArrayList<>();
+                for (int slot = 0; slot < backpack.getSlots(); slot++) {
+                    ItemStack gem = backpack.getStackInSlot(slot);
+                    if (gem.is(ModItems.STORED_COMPANION.get()) && StoredCompanionItem.hasCompanionData(gem)) {
+                        gemSlots.add(slot);
+                    }
+                }
+
+                for (int slot : gemSlots) {
+                    ItemStack gem = backpack.getStackInSlot(slot);
+                    while (!gem.isEmpty() && gem.is(ModItems.STORED_COMPANION.get())
+                            && StoredCompanionItem.hasCompanionData(gem)) {
+                        if (!placeGem(level, player, origin, gem, occupiedSpots)) {
+                            break;
+                        }
+                        backpack.extractItem(slot, 1, false);
+                        placed++;
+                        gem = backpack.getStackInSlot(slot);
+                    }
+                }
+            }
+        }
+
         Inventory inventory = player.getInventory();
         List<Integer> gemSlots = new ArrayList<>();
         for (int slot = 0; slot < Inventory.INVENTORY_SIZE; slot++) {
@@ -95,27 +128,33 @@ public class PlacementWandItem extends Item {
             }
         }
 
-        Set<BlockPos> occupiedSpots = new HashSet<>();
-        int placed = 0;
         for (int slot : gemSlots) {
             ItemStack gem = inventory.getItem(slot);
             while (!gem.isEmpty() && gem.is(ModItems.STORED_COMPANION.get())
                     && StoredCompanionItem.hasCompanionData(gem)) {
-                BlockPos spot = findPlacementSpot(level, origin, occupiedSpots);
-                if (spot == null) {
-                    break;
-                }
-                Entity companion = StoredCompanionItem.placeCompanion(level, gem, Vec3.atBottomCenterOf(spot), player);
-                if (companion == null) {
+                if (!placeGem(level, player, origin, gem, occupiedSpots)) {
                     break;
                 }
                 gem.shrink(1);
-                occupiedSpots.add(spot);
-                level.gameEvent(player, GameEvent.ENTITY_PLACE, spot);
                 placed++;
             }
         }
         return placed;
+    }
+
+    private boolean placeGem(ServerLevel level, Player player, BlockPos origin, ItemStack gem,
+            Set<BlockPos> occupiedSpots) {
+        BlockPos spot = findPlacementSpot(level, origin, occupiedSpots);
+        if (spot == null) {
+            return false;
+        }
+        Entity companion = StoredCompanionItem.placeCompanion(level, gem, Vec3.atBottomCenterOf(spot), player);
+        if (companion == null) {
+            return false;
+        }
+        occupiedSpots.add(spot);
+        level.gameEvent(player, GameEvent.ENTITY_PLACE, spot);
+        return true;
     }
 
     @Nullable
@@ -157,7 +196,15 @@ public class PlacementWandItem extends Item {
         AABB searchBox = player.getBoundingBox().inflate(CAPTURE_RADIUS);
         List<AbstractHumanCompanionEntity> nearby = level.getEntitiesOfClass(AbstractHumanCompanionEntity.class,
                 searchBox, companion -> companion.isAlive() && companion.isOwnedBy(player));
-        int captureLimit = PlacementWandCaptureRules.captureLimit(countFreeInventorySlots(player), nearby.size());
+        // Count only the equipped back-slot backpack; a backpack carried in player inventory is not a target.
+        boolean backpackIntegrationLoaded = ModList.get().isLoaded("curios")
+                && ModList.get().isLoaded("sophisticatedbackpacks");
+        int backpackSlots = backpackIntegrationLoaded
+                ? SophisticatedBackpackCompat.countEquippedBackpackSlots(player,
+                        new ItemStack(ModItems.STORED_COMPANION.get()))
+                : 0;
+        int captureLimit = PlacementWandCaptureRules.captureLimit(
+                backpackSlots + countFreeInventorySlots(player), nearby.size());
         int captured = 0;
         for (AbstractHumanCompanionEntity companion : nearby) {
             if (captured >= captureLimit) {
@@ -166,13 +213,20 @@ public class PlacementWandItem extends Item {
             if (!companion.isAlive() || !companion.isOwnedBy(player)) {
                 continue;
             }
-            int freeSlot = player.getInventory().getFreeSlot();
-            if (freeSlot < 0) {
-                break;
-            }
-
             ItemStack gem = CompanionMoverItem.captureCompanion(companion);
-            player.getInventory().setItem(freeSlot, gem);
+            ItemStack remainder = backpackIntegrationLoaded
+                    ? SophisticatedBackpackCompat.insertIntoEquippedBackpack(player, gem)
+                    : gem;
+            if (!remainder.isEmpty()) {
+                // The normal-inventory fallback runs only after the equipped backpack rejects the gem.
+                int freeSlot = player.getInventory().getFreeSlot();
+                if (freeSlot >= 0) {
+                    player.getInventory().setItem(freeSlot, remainder);
+                } else {
+                    // Preserve the captured companion if a container changes between the capacity check and insertion.
+                    player.drop(remainder, false);
+                }
+            }
             companion.discard();
             captured++;
         }

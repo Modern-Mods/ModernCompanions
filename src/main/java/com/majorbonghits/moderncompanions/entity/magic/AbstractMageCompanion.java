@@ -132,6 +132,21 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
         return 18.0F;
     }
 
+    /** Minimum distance used by the shared ranged goal when a caster wants to kite. */
+    public float getMinimumCastingRange() {
+        return 12.0F;
+    }
+
+    /** Maximum caster-to-target distance for a heavy spell; infinity keeps legacy kits unchanged. */
+    public float getHeavyAttackRange() {
+        return Float.POSITIVE_INFINITY;
+    }
+
+    public final boolean isWithinHeavyAttackRange(LivingEntity target) {
+        float range = getHeavyAttackRange();
+        return target != null && (Float.isInfinite(range) || distanceToSqr(target) <= (double) range * range);
+    }
+
     /** Duration before another heavy cast can be attempted. */
     public int getHeavyRecoveryTicks() {
         return getLightIntervalTicks();

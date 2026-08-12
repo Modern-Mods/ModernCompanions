@@ -83,9 +83,9 @@ public class FireMage extends IntegratedMageCompanion {
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
                                         MobSpawnType reason, @Nullable SpawnGroupData data) {
         if (!MagicCastingCompat.available() && ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            this.inventory.setItem(4, Items.BLAZE_ROD.getDefaultInstance());
+            // Keep the primary wand in the live hand; the alternate staff remains cargo.
+            this.setItemSlot(EquipmentSlot.MAINHAND, Items.BLAZE_ROD.getDefaultInstance());
             this.inventory.setItem(5, new ItemStack(BuiltInRegistries.ITEM.get(Constants.id("wooden_quarterstaff"))));
-            this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
         return super.finalizeSpawn(level, difficulty, reason, data);
     }

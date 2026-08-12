@@ -1,6 +1,7 @@
 package com.majorbonghits.moderncompanions.mixin.client;
 
 import com.majorbonghits.moderncompanions.Constants;
+import com.majorbonghits.moderncompanions.client.HeldWeaponModelIds;
 import net.minecraft.client.color.block.BlockColors;
 import net.minecraft.client.renderer.block.model.BlockModel;
 import net.minecraft.client.resources.model.BlockStateModelLoader;
@@ -22,9 +23,6 @@ import java.util.Map;
 /** Registers the existing held models so the item renderer can select them by context. */
 @Mixin(ModelBakery.class)
 public abstract class HeldWeaponModelBakeryMixin {
-    private static final List<String> MATERIAL_PREFIXES = List.of(
-            "wooden", "stone", "iron", "golden", "diamond", "netherite", "bronze");
-
     @Shadow
     protected abstract void registerModel(ModelResourceLocation modelId, UnbakedModel model);
 
@@ -38,11 +36,9 @@ public abstract class HeldWeaponModelBakeryMixin {
             Map<ResourceLocation, BlockModel> modelResources,
             Map<ResourceLocation, List<BlockStateModelLoader.LoadedJson>> blockStateResources,
             CallbackInfo callbackInfo) {
-        // Only register models whose base item exists; bronze therefore remains optional.
-        for (String material : MATERIAL_PREFIXES) {
-            modernCompanions$registerHeldModel(material + "_spear");
-            modernCompanions$registerHeldModel(material + "_quarterstaff");
-            modernCompanions$registerHeldModel(material + "_glaive");
+        // Only register models whose base item exists; optional bronze and legendary entries stay safe.
+        for (String baseName : HeldWeaponModelIds.allBaseNames()) {
+            modernCompanions$registerHeldModel(baseName);
         }
     }
 

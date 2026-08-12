@@ -889,4 +889,8 @@
   "modern_companions.configuration.jobs.chef_radius": "厨师搜索半径",
   "modern_companions.configuration.jobs.assigned_chests_chunkload": "保持指派箱子加载",
   "modern_companions.configuration.jobs.show_jobs_button": "显示职业按钮"
+  "tooltip.modern_companions.placement_wand": "潜行并右击空气可将附近所有同伴回收至背包，再次潜行并右击空气将所有背包中的同伴部署至周围。",
+  "message.modern_companions.placement_wand.placed": "已部署灵魂宝石：%s。",
+  "message.modern_companions.placement_wand.captured": "已将伙伴存储为灵魂宝石：%s。",
+  "item.modern_companions.placement_wand": "部署法杖"
 }

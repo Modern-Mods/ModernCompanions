@@ -1,0 +1,42 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:or",
+      "values": [
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "irons_spellbooks"
+        },
+        {
+          "type": "neoforge:mod_loaded",
+          "modid": "ars_nouveau"
+        }
+      ]
+    }
+  ],
+  "entities": [
+    "modern_companions:wizard",
+    "modern_companions:sorcerer",
+    "modern_companions:warlock",
+    "modern_companions:witch",
+    "modern_companions:hag",
+    "modern_companions:cryomancer",
+    "modern_companions:druid",
+    "modern_companions:illusionist",
+    "modern_companions:battlemage"
+  ],
+  "slots": [
+    "head",
+    "shoulder",
+    "back",
+    "body",
+    "bracelet",
+    "necklace",
+    "hands",
+    "ring",
+    "belt",
+    "feet",
+    "charm",
+    "curio"
+  ]
+}

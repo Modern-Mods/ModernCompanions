@@ -45,6 +45,7 @@ public final class ModCreativeTabs {
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.ALCHEMIST_SPAWN_EGG.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.SCOUT_SPAWN_EGG.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.STORMCALLER_SPAWN_EGG.get());
+                        magic(output, com.majorbonghits.moderncompanions.core.ModItems.FIREARM_SPECIALIST_SPAWN_EGG);
                         magic(output, com.majorbonghits.moderncompanions.core.ModItems.PISTOL_SPECIALIST_SPAWN_EGG);
                         magic(output, com.majorbonghits.moderncompanions.core.ModItems.SMG_SPECIALIST_SPAWN_EGG);
                         magic(output, com.majorbonghits.moderncompanions.core.ModItems.RIFLE_SPECIALIST_SPAWN_EGG);

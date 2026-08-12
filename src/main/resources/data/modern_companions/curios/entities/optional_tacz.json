@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "tacz"
+    }
+  ],
+  "entities": [
+    "modern_companions:firearm_specialist"
+  ],
+  "slots": [
+    "head",
+    "shoulder",
+    "back",
+    "body",
+    "bracelet",
+    "necklace",
+    "hands",
+    "ring",
+    "belt",
+    "feet",
+    "charm",
+    "curio"
+  ]
+}

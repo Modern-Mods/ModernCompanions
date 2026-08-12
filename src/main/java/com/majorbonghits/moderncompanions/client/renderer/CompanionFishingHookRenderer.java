@@ -1,6 +1,8 @@
 package com.majorbonghits.moderncompanions.client.renderer;
 
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
+import com.majorbonghits.moderncompanions.entity.job.JobToolPolicy;
 import com.majorbonghits.moderncompanions.entity.projectile.CompanionFishingHook;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -13,7 +15,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -66,7 +67,7 @@ public class CompanionFishingHookRenderer extends EntityRenderer<CompanionFishin
     private Vec3 getCompanionHandPos(AbstractHumanCompanionEntity owner, float partialTicks) {
         int arm = owner.getMainArm() == HumanoidArm.RIGHT ? 1 : -1;
         ItemStack main = owner.getMainHandItem();
-        if (!main.is(Items.FISHING_ROD)) {
+        if (!JobToolPolicy.matches(CompanionJob.FISHER, main)) {
             arm = -arm;
         }
         float bodyRot = Mth.lerp(partialTicks, owner.yBodyRotO, owner.yBodyRot) * 0.017453292F;

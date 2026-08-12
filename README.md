@@ -27,7 +27,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Companion Resources:** Stamina supports sprinting and melee pacing. Magic companions also use Mana.
 - **Native Magic Equipment:** Iron's and Ars Nouveau caster items can be used by magic companions, including staffs, wands, spellbooks, scrolls, and magical weapons. A magical companion's dedicated spellbook slot persists the native book and lets its active spells supplement the companion's learned repertoire. Spells face their target during a visible wind-up and use the loaded native cast duration when available. Iron's Max Mana, Mana Regeneration, Spell Power, school power/resistance, cooldown, cast-time, casting-speed, summon-damage, and spell-resistance attributes—and Ars Max Mana, Mana Regeneration, Spell Damage, and Warding—apply from armor, Curios, and held gear.
 - **Brewing:** Craft reusable vessels and brew Health, Regeneration, Stamina, Mana, Rejuvenation, and Shield potions.
-- **Living Jobs:** Lumberjacks, Hunters, Miners, Fishers, and Chefs can search, travel, work, collect, deliver, and resume jobs. Jobs are experimental and hidden by default.
+- **Living Jobs:** Lumberjacks, Farmers, Hunters, Miners, Fishers, and Chefs can search, travel, work, collect, deliver, and resume jobs. Jobs are experimental and hidden by default.
 - **Safety Controls:** Villager and PvP protection controls are available per companion and default to safe.
 
 ## Recent Updates
@@ -347,6 +347,7 @@ Jobs are disabled in the player-facing screen by default while the system remain
 Available jobs:
 
 - **Lumberjack:** Finds mature natural trees, chops them with an axe, collects logs, and replants when possible.
+- **Farmer:** Harvests mature crops, replants the matching seed on valid farmland or soul sand, and can use carried bone meal when enabled.
 - **Hunter:** Tracks configured hunt targets with a sword, axe, bow, or crossbow and collects the results.
 - **Miner:** Surveys the work area and safely tunnels to configured ore targets with a pickaxe.
 - **Fisher:** Finds water, fishes with a fishing rod, and collects catches.
@@ -457,10 +458,17 @@ Alert can also be extended by pack authors through `data/modern_companions/tags/
 
 The job settings are available in the common TOML but hidden from the native editor while Jobs are experimental.
 
+Assigned-chest workers keep their active work plan while they collect outputs. A Lumberjack now chains mature trees within its assigned work radius, then returns to the linked chest when the bounded scan is exhausted or inventory delivery is due; successful delivery resets the scan so the job resumes without losing a partially felled tree.
+
 | Key | Default | Range / description |
 | --- | ---: | --- |
 | `lumberjackEnabled` | `true` | Enable Lumberjack behavior. |
 | `lumberjackRadius` | `10` | Minimum search radius; `4`–`64`. Companion Radius can expand work up to `128` blocks. |
+| `lumberjackGroundBlocks` | `#minecraft:dirt`, `minecraft:moss_block` | Block IDs or `#tag` IDs accepted beneath natural trees. |
+| `lumberjackBreakTimeMultiplier` | `2.0` | Multiplies tool-based per-log felling time; `0.25`–`8.0`. |
+| `farmerEnabled` | `true` | Enable Farmer behavior. |
+| `farmerRadius` | `12` | Minimum crop scan radius; `4`–`64`. Companion Radius can expand work up to `128` blocks. |
+| `farmerBoneMealEnabled` | `true` | Let Farmers use carried bone meal on immature crops. |
 | `hunterEnabled` | `true` | Enable Hunter behavior. |
 | `hunterRadius` | `20` | Hunt scan radius; `6`–`64`. |
 | `minerEnabled` | `true` | Enable Miner behavior. |

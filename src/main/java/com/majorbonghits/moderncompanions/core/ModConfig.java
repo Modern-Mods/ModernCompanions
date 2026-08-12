@@ -38,6 +38,7 @@ public final class ModConfig {
             "minecraft:diamond", "minecraft:emerald", "minecraft:blaze_rod", "minecraft:magma_cream");
     private static final List<String> DEFAULT_HUNT_MOBS = List.of(
             "minecraft:chicken", "minecraft:cow", "minecraft:pig", "minecraft:rabbit", "minecraft:sheep", "minecraft:goat");
+    private static final List<String> DEFAULT_TREE_GROUNDS = List.of("#minecraft:dirt", "minecraft:moss_block");
 
     private static ModConfigSpec COMMON_SPEC;
     public static ModConfigSpec.IntValue AVERAGE_HOUSE_SEPARATION;
@@ -83,6 +84,8 @@ public final class ModConfig {
     public static ModConfigSpec.DoubleValue LUCKY_EXTRA_DROP_CHANCE;
     public static ModConfigSpec.BooleanValue JOB_LUMBERJACK_ENABLED;
     public static ModConfigSpec.IntValue JOB_LUMBERJACK_RADIUS;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_LUMBERJACK_GROUND_BLOCKS;
+    public static ModConfigSpec.DoubleValue JOB_LUMBERJACK_BREAK_TIME_MULTIPLIER;
     public static ModConfigSpec.BooleanValue JOB_HUNTER_ENABLED;
     public static ModConfigSpec.IntValue JOB_HUNTER_RADIUS;
     public static ModConfigSpec.BooleanValue JOB_MINER_ENABLED;
@@ -91,6 +94,9 @@ public final class ModConfig {
     public static ModConfigSpec.IntValue JOB_FISHER_RADIUS;
     public static ModConfigSpec.BooleanValue JOB_CHEF_ENABLED;
     public static ModConfigSpec.IntValue JOB_CHEF_RADIUS;
+    public static ModConfigSpec.BooleanValue JOB_FARMER_ENABLED;
+    public static ModConfigSpec.IntValue JOB_FARMER_RADIUS;
+    public static ModConfigSpec.BooleanValue JOB_FARMER_BONE_MEAL_ENABLED;
     public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_MINER_ALLOW_BLOCKS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> JOB_MINER_DENY_BLOCKS;
     public static ModConfigSpec.BooleanValue JOB_ASSIGNED_CHESTS_CHUNKLOAD;
@@ -280,6 +286,12 @@ public final class ModConfig {
         JOB_LUMBERJACK_RADIUS = builder.translation("modern_companions.configuration.jobs.lumberjack_radius")
                 .comment("Minimum Lumberjack search radius; the companion Radius can expand work up to 128 blocks.")
                 .defineInRange("lumberjackRadius", 10, 4, 64);
+        JOB_LUMBERJACK_GROUND_BLOCKS = builder.translation("modern_companions.configuration.jobs.lumberjack_ground_blocks")
+                .comment("Block ids or #tag ids accepted beneath natural trees, for example #minecraft:dirt or minecraft:moss_block.")
+                .defineList("lumberjackGroundBlocks", DEFAULT_TREE_GROUNDS, () -> "#minecraft:dirt", ModConfig::isBlockRule);
+        JOB_LUMBERJACK_BREAK_TIME_MULTIPLIER = builder.translation("modern_companions.configuration.jobs.lumberjack_break_time_multiplier")
+                .comment("Multiplier applied to the tool-based per-log felling time.")
+                .defineInRange("lumberjackBreakTimeMultiplier", 2.0D, 0.25D, 8.0D);
         JOB_HUNTER_ENABLED = builder.translation("modern_companions.configuration.jobs.hunter_enabled")
                 .comment("Enable the Hunter job behaviors.")
                 .define("hunterEnabled", true);
@@ -310,6 +322,15 @@ public final class ModConfig {
         JOB_CHEF_RADIUS = builder.translation("modern_companions.configuration.jobs.chef_radius")
                 .comment("Search radius for Chef heat source scans.")
                 .defineInRange("chefRadius", 8, 3, 24);
+        JOB_FARMER_ENABLED = builder.translation("modern_companions.configuration.jobs.farmer_enabled")
+                .comment("Enable the Farmer job behaviors.")
+                .define("farmerEnabled", true);
+        JOB_FARMER_RADIUS = builder.translation("modern_companions.configuration.jobs.farmer_radius")
+                .comment("Minimum Farmer crop scan radius; the companion Radius can expand work up to 128 blocks.")
+                .defineInRange("farmerRadius", 12, 4, 64);
+        JOB_FARMER_BONE_MEAL_ENABLED = builder.translation("modern_companions.configuration.jobs.farmer_bone_meal_enabled")
+                .comment("Allow Farmers to use bone meal already carried in their inventory on immature crops.")
+                .define("farmerBoneMealEnabled", true);
         JOB_ASSIGNED_CHESTS_CHUNKLOAD = builder.translation("modern_companions.configuration.jobs.assigned_chests_chunkload")
                 .comment("If true, companions keep their assigned drop-off chests chunk-loaded to prevent courier failures.")
                 .define("assignedChestsChunkload", false);
@@ -400,6 +421,13 @@ public final class ModConfig {
         if (!(value instanceof String raw)) return false;
         ResourceLocation id = ResourceLocation.tryParse(raw);
         return id != null && BuiltInRegistries.ITEM.containsKey(id);
+    }
+
+    private static boolean isBlockRule(Object value) {
+        if (!(value instanceof String raw) || raw.isBlank()) return false;
+        String idText = raw.startsWith("#") ? raw.substring(1) : raw;
+        ResourceLocation id = ResourceLocation.tryParse(idText);
+        return id != null && (raw.startsWith("#") || BuiltInRegistries.BLOCK.containsKey(id));
     }
 
     /** Validate both registry IDs while keeping the list editor usable for modded content. */

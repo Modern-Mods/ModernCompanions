@@ -60,6 +60,8 @@ public abstract class HeldWeaponItemRendererMixin {
                 || itemId.startsWith("diamond_")
                 || itemId.startsWith("netherite_")
                 || itemId.startsWith("bronze_");
-        return materialVariant && (itemId.endsWith("_spear") || itemId.endsWith("_quarterstaff"));
+        return materialVariant && (itemId.endsWith("_spear")
+                || itemId.endsWith("_quarterstaff")
+                || itemId.endsWith("_glaive"));
     }
 }

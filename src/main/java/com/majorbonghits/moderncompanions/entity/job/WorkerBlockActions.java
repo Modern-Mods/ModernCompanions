@@ -26,7 +26,12 @@ public final class WorkerBlockActions {
 
     /** Lumberjack-only reserved-tree action: foliage cannot hide an already-approved trunk from its stump stand. */
     public static boolean breakReservedTreeBlock(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, double interactRangeSqr) {
-        return breakBlockResult(companion, target, stand, interactRangeSqr, true) == WorkerActionResult.SUCCESS;
+        return breakReservedTreeBlockResult(companion, target, stand, interactRangeSqr) == WorkerActionResult.SUCCESS;
+    }
+
+    public static WorkerActionResult breakReservedTreeBlockResult(AbstractHumanCompanionEntity companion, BlockPos target,
+                                                                   BlockPos stand, double interactRangeSqr) {
+        return breakBlockResult(companion, target, stand, interactRangeSqr, true);
     }
 
     /** Miner-only planned excavation: an adjacent queued block may be hidden by the other half of the same tunnel step. */
@@ -63,7 +68,9 @@ public final class WorkerBlockActions {
     }
 
     public static boolean place(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, net.minecraft.world.level.block.state.BlockState state) {
-        return companion.level() instanceof ServerLevel level && WorkerSite.canActFromStand(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR)
+        return companion.level() instanceof ServerLevel level
+                && level.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)
+                && WorkerSite.canActFromStand(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR)
                 && level.getBlockState(target).isAir() && level.setBlock(target, state, 3);
     }
 

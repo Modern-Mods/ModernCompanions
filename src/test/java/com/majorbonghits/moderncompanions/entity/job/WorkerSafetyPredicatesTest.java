@@ -31,5 +31,10 @@ public final class WorkerSafetyPredicatesTest {
         assert lifecycle.phase() == JobPhase.WORKING;
         assert lifecycle.retry("blocked", 1);
         assert !lifecycle.retry("blocked", 1);
+        JobLifecycle backoff = new JobLifecycle();
+        assert backoff.retry("route", 3, 10, 200);
+        assert !backoff.retryReady();
+        for (int i = 0; i < 10; i++) backoff.tick();
+        assert backoff.retryReady();
     }
 }

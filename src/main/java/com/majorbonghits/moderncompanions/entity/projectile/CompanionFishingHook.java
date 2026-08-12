@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.entity.projectile;
 
 import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -52,7 +53,10 @@ public class CompanionFishingHook extends Projectile {
     public void tick() {
         super.tick();
         AbstractHumanCompanionEntity owner = getOwnerCompanion();
-        if (owner == null || !owner.isAlive()) {
+        // Hooks are transient work state. Discard one restored after an unload,
+        // job switch, Work-off toggle, death, or dimension change instead of
+        // letting it become an orphan that competes with a new cast.
+        if (owner == null || !owner.isAlive() || owner.getJob() != CompanionJob.FISHER || !owner.isWorkEnabled()) {
             discard();
             return;
         }

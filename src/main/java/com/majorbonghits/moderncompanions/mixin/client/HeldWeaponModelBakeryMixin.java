@@ -42,6 +42,7 @@ public abstract class HeldWeaponModelBakeryMixin {
         for (String material : MATERIAL_PREFIXES) {
             modernCompanions$registerHeldModel(material + "_spear");
             modernCompanions$registerHeldModel(material + "_quarterstaff");
+            modernCompanions$registerHeldModel(material + "_glaive");
         }
     }
 

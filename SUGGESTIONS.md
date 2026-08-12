@@ -600,6 +600,12 @@
 - View the same weapons on a normal companion in third person; repeat with Epic Fight installed and with optional bronze loaded/absent.
 - Verify dropped, ground, GUI, legendary spear, attack reach, damage, and weapon animation behavior did not change.
 
+## 2026-08-12 (Lumberjack multi-tree batches)
+
+- Smoke-test two or more mature trees within one assigned radius and confirm the Lumberjack fells each tree in sequence instead of idling after the first.
+- Confirm a full inventory preempts the active tree safely, deposits only deliverable cargo, and resumes the remaining tree plan after a successful chest trip.
+- Confirm an exhausted work-radius scan requests immediate delivery, then starts a fresh bounded scan after delivery; repeat with a full or unreachable chest and with Work toggled off/on.
+
 ## 2026-08-11 (Placement Wand)
 
 - In a dev world, put several Soul Gems in the player inventory and use the Placement Wand on open ground, a wall, and a crowded target; verify every gem deploys to separate safe spots and blocked spots remain as gems.
@@ -611,3 +617,28 @@
 - Generate fresh worlds with neither optional magic mod, Iron's Spellbooks only, and Ars Nouveau only; confirm magical buildings appear only when their companion integration is available and ordinary house generation remains present.
 - Generate enough terrain around each setup to confirm no `humancompanions:companions` Lithostitched warnings remain, then use `/locate structure #modern_companions:companion_houses` to confirm generated residents match the selected building.
 - Smoke-test `/place structure` separately because it is an explicit operator action and is not the natural-generation gate.
+
+## 2026-08-11 (long held glaive models)
+
+- In first person, equip each material glaive and confirm it matches the spear/quarterstaff held length while its inventory icon remains unchanged.
+- View wooden through netherite glaives on a companion; repeat with Epic Fight installed and optional bronze loaded/absent.
+- Verify dropped, ground, GUI, legendary glaive, reach, damage, and attack-animation behavior remains unchanged.
+
+## 2026-08-11 (airtight structure residents)
+
+- With Iron's Spellbooks only and Ars Nouveau only, generate church, cleric-house, tower1, and tower2 placements and confirm each has exactly one compatible magical companion.
+- Obstruct the structure center with blocks or entities, then load/reload the surrounding chunks; confirm the companion waits for a valid interior floor and is not duplicated.
+- Repeat with neither magic mod installed to confirm no magical natural-generation placement occurs, then test `/place structure` separately as the explicit operator path.
+
+## 2026-08-11 (resumable jobs and Farmer workflow)
+
+- Assign a Farmer to a chest-linked field and verify wheat, carrots, potatoes, beetroot, melon/pumpkin stems, nether wart, torchflower, and pitcher crops harvest and replant with the matching carried item.
+- Toggle Work off/on and unload/reload during travel, harvesting, planting, and bone-meal use; confirm the worker keeps its checkpoint, restores the right tool, and does not duplicate or lose crops.
+- Verify `mobGriefing` off, a protected farm, a full inventory, missing seeds, missing bone meal, a full delivery chest, and compatible modded fishing rods all produce a bounded status/backoff instead of repeated world edits.
+- Confirm Fisher loot changes with the active bobber biome/position, the line renders for a custom rod exposing `FISHING_ROD_CAST`, and orphan hooks disappear after job changes and relog.
+
+## 2026-08-12 (airtight structure resident follow-up)
+
+- Upgrade a world containing pre-4.14 structure-spawn SavedData; load each magical building with all intersecting chunks, confirm an existing resident is not duplicated, and confirm an empty legacy record receives a resident.
+- Generate a structure across a chunk boundary, obstruct its center, unload/reload one edge chunk, and confirm the retry uses another safe interior position without a duplicate.
+- Exercise a cancelled entity-join event and deliberate pregeneration while watching server TPS; confirm the request remains pending and the one-resident-per-tick budget is preserved.

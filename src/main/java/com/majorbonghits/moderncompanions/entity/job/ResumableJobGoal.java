@@ -9,6 +9,7 @@ abstract class ResumableJobGoal extends Goal {
     protected final JobLifecycle lifecycle = new JobLifecycle();
     private final AbstractHumanCompanionEntity worker;
     private final CompanionJob job;
+    private int lifecycleTick = Integer.MIN_VALUE;
 
     protected ResumableJobGoal(AbstractHumanCompanionEntity worker, CompanionJob job) {
         this.worker = worker;
@@ -16,6 +17,7 @@ abstract class ResumableJobGoal extends Goal {
     }
 
     protected final boolean workActive(boolean enabled) {
+        tickLifecycle();
         if (!enabled || worker.getJob() != job || !worker.isWorkEnabled()) {
             lifecycle.pause("job_status.modern_companions.paused");
             worker.checkpointJob(JobPhase.PAUSED, worker.getJobCheckpointTarget().orElse(null));
@@ -46,5 +48,24 @@ abstract class ResumableJobGoal extends Goal {
     protected final boolean reserve(String key) {
         return !(worker.level() instanceof ServerLevel level)
                 || JobReservations.claim(level, key, worker.getUUID(), level.getGameTime(), 20L * 60L * 10L);
+    }
+
+    protected final boolean retryReady() {
+        tickLifecycle();
+        return lifecycle.retryReady();
+    }
+
+    protected final boolean retry(String status, int limit) {
+        boolean allowed = lifecycle.retry(status, limit);
+        worker.setJobStatus(status);
+        if (!allowed) lifecycle.waitFor(status);
+        return allowed;
+    }
+
+    private void tickLifecycle() {
+        if (lifecycleTick != worker.tickCount) {
+            lifecycle.tick();
+            lifecycleTick = worker.tickCount;
+        }
     }
 }

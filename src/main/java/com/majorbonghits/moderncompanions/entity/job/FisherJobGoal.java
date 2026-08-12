@@ -107,6 +107,7 @@ public class FisherJobGoal extends ResumableJobGoal {
 
     @Override
     public void tick() {
+        if (!retryReady()) return;
         if (waterSpot == null || standPos == null) return;
         if (!isFishableWater(waterSpot) || !isStandValid(standPos)) {
             rejectWater();
@@ -214,7 +215,11 @@ public class FisherJobGoal extends ResumableJobGoal {
                 ? companion.getAttributeValue(Attributes.LUCK)
                 : 0.0D;
         LootParams params = new LootParams.Builder(server)
-                .withParameter(LootContextParams.ORIGIN, companion.position())
+                // Vanilla fishing conditions such as biome/position-based loot use the bobber,
+                // not the worker standing on shore.
+                .withParameter(LootContextParams.ORIGIN, activeHook != null && !activeHook.isRemoved()
+                        ? activeHook.position()
+                        : waterSpot == null ? companion.position() : Vec3.atCenterOf(waterSpot))
                 .withParameter(LootContextParams.TOOL, companion.getMainHandItem())
                 .withLuck((float) luck)
                 .create(LootContextParamSets.FISHING);
@@ -229,7 +234,7 @@ public class FisherJobGoal extends ResumableJobGoal {
         BlockPos origin = companion.getWorkCenter().orElse(companion.blockPosition());
         BlockPos patrolCenter = companion.getWorkCenter().orElse(origin);
         Level level = companion.level();
-        int radius = Math.max(4, Math.min(searchRadius, companion.getPatrolRadius()));
+        int radius = Math.max(4, Math.min(128, Math.max(searchRadius, companion.getPatrolRadius())));
         int radiusSq = radius * radius;
         if (waterSpot == null) {
             BlockPos saved = companion.getJobCheckpointTarget().orElse(null);
@@ -412,13 +417,14 @@ public class FisherJobGoal extends ResumableJobGoal {
         if (companion.getJob() != CompanionJob.FISHER) return false;
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
+        companion.ensureJobToolEquipped();
         if (!hasRod()) { companion.setJobStatus("job_status.modern_companions.no_rod"); return false; }
         if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
 
     private boolean hasRod() {
-        return companion.getMainHandItem().getItem() instanceof FishingRodItem;
+        return JobToolPolicy.matches(CompanionJob.FISHER, companion.getMainHandItem());
     }
 
     private boolean hasTool(java.util.function.Predicate<ItemStack> matcher) {

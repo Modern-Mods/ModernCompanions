@@ -11,6 +11,7 @@ import java.util.Locale;
 public enum CompanionJob {
     NONE("none"),
     LUMBERJACK("lumberjack"),
+    FARMER("farmer"),
     HUNTER("hunter"),
     MINER("miner"),
     FISHER("fisher"),

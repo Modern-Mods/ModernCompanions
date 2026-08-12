@@ -895,7 +895,8 @@ public class MinerJobGoal extends ResumableJobGoal {
         if (companion.getJob() != CompanionJob.MINER) return false;
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (!(companion.getMainHandItem().getItem() instanceof PickaxeItem)) { companion.setJobStatus("job_status.modern_companions.no_pickaxe"); return false; }
+        companion.ensureJobToolEquipped();
+        if (!JobToolPolicy.matches(CompanionJob.MINER, companion.getMainHandItem())) { companion.setJobStatus("job_status.modern_companions.no_pickaxe"); return false; }
         if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
@@ -923,7 +924,7 @@ public class MinerJobGoal extends ResumableJobGoal {
     }
 
     private boolean hasPickaxe() {
-        return hasTool(stack -> stack.getItem() instanceof PickaxeItem);
+        return JobToolPolicy.has(companion, CompanionJob.MINER);
     }
 
     private boolean hasTool(java.util.function.Predicate<ItemStack> matcher) {

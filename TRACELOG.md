@@ -1,3 +1,14 @@
+## 2026-08-12 (Lumberjack multi-tree work batches)
+
+- Prompt/task: Fix Lumberjacks stopping after felling one tree; keep them working through multiple trees inside the assigned radius, then return to the assigned chest when the radius is exhausted or inventory fills.
+- Steps:
+  - Kept the Lumberjack goal alive during its incremental next-tree scan and chained a newly prepared tree immediately after collection/replant handling instead of allowing the goal to stop with an empty target queue.
+  - Marked a completed bounded scan explicitly, requested the existing forced-delivery path when deliverable cargo remained, and retained the active tree queue when ordinary full-inventory delivery preempted a partially felled tree.
+  - Reset the exhausted scan only after successful chest delivery so the worker resumes a fresh bounded search without repeatedly abandoning its work radius.
+  - Updated the player-facing job documentation, suggestions, and project version to 4.15.
+- Rationale: The fix reuses the existing tree planner, reservations, shared chest courier, checkpoint, and delivery result seams. Only the missing batch state transition and post-delivery rescan coordination were added; no generic job framework or direct block-edit path was introduced.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon --rerun-tasks` passed and produced `build/libs/ModernCompanions-4.15.jar`. Two-tree batching, inventory preemption, chest-full/unreachable behavior, Work toggle, interruption, unload/reload, protected trees, and `mobGriefing=false` remain manual dev-world smoke checks.
+
 ## 2026-08-11 (Placement Wand)
 
 - Prompt/task: Add an early-game Placement Wand that deploys all companion Soul Gems around a targeted block and sneak-captures nearby owned companions into available inventory slots.
@@ -3041,3 +3052,47 @@
   - Bumped the version from the current worktree value 4.09 to 4.10.
 - Rationale: The entity registrations already omit the magical roster when neither optional mod is loaded, so worldgen must use the same availability boundary instead of placing an unoccupied building. Empty pool references preserve the old templates without invalid Lithostitched lookups.
 - Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; resource audit found 0 stale pool fields and `build/libs/ModernCompanions-4.10.jar` contains both structure sets. Installed/absent-mod fresh-world generation and `/locate` smoke tests remain manual.
+
+## 2026-08-11 (long held glaive models)
+
+- Prompt/task: Make glaives match the already-implemented long held spear and quarterstaff visuals for players and companions.
+- Steps:
+  - Reused the existing wooden, stone, iron, golden, diamond, netherite, and optional bronze `*_glaive_held` models and textures.
+  - Added glaive to the shared client model registration and equipped-item model selection path.
+  - Bumped the version to 4.11 without changing glaive reach, damage, animations, or GUI/ground rendering.
+- Rationale: Glaives already had the same long held assets as spears and quarterstaves, so extending the existing renderer family keeps all three weapon types visually consistent with no new asset or gameplay code.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; player, companion, Epic Fight, bronze, and visual scale smoke tests remain manual.
+
+## 2026-08-11 (airtight structure residents)
+
+- Prompt/task: Make the guarantee that every magical building has a resident airtight.
+- Steps:
+  - Kept magical natural generation behind the existing Iron's Spellbooks OR Ars Nouveau structure-set condition and retained the empty-choice guard when no compatible magic entity is registered.
+  - Carried each structure's full bounding box into the deferred spawn request and searched it for a loaded, non-fluid, two-block-high position with a collision floor instead of assuming the geometric center was valid.
+  - Requeued requests when no safe position exists, entity creation fails, or NeoForge rejects the entity join; only a confirmed `addFreshEntity` insertion is recorded in `StructureSpawnTracker`.
+  - Added retry-state regression assertions and bumped the version from 4.11 to 4.12.
+- Rationale: Structure generation, collision/placement failure, and cancellable entity insertion are separate failure points. Keeping the request alive until the resident is actually accepted prevents an empty magical building from being permanently marked complete.
+- Build: Java 21 `structureSpawnCheck` and `compileJava` passed; full check/build and fresh-world resident smoke tests remain required.
+
+## 2026-08-11 (resumable jobs and Farmer workflow)
+
+- Prompt/task: Fully implement the six reusable job concepts from the MCA comparison and add the accompanying Farmer job.
+- Steps:
+  - Centralized job tool checks, including NeoForge fishing-rod abilities/tags, and kept job tools reserved during delivery.
+  - Preserved configurable Lumberjack ground rules and tool-speed break pacing, added Farmer crop discovery/harvest/replant/bone-meal phases, and exposed Farmer settings/statistics in the Jobs UI and README.
+  - Persisted shared job phase/target checkpoints without resetting saved session statistics, added bounded lifecycle retry backoff, and cleaned orphaned Fisher hooks after unload, job changes, Work-off, death, or dimension changes.
+  - Reused vanilla fishing loot tables with the active bobber/water origin and extended the fishing line/hand presentation to compatible rods.
+  - Bumped the version from 4.12 to 4.13.
+- Rationale: The implementation keeps profession-specific discovery and actions local while sharing only the narrow tool, lifecycle, checkpoint, safety, and presentation contracts required for reliable resumable workers.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.13.jar`; live Farmer/Fisher, protection, unload/reload, inventory, and GUI smoke tests remain.
+
+## 2026-08-12 (airtight structure resident follow-up)
+
+- Prompt/task: Make the “every magical building has a resident” guarantee airtight after the bounded resident-spawn pass.
+- Steps:
+  - Removed the geometric-center chunk prerequisite; candidate discovery now decides readiness from the loaded portions of the full structure bounding box.
+  - Added a live-server identity to queue keys and discard logic for requests left behind by a stopped server, preventing stale static queue entries from suppressing a new session.
+  - Versioned `StructureSpawnTracker` data so pre-fix keys are reconciled against a fully loaded structure area and an existing companion before they can suppress a retry; untracked accepted companions also cover a crash between insertion and SavedData persistence.
+  - Kept the retry contract: no safe candidate, entity construction failure, or cancelled entity insertion leaves the request queued and does not consume the per-tick spawn budget. Bumped the version to 4.14.
+- Rationale: A valid resident can be away from the structure center, an old tracker key can represent a failed pre-fix attempt, and static queues survive longer than one server instance. Each case must remain retryable without introducing duplicate natural-generation residents.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.14.jar`. Fresh-world, upgrade-world, cancellation, and pregeneration smoke tests remain manual.

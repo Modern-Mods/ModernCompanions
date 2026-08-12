@@ -129,6 +129,9 @@ public class DeliverToChestGoal extends Goal {
             case SUCCESS -> {
                 companion.checkpointJob(JobPhase.RETURNING, companion.getJobCheckpointTarget().orElse(targetChest));
                 companion.setJobStatus("job_status.modern_companions.returning");
+                if (companion.getJob() == CompanionJob.LUMBERJACK && companion.lumberjackGoal != null) {
+                    companion.lumberjackGoal.forceRescanAfterDeposit();
+                }
             }
         }
         stop();

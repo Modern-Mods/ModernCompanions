@@ -93,6 +93,7 @@ import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.level.pathfinder.PathType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.ContainerHelper;
@@ -110,8 +111,10 @@ import com.majorbonghits.moderncompanions.entity.job.HunterJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.MinerJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.FisherJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.ChefJobGoal;
+import com.majorbonghits.moderncompanions.entity.job.FarmerJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.JobReservations;
 import com.majorbonghits.moderncompanions.entity.job.JobPhase;
+import com.majorbonghits.moderncompanions.entity.job.JobToolPolicy;
 
 /**
  * Port of the original AbstractHumanCompanionEntity with taming, leveling,
@@ -232,6 +235,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final EntityDataAccessor<Integer> FISH_CAUGHT_SESSION = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> FISH_CAUGHT_LIFETIME = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FARMER_HARVESTED_SESSION = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FARMER_HARVESTED_LIFETIME = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FARMER_PLANTED_SESSION = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> FARMER_PLANTED_LIFETIME = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> STAMINA = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
@@ -458,6 +469,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(LUMBER_LOGS_LIFETIME, 0);
         builder.define(FISH_CAUGHT_SESSION, 0);
         builder.define(FISH_CAUGHT_LIFETIME, 0);
+        builder.define(FARMER_HARVESTED_SESSION, 0);
+        builder.define(FARMER_HARVESTED_LIFETIME, 0);
+        builder.define(FARMER_PLANTED_SESSION, 0);
+        builder.define(FARMER_PLANTED_LIFETIME, 0);
         builder.define(STAMINA_MAX, STAMINA_MAX_DEFAULT);
         builder.define(STAMINA, STAMINA_MAX_DEFAULT);
         builder.define(MANA_MAX, MANA_MAX_DEFAULT);
@@ -513,15 +528,19 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             int radius = ModConfig.safeGet(ModConfig.JOB_CHEF_RADIUS);
             this.goalSelector.addGoal(8, new ChefJobGoal(this, radius, true));
         }
+        if (ModConfig.safeGet(ModConfig.JOB_FARMER_ENABLED)) {
+            int radius = ModConfig.safeGet(ModConfig.JOB_FARMER_RADIUS);
+            this.goalSelector.addGoal(9, new FarmerJobGoal(this, radius, true));
+        }
         if (ModConfig.safeGet(ModConfig.JOB_HUNTER_ENABLED)) {
             int radius = ModConfig.safeGet(ModConfig.JOB_HUNTER_RADIUS);
-            this.goalSelector.addGoal(9, new HunterJobGoal(this, radius, true));
+            this.goalSelector.addGoal(10, new HunterJobGoal(this, radius, true));
         }
-        this.goalSelector.addGoal(10, new CustomWaterAvoidingRandomStrollGoal(this, 1.0D));
-        this.goalSelector.addGoal(11, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(12, new RandomLookAroundGoal(this));
-        this.goalSelector.addGoal(13, new OpenDoorGoal(this, true));
-        this.goalSelector.addGoal(14, new LowHealthGoal(this));
+        this.goalSelector.addGoal(11, new CustomWaterAvoidingRandomStrollGoal(this, 1.0D));
+        this.goalSelector.addGoal(12, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        this.goalSelector.addGoal(13, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(14, new OpenDoorGoal(this, true));
+        this.goalSelector.addGoal(15, new LowHealthGoal(this));
         patrolGoal = new PatrolGoal(this, 60, getPatrolRadius());
         moveBackGoal = new MoveBackToPatrolGoal(this, getPatrolRadius());
         this.goalSelector.addGoal(3, moveBackGoal);
@@ -577,6 +596,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (safeJob != getJob() && this.level() instanceof ServerLevel level) {
             JobReservations.release(level, this.getUUID());
             this.entityData.set(WORK_ENABLED, false);
+            restoreCachedWeapon();
             clearJobCheckpoint();
         }
         this.entityData.set(JOB_ID, safeJob.id());
@@ -599,11 +619,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             setFollowing(false);
             setPatrolling(false);
             setGuarding(false);
+            cacheCurrentJobWeapon();
+            equipJobToolIfNeeded();
             setJobStatus(getWorkCenter().isPresent() ? "job_status.modern_companions.searching" : "job_status.modern_companions.assign_chest");
         } else if (getJob() != CompanionJob.NONE) {
             this.getNavigation().stop();
             if (getJob() == CompanionJob.HUNTER) setHunting(false);
             checkpointJob(JobPhase.PAUSED, jobCheckpointTarget);
+            restoreCachedWeapon();
             setJobStatus("job_status.modern_companions.paused");
         }
     }
@@ -660,6 +683,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
      * goals take over more behavior.
      */
     public void onJobChanged() {
+        onJobChanged(true);
+    }
+
+    /** Reconcile a loaded job without treating the saved assignment as a new selection. */
+    private void onJobChanged(boolean resetSessionStats) {
         if (this.level() == null || this.level().isClientSide()) {
             return;
         }
@@ -680,7 +708,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             setHunting(false);
         }
 
-        // Reset per-session stats when a job is selected.
+        if (!resetSessionStats) return;
+
+        // Reset per-session stats when a player selects a new job. Save loading
+        // uses the non-resetting path so a relog cannot erase the session view.
         switch (job) {
             case MINER -> {
                 setMinerOresCounted(0);
@@ -688,6 +719,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             }
             case LUMBERJACK -> setLumberLogsSession(0);
             case FISHER -> setFishCaughtSession(0);
+            case FARMER -> {
+                setFarmerHarvestedSession(0);
+                setFarmerPlantedSession(0);
+            }
             default -> {
             }
         }
@@ -1068,20 +1103,30 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         cachedPatrolToolSlot = -1;
 
         if (!cachedPatrolWeapon.isEmpty()) {
-            this.setItemSlot(EquipmentSlot.MAINHAND, cachedPatrolWeapon);
+            // Bypass the active job's tool filter while restoring the pre-work weapon.
+            super.setItemSlot(EquipmentSlot.MAINHAND, cachedPatrolWeapon);
             cachedPatrolWeapon = ItemStack.EMPTY;
+        }
+    }
+
+    private void cacheCurrentJobWeapon() {
+        if (!cachedPatrolWeapon.isEmpty()) return;
+        ItemStack current = this.getMainHandItem();
+        if (!current.isEmpty() && !JobToolPolicy.matches(getJob(), current)) {
+            cachedPatrolWeapon = current.copy();
+            super.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
     }
 
     private void equipJobToolIfNeeded() {
         CompanionJob job = getJob();
-        if (job == CompanionJob.NONE || !isPatrolling()) return;
+        if (job == CompanionJob.NONE || !(isPatrolling() || isWorkEnabled())) return;
         if (job == CompanionJob.HUNTER && !cachedPatrolWeapon.isEmpty()) {
             setItemSlot(EquipmentSlot.MAINHAND, cachedPatrolWeapon);
             return;
         }
         ItemStack current = this.getMainHandItem();
-        if (isJobTool(current, job)) {
+        if (JobToolPolicy.matches(job, current)) {
             // Already holding a tool; remember it so we can return it later if we missed caching.
             if (cachedPatrolTool.isEmpty()) {
                 cachedPatrolTool = current;
@@ -1101,17 +1146,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         cachedPatrolTool = tool;
     }
 
+    /** Reconciles the live hand after inventory/NBT loading without changing the work checkpoint. */
+    public void ensureJobToolEquipped() {
+        if (getJob().isWorker() && (isPatrolling() || isWorkEnabled())) {
+            cacheCurrentJobWeapon();
+            equipJobToolIfNeeded();
+        }
+    }
+
     private boolean isJobTool(ItemStack stack, CompanionJob job) {
-        return switch (job) {
-            case LUMBERJACK -> stack.getItem() instanceof net.minecraft.world.item.AxeItem;
-            case MINER -> stack.getItem() instanceof net.minecraft.world.item.PickaxeItem;
-            case FISHER -> stack.getItem() instanceof net.minecraft.world.item.FishingRodItem;
-            case HUNTER -> stack.getItem() instanceof net.minecraft.world.item.SwordItem
-                    || stack.getItem() instanceof net.minecraft.world.item.AxeItem
-                    || stack.getItem() instanceof net.minecraft.world.item.BowItem
-                    || stack.getItem() instanceof net.minecraft.world.item.CrossbowItem;
-            default -> false;
-        };
+        return JobToolPolicy.matches(job, stack);
     }
 
     /**
@@ -1951,7 +1995,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             stack = fallback.isEmpty() ? (isMainHandEquipment(stack) ? stack : ItemStack.EMPTY) : fallback;
         }
         if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP) && findInventorySlot(stack) >= 0
-                && !(slot == EquipmentSlot.MAINHAND && getJob().isWorker() && isPatrolling()
+                && !(slot == EquipmentSlot.MAINHAND && getJob().isWorker() && (isPatrolling() || isWorkEnabled())
                 && isJobTool(stack, getJob()))) return;
         int index = dedicatedEquipmentIndex(slot);
         ItemStack manual = super.getItemBySlot(slot);
@@ -1977,6 +2021,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 || stack.getItem() instanceof MaceItem
                 || stack.getItem() instanceof FishingRodItem
                 || FirearmSupport.isFirearm(stack)
+                || stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.HOES)
+                || stack.is(ItemTags.SWORDS)
                 || stack.is(TagsInit.Items.SWORDS));
     }
 
@@ -2300,6 +2346,48 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public void setFishCaughtLifetime(int fish) {
         this.entityData.set(FISH_CAUGHT_LIFETIME, Math.max(0, fish));
+    }
+
+    public int getFarmerHarvestedSession() {
+        return this.entityData.get(FARMER_HARVESTED_SESSION);
+    }
+
+    public void setFarmerHarvestedSession(int count) {
+        this.entityData.set(FARMER_HARVESTED_SESSION, Math.max(0, count));
+    }
+
+    public void incrementFarmerHarvestedSession() {
+        setFarmerHarvestedSession(getFarmerHarvestedSession() + 1);
+        setFarmerHarvestedLifetime(getFarmerHarvestedLifetime() + 1);
+    }
+
+    public int getFarmerHarvestedLifetime() {
+        return this.entityData.get(FARMER_HARVESTED_LIFETIME);
+    }
+
+    public void setFarmerHarvestedLifetime(int count) {
+        this.entityData.set(FARMER_HARVESTED_LIFETIME, Math.max(0, count));
+    }
+
+    public int getFarmerPlantedSession() {
+        return this.entityData.get(FARMER_PLANTED_SESSION);
+    }
+
+    public void setFarmerPlantedSession(int count) {
+        this.entityData.set(FARMER_PLANTED_SESSION, Math.max(0, count));
+    }
+
+    public void incrementFarmerPlantedSession() {
+        setFarmerPlantedSession(getFarmerPlantedSession() + 1);
+        setFarmerPlantedLifetime(getFarmerPlantedLifetime() + 1);
+    }
+
+    public int getFarmerPlantedLifetime() {
+        return this.entityData.get(FARMER_PLANTED_LIFETIME);
+    }
+
+    public void setFarmerPlantedLifetime(int count) {
+        this.entityData.set(FARMER_PLANTED_LIFETIME, Math.max(0, count));
     }
 
     public BlockPos getMinerPlanCenter() {
@@ -3045,6 +3133,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("LumberLogsLifetime", getLumberLogsLifetime());
         tag.putInt("FishCaughtSession", getFishCaughtSession());
         tag.putInt("FishCaughtLifetime", getFishCaughtLifetime());
+        tag.putInt("FarmerHarvestedSession", getFarmerHarvestedSession());
+        tag.putInt("FarmerHarvestedLifetime", getFarmerHarvestedLifetime());
+        tag.putInt("FarmerPlantedSession", getFarmerPlantedSession());
+        tag.putInt("FarmerPlantedLifetime", getFarmerPlantedLifetime());
         tag.putIntArray("MinerPlanCenter", new int[] { getMinerPlanCenter().getX(), getMinerPlanCenter().getY(), getMinerPlanCenter().getZ() });
         tag.putInt("MinerPlanRadius", getMinerPlanRadius());
         tag.putInt("MinerPlanUp", getMinerPlanUp());
@@ -3151,7 +3243,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             jobCheckpointTarget = checkpoint.contains("Target") ? BlockPos.of(checkpoint.getLong("Target")) : null;
             jobCheckpointReturn = checkpoint.contains("Return") ? BlockPos.of(checkpoint.getLong("Return")) : null;
         }
-        this.onJobChanged();
+        this.onJobChanged(false);
         this.experienceProgress = tag.getFloat("XpP");
         this.totalExperience = tag.getInt("XpTotal");
         this.setExpLvl(tag.getInt("XpLevel"));
@@ -3195,6 +3287,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (tag.contains("LumberLogsLifetime")) setLumberLogsLifetime(tag.getInt("LumberLogsLifetime"));
         if (tag.contains("FishCaughtSession")) setFishCaughtSession(tag.getInt("FishCaughtSession"));
         if (tag.contains("FishCaughtLifetime")) setFishCaughtLifetime(tag.getInt("FishCaughtLifetime"));
+        if (tag.contains("FarmerHarvestedSession")) setFarmerHarvestedSession(tag.getInt("FarmerHarvestedSession"));
+        if (tag.contains("FarmerHarvestedLifetime")) setFarmerHarvestedLifetime(tag.getInt("FarmerHarvestedLifetime"));
+        if (tag.contains("FarmerPlantedSession")) setFarmerPlantedSession(tag.getInt("FarmerPlantedSession"));
+        if (tag.contains("FarmerPlantedLifetime")) setFarmerPlantedLifetime(tag.getInt("FarmerPlantedLifetime"));
         if (tag.contains("MinerPlanCenter")) {
             int[] arr = tag.getIntArray("MinerPlanCenter");
             if (arr.length == 3) {
@@ -3407,7 +3503,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             tickAging();
             tickCommittedSwim();
             tickCompanionMount();
-            if (isPatrolling()) {
+            if (isPatrolling() || isWorkEnabled()) {
+                cacheCurrentJobWeapon();
                 equipJobToolIfNeeded();
             }
         }

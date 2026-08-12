@@ -3,6 +3,7 @@ package com.majorbonghits.moderncompanions.client.screen.job;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
+import com.majorbonghits.moderncompanions.entity.job.JobToolPolicy;
 import com.majorbonghits.moderncompanions.network.SetCompanionJobPayload;
 import com.majorbonghits.moderncompanions.network.CompanionActionPayload;
 import net.minecraft.client.Minecraft;
@@ -14,13 +15,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.BowItem;
-import net.minecraft.world.item.CrossbowItem;
-import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.PickaxeItem;
-import net.minecraft.world.item.SwordItem;
 
 import java.util.Optional;
 
@@ -132,6 +127,11 @@ public class CompanionJobScreen extends Screen {
                 y += 6;
                 y = drawLine(gfx, Component.translatable("job.modern_companions.fisher.stats.session", companion.getFishCaughtSession()), x, y, width);
                 y = drawLine(gfx, Component.translatable("job.modern_companions.fisher.stats.lifetime", companion.getFishCaughtLifetime()), x, y, width);
+            } else if (job == CompanionJob.FARMER) {
+                y += 6;
+                y = drawLine(gfx, Component.translatable("job.modern_companions.farmer.stats.harvested", companion.getFarmerHarvestedSession()), x, y, width);
+                y = drawLine(gfx, Component.translatable("job.modern_companions.farmer.stats.planted", companion.getFarmerPlantedSession()), x, y, width);
+                y = drawLine(gfx, Component.translatable("job.modern_companions.farmer.stats.lifetime", companion.getFarmerHarvestedLifetime()), x, y, width);
             }
         });
 
@@ -167,27 +167,8 @@ public class CompanionJobScreen extends Screen {
     }
 
     private Optional<Component> toolWarning(AbstractHumanCompanionEntity companion, CompanionJob job) {
-        boolean missing = switch (job) {
-            case LUMBERJACK -> !hasTool(companion, stack -> stack.getItem() instanceof AxeItem);
-            case MINER -> !hasTool(companion, stack -> stack.getItem() instanceof PickaxeItem);
-            case FISHER -> !hasTool(companion, stack -> stack.getItem() instanceof FishingRodItem);
-            case HUNTER -> !hasTool(companion, stack -> stack.getItem() instanceof SwordItem
-                    || stack.getItem() instanceof AxeItem
-                    || stack.getItem() instanceof BowItem
-                    || stack.getItem() instanceof CrossbowItem);
-            default -> false;
-        };
+        boolean missing = !JobToolPolicy.has(companion, job);
         if (!missing) return Optional.empty();
         return Optional.of(Component.translatable("job.modern_companions.requires_tool"));
-    }
-
-    private boolean hasTool(AbstractHumanCompanionEntity companion, java.util.function.Predicate<ItemStack> matcher) {
-        if (matcher.test(companion.getMainHandItem())) return true;
-        for (int i = 0; i < companion.getInventory().getContainerSize(); i++) {
-            if (matcher.test(companion.getInventory().getItem(i))) {
-                return true;
-            }
-        }
-        return false;
     }
 }

@@ -105,15 +105,14 @@ public class HunterJobGoal extends ResumableJobGoal {
         if (companion.getJob() != CompanionJob.HUNTER) return false;
         if (!workActive(enabled)) return false;
         if (companion.isOrderedToSit() || !companion.isTame()) return false;
-        if (!hasWeapon()) return false;
+        companion.ensureJobToolEquipped();
+        if (!JobToolPolicy.matches(CompanionJob.HUNTER, companion.getMainHandItem())) return false;
         if (companion.getWorkCenter().isEmpty()) { companion.setJobStatus("job_status.modern_companions.assign_chest"); return false; }
         return true;
     }
 
     private boolean hasWeapon() {
-        ItemStack stack = companion.getMainHandItem();
-        return stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem
-                || stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem;
+        return JobToolPolicy.has(companion, CompanionJob.HUNTER);
     }
 
     private boolean hasTool(java.util.function.Predicate<ItemStack> matcher) {

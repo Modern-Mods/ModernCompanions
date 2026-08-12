@@ -11,19 +11,9 @@
     "modern_companions:alchemist",
     "modern_companions:scout",
     "modern_companions:stormcaller",
-    "modern_companions:firearm_specialist",
     "modern_companions:fire_mage",
     "modern_companions:lightning_mage",
-    "modern_companions:necromancer",
-    "modern_companions:wizard",
-    "modern_companions:sorcerer",
-    "modern_companions:warlock",
-    "modern_companions:witch",
-    "modern_companions:hag",
-    "modern_companions:cryomancer",
-    "modern_companions:druid",
-    "modern_companions:illusionist",
-    "modern_companions:battlemage"
+    "modern_companions:necromancer"
   ],
   "slots": [
     "head",

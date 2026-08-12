@@ -38,6 +38,8 @@ public final class ModEntityAttributes {
         magic(event, ModEntityTypes.DRUID, attrs);
         magic(event, ModEntityTypes.ILLUSIONIST, attrs);
         magic(event, ModEntityTypes.BATTLEMAGE, attrs);
+        event.put(ModEntityTypes.SUMMONED_WITHER_SKELETON.get(),
+                net.minecraft.world.entity.monster.WitherSkeleton.createAttributes().build());
         // Projectile entities have no attributes
     }
 

@@ -56,6 +56,14 @@ public final class ModClientEvents {
         magic(event, ModEntityTypes.FIRE_MAGE);
         magic(event, ModEntityTypes.LIGHTNING_MAGE);
         magic(event, ModEntityTypes.NECROMANCER);
+        event.registerEntityRenderer(ModEntityTypes.SUMMONED_WITHER_SKELETON.get(),
+                net.minecraft.client.renderer.entity.WitherSkeletonRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.FIREBOLT.get(),
+                ctx -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(ctx, 0.75F, true));
+        event.registerEntityRenderer(ModEntityTypes.FIREBURST.get(),
+                ctx -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(ctx, 1.5F, true));
+        event.registerEntityRenderer(ModEntityTypes.SOFT_WITHER_SKULL.get(),
+                net.minecraft.client.renderer.entity.WitherSkullRenderer::new);
         magic(event, ModEntityTypes.WIZARD);
         magic(event, ModEntityTypes.SORCERER);
         magic(event, ModEntityTypes.WARLOCK);

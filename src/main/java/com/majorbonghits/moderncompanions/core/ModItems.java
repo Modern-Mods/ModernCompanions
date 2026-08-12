@@ -120,7 +120,8 @@ public final class ModItems {
     public static final DeferredHolder<Item, Item> BEASTMASTER_SPAWN_EGG = ITEMS.register("beastmaster_spawn_egg",
             () -> new DeferredSpawnEggItem(ModEntityTypes.BEASTMASTER, 0x5A7A3C, 0xF2D479, new Item.Properties()));
 
-    public static final DeferredHolder<Item, Item> CLERIC_SPAWN_EGG = magicEgg("cleric_spawn_egg", ModEntityTypes.CLERIC, 0xE8E0B0, 0xFFD700);
+    public static final DeferredHolder<Item, Item> CLERIC_SPAWN_EGG = ITEMS.register("cleric_spawn_egg",
+            () -> new DeferredSpawnEggItem(ModEntityTypes.CLERIC, 0xE8E0B0, 0xFFD700, new Item.Properties()));
 
     public static final DeferredHolder<Item, Item> ALCHEMIST_SPAWN_EGG = ITEMS.register("alchemist_spawn_egg",
             () -> new DeferredSpawnEggItem(ModEntityTypes.ALCHEMIST, 0x9C7AC2, 0x55FFAA, new Item.Properties()));
@@ -146,9 +147,12 @@ public final class ModItems {
     public static final DeferredHolder<Item, Item> HEAVY_SPECIALIST_SPAWN_EGG = specialistEgg(
             "heavy_specialist_spawn_egg", FirearmSupport.Specialty.HEAVY, 0x252A32, 0xD6A84F);
 
-    public static final DeferredHolder<Item, Item> FIRE_MAGE_SPAWN_EGG = magicEgg("fire_mage_spawn_egg", ModEntityTypes.FIRE_MAGE, 0xFF6B3D, 0xA8320F);
-    public static final DeferredHolder<Item, Item> LIGHTNING_MAGE_SPAWN_EGG = magicEgg("lightning_mage_spawn_egg", ModEntityTypes.LIGHTNING_MAGE, 0x9BD7FF, 0x3659A6);
-    public static final DeferredHolder<Item, Item> NECROMANCER_SPAWN_EGG = magicEgg("necromancer_spawn_egg", ModEntityTypes.NECROMANCER, 0x5A5A5A, 0x2B1B3D);
+    public static final DeferredHolder<Item, Item> FIRE_MAGE_SPAWN_EGG = ITEMS.register("fire_mage_spawn_egg",
+            () -> new DeferredSpawnEggItem(ModEntityTypes.FIRE_MAGE, 0xFF6B3D, 0xA8320F, new Item.Properties()));
+    public static final DeferredHolder<Item, Item> LIGHTNING_MAGE_SPAWN_EGG = ITEMS.register("lightning_mage_spawn_egg",
+            () -> new DeferredSpawnEggItem(ModEntityTypes.LIGHTNING_MAGE, 0x9BD7FF, 0x3659A6, new Item.Properties()));
+    public static final DeferredHolder<Item, Item> NECROMANCER_SPAWN_EGG = ITEMS.register("necromancer_spawn_egg",
+            () -> new DeferredSpawnEggItem(ModEntityTypes.NECROMANCER, 0x5A5A5A, 0x2B1B3D, new Item.Properties()));
     public static final DeferredHolder<Item, Item> WIZARD_SPAWN_EGG = magicEgg("wizard_spawn_egg", ModEntityTypes.WIZARD, 0x6E5ACD, 0xB8A9FF);
     public static final DeferredHolder<Item, Item> SORCERER_SPAWN_EGG = magicEgg("sorcerer_spawn_egg", ModEntityTypes.SORCERER, 0xD85D36, 0xF4C95D);
     public static final DeferredHolder<Item, Item> WARLOCK_SPAWN_EGG = magicEgg("warlock_spawn_egg", ModEntityTypes.WARLOCK, 0x261447, 0xA35CFF);

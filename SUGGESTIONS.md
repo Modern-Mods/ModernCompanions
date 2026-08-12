@@ -1,3 +1,8 @@
+## 2026-08-12
+
+- Verify the legacy caster Mana/facing contract in a no-provider dev world: Fire Mage light/heavy fireballs, Necromancer wither skulls/summons, Cleric owner/self healing and holy sparks, Lightning Mage parity, Mana depletion/regeneration, and no back-facing casts.
+- Add a fresh-world smoke matrix for the four legacy magical companions with neither optional magic mod, Iron's only, Ars only, and both installed. Verify spawn eggs, cleric house/church/towers, native-versus-bespoke attacks, Cleric healing/blessings, Necromancer minion ownership, and no missing client renderers.
+
 - 2026-08-10 (Sorcerer targeting and Battlemage combat): Smoke-test Sorcerer Chain Lightning with `friendlyFireCompanions` disabled and enabled around the owner, same-owner companions, other tamed pets, Beastmaster pets, and hostile mobs; confirm players remain safe and invalid chained targets receive no damage/effects.
 - 2026-08-10 (Sorcerer targeting and Battlemage combat): With Iron's Spellbooks and Ars Nouveau separately and together, verify Battlemage uses `firebolt`/`fang_strike`, never attempts `spectral_hammer` or `fang_ward`, and closes for melee only while Mana is below its basic spell cost.
 - 2026-08-10 (Sorcerer targeting and Battlemage combat): If Battlemage spends too long in melee or the new spells need balance, tune the existing ranged interval/heavy recovery or Mana costs after live combat testing rather than adding another AI layer.

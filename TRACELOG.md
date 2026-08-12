@@ -1,3 +1,24 @@
+## 2026-08-12 (Legacy caster mana, healing, and facing)
+
+- Prompt/task: Without Iron's Spellbooks or Ars Nouveau, make Necromancer summons and wither projectiles, Cleric healing and holy projectiles, and Fire Mage spells consume Mana; make every caster face its target before casting.
+- Steps:
+  - Added shared basic-cast Mana gating for integrated ranged goals and shared heavy-cast cost access.
+  - Charged provider-absent Fire Mage, Lightning Mage, and Necromancer light/heavy attacks at the successful projectile, lightning, or summon operation, with target-facing applied immediately before each cast.
+  - Re-enabled Cleric's fallback ranged goal, routed owner/ally/self healing through the delayed Mana-gated heal path, charged nearby blessings, and kept holy spark casts Mana-gated and target-facing.
+  - Added the shared heavy-cast facing guard for provider-backed spells.
+- Rationale: Optional magic providers should change the spell backend, not remove resource pacing, visible aim, or the bundled legacy support behavior.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed after the 4.17 version bump and produced `build/libs/ModernCompanions-4.17.jar`. Fresh-world no-provider combat/healing smoke remains required.
+
+## 2026-08-12 (Legacy magical companion availability)
+
+- Prompt/task: Keep Cleric, Fire Mage, Lightning Mage, and Necromancer available with their structures regardless of Iron's Spellbooks or Ars Nouveau, while selecting native spells only when a provider is installed and preserving the old bespoke combat paths otherwise.
+- Steps:
+  - Made the four legacy entity types, spawn eggs, Curios entity list, and cleric/church/mage-tower structure set unconditional; left the nine newer magic roles provider-gated.
+  - Restored the deleted legacy fireball, wither-skull, and summoned-skeleton entities, attributes, renderers, and combat/loadout dispatch for provider-absent Fire Mage, Lightning Mage, and Necromancer instances.
+  - Restored Cleric's original aura, blessing, undead bonus, and equipment behavior for provider-absent worlds while retaining its current bundled support path when a provider is present.
+- Rationale: Optional integrations should alter the combat backend, not whether the legacy companions or their worldgen content exist.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.16.jar`; installed-provider and absent-provider fresh-world combat/worldgen smoke tests remain required.
+
 ## 2026-08-12 (Lumberjack multi-tree work batches)
 
 - Prompt/task: Fix Lumberjacks stopping after felling one tree; keep them working through multiple trees inside the assigned radius, then return to the assigned chest when the radius is exhausted or inventory fills.

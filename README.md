@@ -44,6 +44,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 
 - Companion buildings generate throughout the Overworld.
 - Each generated building produces exactly one resident.
+- Cleric houses, churches, and mage towers with Cleric, Fire Mage, Lightning Mage, or Necromancer residents generate whether or not Iron's Spellbooks or Ars Nouveau is installed.
 - Structure placement is spread across the world and can be configured.
 - Use `/locate structure #modern_companions:companion_houses` to find the nearest companion structure.
 - Use `/place structure modern_companions:<id>` to place a specific structure.
@@ -60,12 +61,12 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Archer:** Ranged bow specialist that automatically equips bows and arrows.
 - **Arbalist:** Crossbow specialist using 1.21 charge, cooldown, and line-of-sight behavior.
 - **Beastmaster:** Ranged fighter with a scaling animal companion.
-- **Cleric:** Uses strong, single-target owner/ally/self heals with a cast wind-up, then fires holy sparks before falling back to melee; it has no area heal or regeneration aura.
+- **Cleric:** Uses strong, mana-costing single-target owner/ally/self heals with a cast wind-up, mana-costing holy sparks, and a mana-gated nearby blessing before falling back to melee.
 - **Alchemist:** Uses beneficial potions on allies and harmful effects against enemies.
 - **Stormcaller:** Trident fighter who calls lightning and gains strength after striking.
-- **Fire Mage:** Uses precise, non-igniting fireballs and heavier blast attacks.
-- **Lightning Mage:** Uses single-target lightning and storm-enhanced chain attacks.
-- **Necromancer:** Fires wither skulls and summons temporary allied wither skeletons.
+- **Fire Mage:** Uses Iron's/Ars spells when available, otherwise precise non-igniting fireballs and heavier blast attacks.
+- **Lightning Mage:** Uses Iron's/Ars spells when available, otherwise single-target lightning and storm-enhanced chain attacks.
+- **Necromancer:** Uses Iron's/Ars spells when available, otherwise fires wither skulls and summons temporary allied wither skeletons.
 
 ### Optional Magic Companions
 
@@ -81,7 +82,7 @@ Optional magic companions use the loaded mod’s actual spell systems rather tha
 - **Illusionist:** Deception and ranged spell specialist.
 - **Battlemage:** Close-range fighter with magical attacks.
 
-Magic companions, summon gems, structures, and related content remain unavailable when the required optional mods are not installed.
+The nine optional magic companions, their summon gems, and their spell-dependent content remain unavailable when neither optional magic mod is installed. Cleric, Fire Mage, Lightning Mage, Necromancer, their summon eggs, and their houses/towers remain available and use their bundled bespoke combat kits without those mods.
 
 ### TacZ Specialists
 
@@ -151,7 +152,7 @@ Equipment rules keep companions from grabbing unsuitable items:
 
 Every companion has 100 Stamina by default. Sprinting and successful melee attacks consume Stamina. At zero Stamina, sprinting pauses and melee attacks use a slower cadence.
 
-Magic companions also have 100 Mana, which regenerates slightly faster during and after combat. Spell costs are applied only after a spell successfully casts. Cleric support spells and holy sparks cost 6 Mana.
+Magic companions also have 100 Mana, which regenerates slightly faster during and after combat. Spell costs are applied only after a spell successfully casts. Cleric support spells and holy sparks cost 6 Mana; legacy fallback mages use the same shared Mana pool for their projectiles and summons.
 
 Five reusable vessel shapes support six potion types:
 
@@ -488,8 +489,8 @@ All integrations are optional unless listed under Requirements. Content that dep
 
 | Mod | Integration |
 | --- | --- |
-| **Iron's Spellbooks** | Enables magic companions and their native spell API. Magic companions accept Iron's casting implements, stored-spell weapons, and scrolls; Iron's equipment attributes apply from armor, Curios, and held gear. |
-| **Ars Nouveau** | Enables magic companions and their native spell API. Ars spellbooks, tomes, parchment, bows, crossbows, and enchanted weapons can be used; Ars equipment attributes apply from armor and Curios. Install either magic mod for the nine optional magic roles; both can be used together. |
+| **Iron's Spellbooks** | Adds native spell paths for Fire Mage, Lightning Mage, Necromancer, and the nine optional magic roles. Cleric keeps its bundled support kit. Magic companions accept Iron's casting implements, stored-spell weapons, and scrolls; Iron's equipment attributes apply from armor, Curios, and held gear. |
+| **Ars Nouveau** | Adds native spell paths for Fire Mage, Lightning Mage, Necromancer, and the nine optional magic roles. Cleric keeps its bundled support kit. Ars spellbooks, tomes, parchment, bows, crossbows, and enchanted weapons can be used; Ars equipment attributes apply from armor and Curios. Both providers can be used together. |
 | **TacZ** | Adds firearm specialists, category-matched guns and ammunition, native firing/reload behavior, and matching summon gems. |
 | **Curios** | Adds companion Curios slots, accessory rendering, and per-slot render toggles. |
 | **Sophisticated Backpacks** | Adds a native backpack screen, upgrades, settings, and pickup insertion for a backpack equipped in the companion's Curios back slot. Requires Curios. |

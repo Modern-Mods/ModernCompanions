@@ -1,19 +1,4 @@
 {
-  "neoforge:conditions": [
-    {
-      "type": "neoforge:or",
-      "values": [
-        {
-          "type": "neoforge:mod_loaded",
-          "modid": "irons_spellbooks"
-        },
-        {
-          "type": "neoforge:mod_loaded",
-          "modid": "ars_nouveau"
-        }
-      ]
-    }
-  ],
   "structures": [
     {
       "structure": "modern_companions:church",

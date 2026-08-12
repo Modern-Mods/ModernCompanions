@@ -500,7 +500,7 @@ All integrations are optional unless listed under Requirements. Content that dep
 | **TacZ** | Adds firearm specialists, category-matched guns and ammunition, native firing/reload behavior, and matching summon gems. |
 | **Curios** | Adds companion Curios slots, accessory rendering, and per-slot render toggles. |
 | **Sophisticated Backpacks** | Adds a native backpack screen, upgrades, settings, and pickup insertion for a backpack equipped in the companion's Curios back slot. Requires Curios. |
-| **Epic Fight** | Adds the armature renderer, movement, melee timing, hit logic, and weapon movesets while retaining companion roles, Stamina, equipment, and safety rules. Bundled weapon families include matching Epic Fight capabilities. TacZ guns temporarily use TacZ's native pose; a gun stored in cargo does not disable Epic Fight melee. |
+| **Epic Fight** | Adds the armature renderer, movement, melee timing, hit logic, weapon movesets, and equipped armor rendering while retaining companion roles, Stamina, equipment, and safety rules. Bundled weapon families include matching Epic Fight capabilities. TacZ guns temporarily use TacZ's native pose; a gun stored in cargo does not disable Epic Fight melee. |
 | **Jade** | Shows companion attributes and Stamina/Mana bars in the HUD. |
 | **WTHIT** | Shows companion data in WTHIT tooltips. |
 | **JEI** | Adds the custom-vessel brewing steps to JEI's brewing category. Modern Companions does not ship a dedicated REI plugin. |

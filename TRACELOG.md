@@ -1,3 +1,14 @@
+## 2026-08-12 (Epic Fight equipped armor rendering)
+
+- Prompt/task: Make companion equipped armor visible when Epic Fight replaces the normal companion renderer.
+- Steps:
+  - Traced the existing wide/slim vanilla `HumanoidArmorLayer` setup and the Epic Fight `PHumanoidRenderer` replacement path.
+  - Split the wide and slim companion armor layers into distinct layer classes so Epic Fight can address each layer independently.
+  - Registered filtered Epic Fight `WearableItemLayer` bridges for the Steve `Meshes.BIPED` and Alex `Meshes.ALEX` models, preserving the live equipment-render context and preventing the inactive model's layer from double-rendering.
+  - Updated the Epic Fight compatibility documentation and bumped the project version from 4.24 to 4.25.
+- Rationale: Epic Fight does not automatically render the wrapped companion renderer's custom vanilla armor layers. Its native wearable layer already handles equipped armor, trims, glints, and posed mesh rendering; explicit wide/slim registration restores that path without duplicating armor logic or changing equipment storage.
+- Build: Java 21 `check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.25.jar`; the JAR contains the Epic Fight companion renderer and distinct wide/slim armor-layer classes without bundled Epic Fight classes. Installed-Epic-Fight Steve/Alex armor visuals and absent-Epic-Fight startup/rendering remain manual smoke tests.
+
 ## 2026-08-12 (Legacy caster mana, healing, and facing)
 
 - Prompt/task: Without Iron's Spellbooks or Ars Nouveau, make Necromancer summons and wither projectiles, Cleric healing and holy projectiles, and Fire Mage spells consume Mana; make every caster face its target before casting.

@@ -39,15 +39,15 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5f);
         this.wideModel = this.getModel();
         this.slimModel = new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), true);
-        this.wideArmorLayer = new CompanionArmorLayer(this,
+        this.wideArmorLayer = new WideCompanionArmorLayer(this,
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
-                context.getModelManager(), false);
+                context.getModelManager());
         this.addLayer(this.wideArmorLayer);
-        this.slimArmorLayer = new CompanionArmorLayer(this,
+        this.slimArmorLayer = new SlimCompanionArmorLayer(this,
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_INNER_ARMOR)),
                 new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM_OUTER_ARMOR)),
-                context.getModelManager(), true);
+                context.getModelManager());
         this.addLayer(this.slimArmorLayer);
     }
 
@@ -111,13 +111,13 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
     }
 
     /** Keeps armor arms aligned with the selected Steve/Alex body instead of masking the choice. */
-    private static final class CompanionArmorLayer extends HumanoidArmorLayer<AbstractHumanCompanionEntity,
+    static class CompanionArmorLayer extends HumanoidArmorLayer<AbstractHumanCompanionEntity,
             PlayerModel<AbstractHumanCompanionEntity>, HumanoidModel<AbstractHumanCompanionEntity>> {
         private final boolean alex;
 
-        private CompanionArmorLayer(CompanionRenderer renderer, HumanoidModel<AbstractHumanCompanionEntity> innerModel,
-                                    HumanoidModel<AbstractHumanCompanionEntity> outerModel, ModelManager modelManager,
-                                    boolean alex) {
+        protected CompanionArmorLayer(CompanionRenderer renderer, HumanoidModel<AbstractHumanCompanionEntity> innerModel,
+                                      HumanoidModel<AbstractHumanCompanionEntity> outerModel, ModelManager modelManager,
+                                      boolean alex) {
             super(renderer, innerModel, outerModel, modelManager);
             this.alex = alex;
         }
@@ -130,6 +130,22 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
                 super.render(poseStack, buffer, packedLight, entity, limbSwing, limbSwingAmount,
                         partialTick, ageInTicks, netHeadYaw, headPitch);
             }
+        }
+    }
+
+    /** Keeps Epic Fight's patched-layer keys distinct for the wide and slim armor models. */
+    static final class WideCompanionArmorLayer extends CompanionArmorLayer {
+        private WideCompanionArmorLayer(CompanionRenderer renderer, HumanoidModel<AbstractHumanCompanionEntity> innerModel,
+                                        HumanoidModel<AbstractHumanCompanionEntity> outerModel, ModelManager modelManager) {
+            super(renderer, innerModel, outerModel, modelManager, false);
+        }
+    }
+
+    /** Keeps Epic Fight's patched-layer keys distinct for the wide and slim armor models. */
+    static final class SlimCompanionArmorLayer extends CompanionArmorLayer {
+        private SlimCompanionArmorLayer(CompanionRenderer renderer, HumanoidModel<AbstractHumanCompanionEntity> innerModel,
+                                        HumanoidModel<AbstractHumanCompanionEntity> outerModel, ModelManager modelManager) {
+            super(renderer, innerModel, outerModel, modelManager, true);
         }
     }
 

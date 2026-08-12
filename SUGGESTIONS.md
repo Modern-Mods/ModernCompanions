@@ -1,5 +1,6 @@
 ## 2026-08-12
 
+- 2026-08-12 (Epic Fight equipped armor): Smoke-test wide Steve and slim Alex companions wearing head, chest, legs, and feet armor with Epic Fight installed; confirm each set follows the animated body without duplicate layers, then repeat with Epic Fight absent to confirm vanilla armor rendering and startup remain intact.
 - 2026-08-12 (held legendary weapon loading): Keep shared held-model registries outside Mixin-owned packages; add a small package-boundary check if future client helpers are added near mixin classes.
 - Verify the legacy caster Mana/facing contract in a no-provider dev world: Fire Mage light/heavy fireballs, Necromancer wither skulls/summons, Cleric owner/self healing and holy sparks, Lightning Mage parity, Mana depletion/regeneration, and no back-facing casts.
 - Add a fresh-world smoke matrix for the four legacy magical companions with neither optional magic mod, Iron's only, Ars only, and both installed. Verify spawn eggs, cleric house/church/towers, native-versus-bespoke attacks, Cleric healing/blessings, Necromancer minion ownership, and no missing client renderers.

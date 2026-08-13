@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.entity;
 
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.core.ModConfig;
+import com.majorbonghits.moderncompanions.registry.ModArmorItems;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -563,13 +564,18 @@ public class CompanionData {
                 default -> ItemStack.EMPTY;
             };
         } else {
-            return switch (armorType) {
-                case HEAD -> Items.IRON_HELMET.getDefaultInstance();
-                case CHEST -> Items.IRON_CHESTPLATE.getDefaultInstance();
-                case LEGS -> Items.IRON_LEGGINGS.getDefaultInstance();
-                case FEET -> Items.IRON_BOOTS.getDefaultInstance();
-                default -> ItemStack.EMPTY;
-            };
+            // Preserve the original iron outcome half of the time; the other
+            // half draws from every imported piece valid for this slot.
+            if (rand.nextBoolean()) {
+                return switch (armorType) {
+                    case HEAD -> Items.IRON_HELMET.getDefaultInstance();
+                    case CHEST -> Items.IRON_CHESTPLATE.getDefaultInstance();
+                    case LEGS -> Items.IRON_LEGGINGS.getDefaultInstance();
+                    case FEET -> Items.IRON_BOOTS.getDefaultInstance();
+                    default -> ItemStack.EMPTY;
+                };
+            }
+            return ModArmorItems.randomSpawnArmor(armorType, rand);
         }
     }
 

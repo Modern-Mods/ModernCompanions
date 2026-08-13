@@ -19,6 +19,7 @@ public class DeliverToChestGoal extends Goal {
     private static final int STUCK_ALERT_TICKS = 200;
     private static final int RETURN_STALL_TICKS = 120;
     private static final long BULK_DELIVERY_TICKS = 2400L;
+    private static final int RETURN_SEARCH_RADIUS = 6;
     private final AbstractHumanCompanionEntity companion;
     private final double speed;
     private BlockPos targetChest;
@@ -91,6 +92,7 @@ public class DeliverToChestGoal extends Goal {
         }
         companion.refreshDeliveryChunkTicket(server);
         if (!server.isLoaded(targetChest)) {
+            releaseChestReservation(server);
             companion.alertChestUnloaded();
             companion.setJobStatus("job_status.modern_companions.chest_unloaded");
             companion.deferDelivery(server.getGameTime() + 100L);
@@ -100,6 +102,7 @@ public class DeliverToChestGoal extends Goal {
         // Navigation probes can reject an open chest-side tile before movement begins.
         if (chestStand == null) chestStand = WorkerSite.findSafeApproachStand(companion, targetChest, 2);
         if (chestStand == null) {
+            releaseChestReservation(server);
             companion.setJobStatus("job_status.modern_companions.chest_unreachable");
             companion.deferDelivery(server.getGameTime() + 100L);
             reportStuck();
@@ -265,6 +268,22 @@ public class DeliverToChestGoal extends Goal {
             stop();
             return;
         }
+        if (!WorkerSite.isSafeStand(server, returnTarget)) {
+            BlockPos alternate = findReachableReturnStand(server);
+            if (alternate == null) alternate = findSafeReturnStand(server);
+            if (alternate == null) {
+                companion.setJobStatus("job_status.modern_companions.route_blocked");
+                companion.deferDelivery(server.getGameTime() + 100L);
+                stop();
+                return;
+            }
+            returnTarget = alternate;
+            companion.setJobReturnPosition(alternate);
+            returnStallTicks = 0;
+            lastReturnDistance = Double.MAX_VALUE;
+            moveTowardReturn();
+            return;
+        }
         double distance = companion.distanceToSqr(Vec3.atCenterOf(returnTarget));
         if (distance > 2.25D) {
             companion.setJobStatus("job_status.modern_companions.returning");
@@ -298,6 +317,8 @@ public class DeliverToChestGoal extends Goal {
             return;
         }
         companion.finishJobReturn();
+        returning = false;
+        companion.getNavigation().stop();
         companion.setJobStatus("job_status.modern_companions.searching");
     }
 
@@ -306,9 +327,9 @@ public class DeliverToChestGoal extends Goal {
     }
 
     private boolean moveTowardReturn() {
-        if (returnTarget == null) return false;
+        if (returnTarget == null || !WorkerSite.isSafeStand(companion.level(), returnTarget)) return false;
         var path = companion.getNavigation().createPath(returnTarget, 0);
-        if (path != null && path.canReach()) return companion.getNavigation().moveTo(path, speed);
+        if (path != null && path.canReach() && companion.getNavigation().moveTo(path, speed)) return true;
         // A native probe can reject a valid nearby checkpoint while the
         // navigation controller can still build a route on its next tick.
         return companion.getNavigation().moveTo(returnTarget.getX() + .5D, returnTarget.getY(),
@@ -321,9 +342,10 @@ public class DeliverToChestGoal extends Goal {
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
         for (BlockPos candidate : BlockPos.betweenClosed(
-                returnTarget.offset(-2, -1, -2), returnTarget.offset(2, 1, 2))) {
+                returnTarget.offset(-RETURN_SEARCH_RADIUS, -2, -RETURN_SEARCH_RADIUS),
+                returnTarget.offset(RETURN_SEARCH_RADIUS, 2, RETURN_SEARCH_RADIUS))) {
             if (!WorkerSite.isSafeStand(server, candidate)
-                    || candidate.distSqr(returnTarget) > 6.25D) continue;
+                    || candidate.distSqr(returnTarget) > RETURN_SEARCH_RADIUS * RETURN_SEARCH_RADIUS * 2.0D) continue;
             var path = companion.getNavigation().createPath(candidate, 0);
             if (path == null || !path.canReach()) continue;
             double distance = candidate.distSqr(returnTarget);
@@ -341,9 +363,10 @@ public class DeliverToChestGoal extends Goal {
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
         for (BlockPos candidate : BlockPos.betweenClosed(
-                returnTarget.offset(-2, -1, -2), returnTarget.offset(2, 1, 2))) {
+                returnTarget.offset(-RETURN_SEARCH_RADIUS, -2, -RETURN_SEARCH_RADIUS),
+                returnTarget.offset(RETURN_SEARCH_RADIUS, 2, RETURN_SEARCH_RADIUS))) {
             if (!WorkerSite.isSafeStand(server, candidate)
-                    || candidate.distSqr(returnTarget) > 6.25D) continue;
+                    || candidate.distSqr(returnTarget) > RETURN_SEARCH_RADIUS * RETURN_SEARCH_RADIUS * 2.0D) continue;
             double distance = candidate.distSqr(returnTarget);
             if (distance < bestDistance) {
                 best = candidate.immutable();
@@ -356,5 +379,12 @@ public class DeliverToChestGoal extends Goal {
     private void reportStuck() {
         if (targetChest != null) companion.notifyCourierOwnerText(net.minecraft.network.chat.Component.translatable(
                 "message.modern_companions.courier.stuck", targetChest.getX(), targetChest.getY(), targetChest.getZ()));
+    }
+
+    private void releaseChestReservation(ServerLevel server) {
+        if (targetChest != null) {
+            JobReservations.release(server, com.majorbonghits.moderncompanions.entity.job.ReservationType.CHEST,
+                    "chest:" + targetChest.asLong(), companion.getUUID());
+        }
     }
 }

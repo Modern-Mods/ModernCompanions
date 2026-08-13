@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "xxx",
+    "x x",
+    "x x"
+  ],
+  "key": {
+    "x": {
+      "item": "minecraft:diamond"
+    }
+  },
+  "result": {
+    "id": "modern_companions:archaic_diamond_leggings",
+    "count": 1
+  }
+}

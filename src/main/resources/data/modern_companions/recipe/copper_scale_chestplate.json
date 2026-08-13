@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "aba",
+    "aaa",
+    "aaa"
+  ],
+  "key": {
+    "a": {
+      "item": "minecraft:copper_ingot"
+    },
+    "b": {
+      "item": "modern_companions:gambison_chestplate"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "modern_companions:copper_scale_chestplate"
+  }
+}

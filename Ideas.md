@@ -2,15 +2,6 @@
 
 - We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 
 
-## New Armor Sets
-- I want to completely import the armor sets, including the 'vanilla rework' sets as their own independent sets - simply reuse the assets
-    * `medieval_armory/assets/medieval_armory`
-    * `medieval_armory/assets/minecraft/textures`
-- Retain the names of the armors from `medieval_armory/assets/medieval_armory`, but come up with new names for the sets from `medieval_armory/assets/minecraft/textures` which will be added as unique sets - not overwriting the vanilla armors like the original mod intended. 
-- All of these new armor sets needs crafting recipes, and JEI entries.
-- All of these armor sets need to be included in the modern companions armor pool they can posess at spawn 
-
-
 ## Maybe
 - I want to add a new option to the mod; Companions show chat bubbles show over their heard when speaking, instead of chat.
     - This should be a toggle between chat speak and bubble speak, or both so the player can choose.

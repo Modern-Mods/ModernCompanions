@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "b b",
+    "bdb"
+  ],
+  "key": {
+    "b": {
+      "item": "minecraft:diamond"
+    },
+    "d": {
+      "item": "modern_companions:diamond_weave_boots"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "modern_companions:heavy_diamond_boots"
+  }
+}

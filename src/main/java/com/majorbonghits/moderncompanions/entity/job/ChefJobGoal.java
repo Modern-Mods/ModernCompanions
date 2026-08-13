@@ -23,6 +23,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.phys.AABB;
 
 import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Chef job converts raw food in the companion inventory when standing near a
@@ -41,12 +44,18 @@ public class ChefJobGoal extends ResumableJobGoal {
     private BlockPos heatStand;
     private BlockPos supplyChest;
     private BlockPos supplyStand;
+    private String supplyFailureStatus = "job_status.modern_companions.no_raw_meat";
+    private String heatFailureStatus = "job_status.modern_companions.heat_source_missing";
     private int cooldown;
     private ItemStack pendingFurnaceOutput = ItemStack.EMPTY;
+    private int pendingFurnaceOutputBaseline;
+    private int pendingFurnaceBatchCount;
     private ItemStack pendingCampfireOutput = ItemStack.EMPTY;
     private int pendingCampfireSlot = -1;
     private long pendingCampfireReadyAt = -1L;
-    private int pendingCampfireInventoryCount = -1;
+    private UUID pendingCampfireEntityId;
+    /** Item entities already near this exact campfire before the batch began. */
+    private final Set<UUID> pendingCampfireBaselineIds = new HashSet<>();
     private boolean restoredPlan;
 
     public ChefJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
@@ -66,7 +75,7 @@ public class ChefJobGoal extends ResumableJobGoal {
                 phase(JobPhase.TRAVELLING, "job_status.modern_companions.getting_raw_meat", supplyChest);
                 return true;
             }
-            waiting("job_status.modern_companions.no_raw_meat");
+            waiting(supplyFailureStatus);
             return false;
         }
         if (heatSource == null) {
@@ -76,11 +85,15 @@ public class ChefJobGoal extends ResumableJobGoal {
             });
         }
         if (heatSource == null || heatStand == null || !isHeatSource(heatSource)) heatSource = findHeatSource();
+        if (heatSource == null || heatStand == null) {
+            waiting(heatFailureStatus);
+            return false;
+        }
         if (heatSource != null && heatStand != null && !reserve("workstation:" + heatSource.asLong())) {
             waiting("job_status.modern_companions.workstation_reserved");
             return false;
         }
-        return heatSource != null && heatStand != null;
+        return true;
     }
 
     @Override
@@ -139,16 +152,15 @@ public class ChefJobGoal extends ResumableJobGoal {
         var be = server.getBlockEntity(heatSource);
         boolean cooked = false;
         if (be instanceof AbstractFurnaceBlockEntity furnace) {
-            if (!hasFuel(furnace) && pendingFurnaceOutput.isEmpty() && !findFirstRawIngredient().isEmpty()) {
+            if (!hasFuel(furnace) && pendingFurnaceOutput.isEmpty() && !findFirstRawIngredient().isEmpty()
+                    && !supplyFuel(furnace)) {
                 companion.setJobStatus("job_status.modern_companions.no_fuel");
                 return;
             }
             cooked = pullCooked(furnace) || cookInFurnace(furnace);
         }
         if (!cooked && be instanceof CampfireBlockEntity campfire) {
-            cooked = collectCampfireOutput(server);
-        }
-        if (!cooked && be instanceof CampfireBlockEntity campfire) {
+            if (collectCampfireOutput(server)) return;
             cookInCampfire(server, campfire);
         }
     }
@@ -159,17 +171,6 @@ public class ChefJobGoal extends ResumableJobGoal {
         int inputSlot = 0;
         int fuelSlot = 1;
         int outputSlot = 2;
-
-        // Clean finished cooked items first to avoid jammed output.
-        ItemStack output = furnace.getItem(outputSlot);
-        if (!output.isEmpty() && !pendingFurnaceOutput.isEmpty() && ItemStack.isSameItemSameComponents(output, pendingFurnaceOutput)) {
-            ItemStack moved = output.copy();
-            furnace.setItem(outputSlot, ItemStack.EMPTY);
-            ItemStack leftover = companion.getInventory().addItem(moved);
-            if (!leftover.isEmpty()) companion.spawnAtLocation(leftover);
-            furnace.setChanged();
-            pendingFurnaceOutput = ItemStack.EMPTY;
-        }
 
         ItemStack rawStack = findFirstRawIngredient();
         if (rawStack.isEmpty()) return false;
@@ -197,25 +198,38 @@ public class ChefJobGoal extends ResumableJobGoal {
         }
         furnace.setChanged();
         pendingFurnaceOutput = cookedStack.copyWithCount(1);
+        pendingFurnaceOutputBaseline = existingOutput.isEmpty() ? 0 : existingOutput.getCount();
+        pendingFurnaceBatchCount = 1;
         savePlan();
         return true;
     }
 
     private boolean pullCooked(AbstractFurnaceBlockEntity furnace) {
         ItemStack output = furnace.getItem(2);
-        if (output.isEmpty() || pendingFurnaceOutput.isEmpty() || !ItemStack.isSameItemSameComponents(output, pendingFurnaceOutput)) {
+        if (output.isEmpty() || pendingFurnaceOutput.isEmpty()
+                || !ItemStack.isSameItemSameComponents(output, pendingFurnaceOutput)
+                || output.getCount() <= pendingFurnaceOutputBaseline) {
             return false;
         }
-        ItemStack moved = output.copy();
+        int available = output.getCount() - pendingFurnaceOutputBaseline;
+        int producedCount = Math.min(available, Math.max(1, pendingFurnaceBatchCount));
+        ItemStack moved = output.copyWithCount(producedCount);
         ItemStack leftover = companion.getInventory().addItem(moved);
-        furnace.setItem(2, leftover);
+        int insertedCount = producedCount - leftover.getCount();
+        ItemStack retained = output.copyWithCount(output.getCount() - insertedCount);
+        furnace.setItem(2, retained.getCount() > 0 ? retained : ItemStack.EMPTY);
         furnace.setChanged();
+        if (insertedCount > 0) companion.incrementChefCooked(insertedCount);
         if (!leftover.isEmpty()) {
+            pendingFurnaceBatchCount = Math.max(0, pendingFurnaceBatchCount - insertedCount);
             companion.setJobStatus("job_status.modern_companions.inventory_full");
             companion.requestImmediateDelivery(null);
+            savePlan();
             return false;
         }
         pendingFurnaceOutput = ItemStack.EMPTY;
+        pendingFurnaceOutputBaseline = 0;
+        pendingFurnaceBatchCount = 0;
         savePlan();
         if (companion.hasDeliverableCargo()) companion.requestImmediateDelivery(null);
         return true;
@@ -225,6 +239,19 @@ public class ChefJobGoal extends ResumableJobGoal {
         boolean lit = furnace.getBlockState().hasProperty(AbstractFurnaceBlock.LIT) && furnace.getBlockState().getValue(AbstractFurnaceBlock.LIT);
         boolean stocked = !furnace.getItem(1).isEmpty();
         return lit || stocked;
+    }
+
+    private boolean supplyFuel(AbstractFurnaceBlockEntity furnace) {
+        if (!furnace.getItem(1).isEmpty()) return true;
+        for (int slot = 0; slot < companion.getInventory().getContainerSize(); slot++) {
+            ItemStack carried = companion.getInventory().getItem(slot);
+            if (!carried.isEmpty() && AbstractFurnaceBlockEntity.isFuel(carried)) {
+                furnace.setItem(1, carried.split(1));
+                furnace.setChanged();
+                return true;
+            }
+        }
+        return false;
     }
 
     private ItemStack findFirstRawIngredient() {
@@ -239,11 +266,26 @@ public class ChefJobGoal extends ResumableJobGoal {
     }
 
     private boolean prepareSupply() {
+        supplyFailureStatus = "job_status.modern_companions.no_raw_meat";
         if (!(companion.level() instanceof ServerLevel server)) return false;
         BlockPos chest = companion.getWorkCenter().orElse(null);
-        if (chest == null || !server.isLoaded(chest)) return false;
+        if (chest == null) {
+            supplyFailureStatus = "job_status.modern_companions.assign_chest";
+            return false;
+        }
+        if (!server.isLoaded(chest)) {
+            supplyFailureStatus = "job_status.modern_companions.chest_unloaded";
+            return false;
+        }
         BlockPos stand = WorkerSite.findApproachStand(companion, chest, 2);
-        if (stand == null || !reserve("chest:" + chest.asLong())) return false;
+        if (stand == null) {
+            supplyFailureStatus = "job_status.modern_companions.chest_unreachable";
+            return false;
+        }
+        if (!reserve("chest:" + chest.asLong())) {
+            supplyFailureStatus = "job_status.modern_companions.chest_reserved";
+            return false;
+        }
         supplyChest = chest;
         supplyStand = stand;
         return true;
@@ -274,9 +316,14 @@ public class ChefJobGoal extends ResumableJobGoal {
     }
 
     private boolean cookable(ItemStack stack) {
-        return stack.is(RAW_MEAT) && (!recipeResult(stack, RecipeType.SMOKING).isEmpty()
+        return acceptsTaggedRecipe(stack.is(RAW_MEAT), !recipeResult(stack, RecipeType.SMOKING).isEmpty()
                 || !recipeResult(stack, RecipeType.SMELTING).isEmpty()
                 || !recipeResult(stack, RecipeType.CAMPFIRE_COOKING).isEmpty());
+    }
+
+    /** Pure gate used by the chest withdrawal and recipe-manager paths. */
+    static boolean acceptsTaggedRecipe(boolean rawMeatTagged, boolean recipeFound) {
+        return rawMeatTagged && recipeFound;
     }
 
     private void cookInCampfire(ServerLevel server, CampfireBlockEntity campfire) {
@@ -295,14 +342,13 @@ public class ChefJobGoal extends ResumableJobGoal {
             }
         }
         if (emptySlot < 0) return;
-        int inventoryCount = countInventory(output);
         int cookingTime = recipe.get().value().getCookingTime();
+        snapshotCampfireItems(server);
         if (!output.isEmpty() && campfire.placeFood(companion, input, recipe.get().value().getCookingTime())) {
             raw.shrink(1);
             pendingCampfireOutput = output.copyWithCount(1);
             pendingCampfireSlot = emptySlot;
             pendingCampfireReadyAt = server.getGameTime() + cookingTime;
-            pendingCampfireInventoryCount = inventoryCount;
             savePlan();
         }
     }
@@ -312,19 +358,16 @@ public class ChefJobGoal extends ResumableJobGoal {
             return false;
         }
         if (server.getGameTime() < pendingCampfireReadyAt) return false;
-        if (pendingCampfireInventoryCount >= 0
-                && countInventory(pendingCampfireOutput) >= pendingCampfireInventoryCount + 1) {
-            clearCampfireBatch();
-            if (companion.hasDeliverableCargo()) companion.requestImmediateDelivery(null);
-            return true;
-        }
         if (!(server.getBlockEntity(heatSource) instanceof CampfireBlockEntity campfire)) return false;
         if (pendingCampfireSlot >= 0 && pendingCampfireSlot < campfire.getItems().size()
                 && !campfire.getItems().get(pendingCampfireSlot).isEmpty()) return false;
         for (ItemEntity item : server.getEntitiesOfClass(ItemEntity.class,
                 new AABB(heatSource).inflate(1.0D), candidate -> candidate.isAlive()
-                        && candidate.getAge() <= 20
+                        && (pendingCampfireEntityId == null || candidate.getUUID().equals(pendingCampfireEntityId))
+                        && !pendingCampfireBaselineIds.contains(candidate.getUUID())
+                        && (pendingCampfireEntityId != null || candidate.getAge() <= 20)
                         && ItemStack.isSameItemSameComponents(candidate.getItem(), pendingCampfireOutput))) {
+            pendingCampfireEntityId = item.getUUID();
             ItemStack leftover = companion.getInventory().addItem(item.getItem().copy());
             if (!leftover.isEmpty()) {
                 item.setItem(leftover);
@@ -340,21 +383,21 @@ public class ChefJobGoal extends ResumableJobGoal {
         return false;
     }
 
-    private int countInventory(ItemStack wanted) {
-        int count = 0;
-        for (int i = 0; i < companion.getInventory().getContainerSize(); i++) {
-            ItemStack stack = companion.getInventory().getItem(i);
-            if (ItemStack.isSameItemSameComponents(stack, wanted)) count += stack.getCount();
-        }
-        return count;
-    }
-
     private void clearCampfireBatch() {
         pendingCampfireOutput = ItemStack.EMPTY;
         pendingCampfireSlot = -1;
         pendingCampfireReadyAt = -1L;
-        pendingCampfireInventoryCount = -1;
+        pendingCampfireEntityId = null;
+        pendingCampfireBaselineIds.clear();
         savePlan();
+    }
+
+    private void snapshotCampfireItems(ServerLevel server) {
+        pendingCampfireBaselineIds.clear();
+        for (ItemEntity item : server.getEntitiesOfClass(ItemEntity.class,
+                new AABB(heatSource).inflate(1.0D), ItemEntity::isAlive)) {
+            pendingCampfireBaselineIds.add(item.getUUID());
+        }
     }
 
     private <T extends AbstractCookingRecipe> ItemStack recipeResult(ItemStack raw, RecipeType<T> type) {
@@ -367,10 +410,12 @@ public class ChefJobGoal extends ResumableJobGoal {
     private BlockPos findHeatSource() {
         BlockPos origin = companion.getWorkCenter().orElse(companion.blockPosition());
         Level level = companion.level();
-        int radius = Math.max(3, Math.min(searchRadius, companion.getPatrolRadius()));
+        int radius = Math.max(3, Math.min(128, Math.max(searchRadius, companion.getPatrolRadius())));
+        boolean foundHeat = false;
         for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-radius, -1, -radius),
                 origin.offset(radius, 2, radius))) {
             if (!isHeatSource(pos)) continue;
+            foundHeat = true;
             BlockPos stand = WorkerSite.findStand(companion, pos, 2);
             if (stand != null) {
                 heatStand = stand;
@@ -379,6 +424,9 @@ public class ChefJobGoal extends ResumableJobGoal {
                 return heatSource;
             }
         }
+        heatFailureStatus = foundHeat
+                ? "job_status.modern_companions.heat_source_unreachable"
+                : "job_status.modern_companions.heat_source_missing";
         return null;
     }
 
@@ -402,6 +450,14 @@ public class ChefJobGoal extends ResumableJobGoal {
         return true;
     }
 
+    /** Keep a just-emitted campfire result out of generic pickup until this batch owns it. */
+    public boolean shouldDeferPickup(ItemEntity item) {
+        if (item == null || pendingCampfireOutput.isEmpty() || heatSource == null
+                || !ItemStack.isSameItemSameComponents(item.getItem(), pendingCampfireOutput)
+                || !new AABB(heatSource).inflate(1.0D).contains(item.position())) return false;
+        return pendingCampfireEntityId == null || pendingCampfireEntityId.equals(item.getUUID());
+    }
+
     private void moveToSupply() {
         if (supplyStand != null) companion.getNavigation().moveTo(supplyStand.getX() + 0.5D, supplyStand.getY(), supplyStand.getZ() + 0.5D, 1.0D);
     }
@@ -420,14 +476,24 @@ public class ChefJobGoal extends ResumableJobGoal {
         }
         if (payload.contains("FurnaceOutput", 10)) {
             pendingFurnaceOutput = ItemStack.parseOptional(companion.registryAccess(), payload.getCompound("FurnaceOutput"));
+            pendingFurnaceOutputBaseline = payload.contains("FurnaceOutputBaseline")
+                    ? payload.getInt("FurnaceOutputBaseline") : 0;
+            pendingFurnaceBatchCount = payload.contains("FurnaceBatchCount")
+                    ? Math.max(1, payload.getInt("FurnaceBatchCount")) : 1;
         }
         if (payload.contains("CampfireOutput", 10)) {
             pendingCampfireOutput = ItemStack.parseOptional(companion.registryAccess(), payload.getCompound("CampfireOutput"));
             pendingCampfireSlot = payload.contains("CampfireSlot") ? payload.getInt("CampfireSlot") : -1;
             pendingCampfireReadyAt = payload.contains("CampfireReady")
                     ? payload.getLong("CampfireReady") : companion.level().getGameTime();
-            pendingCampfireInventoryCount = payload.contains("CampfireInventoryCount")
-                    ? payload.getInt("CampfireInventoryCount") : -1;
+            pendingCampfireEntityId = payload.hasUUID("CampfireEntity")
+                    ? payload.getUUID("CampfireEntity") : null;
+        }
+        pendingCampfireBaselineIds.clear();
+        var baseline = payload.getList("CampfireBaseline", 10);
+        for (int index = 0; index < baseline.size(); index++) {
+            CompoundTag entry = baseline.getCompound(index);
+            if (entry.hasUUID("Id")) pendingCampfireBaselineIds.add(entry.getUUID("Id"));
         }
     }
 
@@ -436,17 +502,34 @@ public class ChefJobGoal extends ResumableJobGoal {
         putPos(payload, "Heat", heatSource);
         putPos(payload, "Stand", heatStand);
         if (pendingFurnaceOutput.isEmpty()) payload.remove("FurnaceOutput");
-        else payload.put("FurnaceOutput", pendingFurnaceOutput.save(companion.registryAccess()));
+        else {
+            payload.put("FurnaceOutput", pendingFurnaceOutput.save(companion.registryAccess()));
+            payload.putInt("FurnaceOutputBaseline", pendingFurnaceOutputBaseline);
+            payload.putInt("FurnaceBatchCount", Math.max(1, pendingFurnaceBatchCount));
+        }
+        if (pendingFurnaceOutput.isEmpty()) {
+            payload.remove("FurnaceOutputBaseline");
+            payload.remove("FurnaceBatchCount");
+        }
         if (pendingCampfireOutput.isEmpty()) {
             payload.remove("CampfireOutput");
             payload.remove("CampfireSlot");
             payload.remove("CampfireReady");
             payload.remove("CampfireInventoryCount");
+            payload.remove("CampfireEntity");
+            payload.remove("CampfireBaseline");
         } else {
             payload.put("CampfireOutput", pendingCampfireOutput.save(companion.registryAccess()));
             payload.putInt("CampfireSlot", pendingCampfireSlot);
             payload.putLong("CampfireReady", pendingCampfireReadyAt);
-            payload.putInt("CampfireInventoryCount", pendingCampfireInventoryCount);
+            if (pendingCampfireEntityId != null) payload.putUUID("CampfireEntity", pendingCampfireEntityId);
+            var baseline = new net.minecraft.nbt.ListTag();
+            for (UUID id : pendingCampfireBaselineIds) {
+                CompoundTag entry = new CompoundTag();
+                entry.putUUID("Id", id);
+                baseline.add(entry);
+            }
+            payload.put("CampfireBaseline", baseline);
         }
         companion.setJobPlanPayload(payload);
     }

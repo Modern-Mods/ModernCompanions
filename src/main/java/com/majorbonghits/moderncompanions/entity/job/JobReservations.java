@@ -9,6 +9,7 @@ import java.util.WeakHashMap;
 
 /** Per-server ephemeral target claims. Expiry prevents abandoned plans blocking workers forever. */
 public final class JobReservations {
+    public static final long DEFAULT_TTL = 20L * 60L * 10L;
     private static final Map<ServerLevel, Map<ReservationKey, Claim>> CLAIMS = new WeakHashMap<>();
 
     private JobReservations() {}
@@ -32,6 +33,23 @@ public final class JobReservations {
     public static synchronized void release(ServerLevel level, UUID owner) {
         Map<ReservationKey, Claim> claims = CLAIMS.get(level);
         if (claims != null) claims.entrySet().removeIf(entry -> entry.getValue().owner().equals(owner));
+    }
+
+    /** Renew every live claim for one worker without changing typed ownership or purpose. */
+    public static synchronized int renew(ServerLevel level, UUID owner, long now, long ttl) {
+        cleanup(level, now);
+        Map<ReservationKey, Claim> claims = CLAIMS.get(level);
+        if (claims == null) return 0;
+        long expiresAt = now + Math.max(1L, ttl);
+        int renewed = 0;
+        for (Map.Entry<ReservationKey, Claim> entry : claims.entrySet()) {
+            Claim claim = entry.getValue();
+            if (claim.owner().equals(owner)) {
+                entry.setValue(new Claim(claim.owner(), claim.type(), claim.purpose(), expiresAt));
+                renewed++;
+            }
+        }
+        return renewed;
     }
 
     public static synchronized void release(ServerLevel level, ReservationType type, String key, UUID owner) {

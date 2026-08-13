@@ -33,7 +33,8 @@ public final class WorkerSite {
 
     /** Planning checks a future stand. It deliberately does not require remote line of sight. */
     public static boolean canPlanStand(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, double interactRangeSqr) {
-        if (!companion.level().hasChunkAt(target) || !isSafeStand(companion.level(), stand)) return false;
+        if (!companion.level().hasChunkAt(target) || !companion.level().hasChunkAt(stand)
+                || !isSafeStand(companion.level(), stand)) return false;
         if (Vec3.atCenterOf(stand).distanceToSqr(Vec3.atCenterOf(target)) > interactRangeSqr) return false;
         PathNavigation navigation = companion.getNavigation();
         var path = navigation.createPath(stand, 0);
@@ -48,7 +49,8 @@ public final class WorkerSite {
 
     /** Reserved-tree felling may pass through its own foliage, never through distance, safety, or arrival checks. */
     public static boolean canActFromStandIgnoringSight(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, double interactRangeSqr) {
-        return companion.level().hasChunkAt(target) && isSafeStand(companion.level(), stand)
+        return companion.level().hasChunkAt(target) && companion.level().hasChunkAt(stand)
+                && isSafeStand(companion.level(), stand)
                 && companion.distanceToSqr(Vec3.atCenterOf(stand)) <= 2.25D
                 && Vec3.atCenterOf(stand).distanceToSqr(Vec3.atCenterOf(target)) <= interactRangeSqr;
     }

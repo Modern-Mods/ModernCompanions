@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "aca",
+    "ada",
+    "a a"
+  ],
+  "key": {
+    "a": {
+      "item": "minecraft:diamond"
+    },
+    "c": {
+      "item": "minecraft:diamond_block"
+    },
+    "d": {
+      "item": "modern_companions:diamond_weave_leggings"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "modern_companions:heavy_diamond_leggings"
+  }
+}

@@ -104,6 +104,10 @@ public final class ModCreativeTabs {
 
                         // Legendary items are loot-only, but remain available for creative testing and decoration.
                         com.majorbonghits.moderncompanions.registry.ModItems.getLegendaryItems().forEach(output::accept);
+
+                        // Imported armor is grouped after the companion equipment so every set is available
+                        // without replacing the corresponding vanilla item in any vanilla creative tab.
+                        ModArmorItems.getAllArmorItems().forEach(output::accept);
                     })
                     .build());
 

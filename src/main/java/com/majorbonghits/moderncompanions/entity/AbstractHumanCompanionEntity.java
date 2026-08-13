@@ -119,6 +119,7 @@ import com.majorbonghits.moderncompanions.entity.job.JobPhase;
 import com.majorbonghits.moderncompanions.entity.job.JobPlan;
 import com.majorbonghits.moderncompanions.entity.job.JobDropClaims;
 import com.majorbonghits.moderncompanions.entity.job.JobToolPolicy;
+import com.majorbonghits.moderncompanions.entity.ai.HunterCombatGoal;
 
 /**
  * Port of the original AbstractHumanCompanionEntity with taming, leveling,
@@ -248,6 +249,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> FARMER_PLANTED_LIFETIME = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    // Job counters are synced for the Jobs screen and persisted with the companion.
+    private static final EntityDataAccessor<Integer> HUNTER_KILLS_SESSION = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> HUNTER_KILLS_LIFETIME = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> CHEF_COOKED_SESSION = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> CHEF_COOKED_LIFETIME = SynchedEntityData
+            .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> STAMINA = SynchedEntityData
             .defineId(AbstractHumanCompanionEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> STAMINA_MAX = SynchedEntityData
@@ -323,6 +333,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public PatrolGoal patrolGoal;
     public MoveBackToPatrolGoal moveBackGoal;
     public com.majorbonghits.moderncompanions.entity.job.LumberjackJobGoal lumberjackGoal;
+    public com.majorbonghits.moderncompanions.entity.job.ChefJobGoal chefGoal;
     private int lastFoodRequestTick = -200;
     private int specialistAttr = -1; // 0=STR,1=DEX,2=INT,3=END; -1 none
 
@@ -484,6 +495,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         builder.define(FARMER_HARVESTED_LIFETIME, 0);
         builder.define(FARMER_PLANTED_SESSION, 0);
         builder.define(FARMER_PLANTED_LIFETIME, 0);
+        builder.define(HUNTER_KILLS_SESSION, 0);
+        builder.define(HUNTER_KILLS_LIFETIME, 0);
+        builder.define(CHEF_COOKED_SESSION, 0);
+        builder.define(CHEF_COOKED_LIFETIME, 0);
         builder.define(STAMINA_MAX, STAMINA_MAX_DEFAULT);
         builder.define(STAMINA, STAMINA_MAX_DEFAULT);
         builder.define(MANA_MAX, MANA_MAX_DEFAULT);
@@ -517,6 +532,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.goalSelector.addGoal(0, new FloatGoal(this));
         this.goalSelector.addGoal(0, new EatGoal(this));
         this.goalSelector.addGoal(1, new SitWhenOrderedToGoal(this));
+        this.goalSelector.addGoal(2, new HunterCombatGoal(this));
         this.goalSelector.addGoal(2, new FirearmAttackGoal(this));
         this.goalSelector.addGoal(2, new AvoidCreeperGoal(this, 1.5D, 1.5D));
         this.goalSelector.addGoal(3, new MoveBackToGuardGoal(this));
@@ -537,7 +553,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         if (ModConfig.safeGet(ModConfig.JOB_CHEF_ENABLED)) {
             int radius = ModConfig.safeGet(ModConfig.JOB_CHEF_RADIUS);
-            this.goalSelector.addGoal(8, new ChefJobGoal(this, radius, true));
+            this.chefGoal = new ChefJobGoal(this, radius, true);
+            this.goalSelector.addGoal(8, chefGoal);
         }
         if (ModConfig.safeGet(ModConfig.JOB_FARMER_ENABLED)) {
             int radius = ModConfig.safeGet(ModConfig.JOB_FARMER_RADIUS);
@@ -652,6 +669,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         } else if (getJob() != CompanionJob.NONE) {
             this.getNavigation().stop();
             if (getJob() == CompanionJob.HUNTER) setHunting(false);
+            // Claims are transient execution locks; Work OFF preserves the plan but releases them.
+            if (this.level() instanceof ServerLevel level) JobReservations.release(level, this.getUUID());
             checkpointJob(JobPhase.PAUSED, jobPlan.target());
             restoreCachedWeapon();
             setJobStatus("job_status.modern_companions.paused");
@@ -816,6 +835,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 setFarmerHarvestedSession(0);
                 setFarmerPlantedSession(0);
             }
+            case HUNTER -> setHunterKillsSession(0);
+            case CHEF -> setChefCookedSession(0);
             default -> {
             }
         }
@@ -894,9 +915,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public DeliveryResult deliverInventoryToChest(ServerLevel level, BlockPos chestPos) {
         Container container = resolveChestContainer(level, chestPos);
-        net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
-                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, chestPos, null);
-        if (container == null && handler == null) {
+        List<net.neoforged.neoforge.items.IItemHandler> handlers = itemHandlers(level, chestPos);
+        if (container == null && handlers.isEmpty()) {
             return DeliveryResult.MISSING;
         }
 
@@ -915,9 +935,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (getJob() == CompanionJob.LUMBERJACK && isSaplingItem(stack)) continue;
 
             ItemStack toMove = stack.copyWithCount(stack.getCount() - keep);
-            ItemStack remainder = handler != null
-                    ? net.neoforged.neoforge.items.ItemHandlerHelper.insertItemStacked(handler, toMove, false)
-                    : insertIntoContainer(container, toMove);
+            ItemStack remainder = toMove;
+            for (net.neoforged.neoforge.items.IItemHandler handler : handlers) {
+                remainder = net.neoforged.neoforge.items.ItemHandlerHelper.insertItemStacked(handler, remainder, false);
+                if (remainder.isEmpty()) break;
+            }
+            if (!handlers.isEmpty() && container != null && !remainder.isEmpty()) {
+                remainder = insertIntoContainer(container, remainder);
+            } else if (handlers.isEmpty()) {
+                remainder = insertIntoContainer(container, remainder);
+            }
             if (remainder.getCount() != toMove.getCount()) {
                 movedAny = true;
             }
@@ -941,13 +968,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     /** Caller must already be at an approved chest stand; this only performs one safe inventory transfer. */
     public ItemStack withdrawOneFromChest(ServerLevel level, BlockPos chestPos, java.util.function.Predicate<ItemStack> accepted) {
         if (!level.isLoaded(chestPos)) return ItemStack.EMPTY;
-        net.neoforged.neoforge.items.IItemHandler handler = level.getCapability(
-                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, chestPos, null);
-        if (handler != null) {
-            for (int slot = 0; slot < handler.getSlots(); slot++) {
-                ItemStack stack = handler.getStackInSlot(slot);
-                if (!stack.isEmpty() && accepted.test(stack) && canStoreInInventory(stack)) {
-                    return handler.extractItem(slot, 1, false);
+        List<net.neoforged.neoforge.items.IItemHandler> handlers = itemHandlers(level, chestPos);
+        if (!handlers.isEmpty()) {
+            for (net.neoforged.neoforge.items.IItemHandler sidedHandler : handlers) {
+                for (int slot = 0; slot < sidedHandler.getSlots(); slot++) {
+                    ItemStack stack = sidedHandler.getStackInSlot(slot);
+                    if (!stack.isEmpty() && accepted.test(stack) && canStoreInInventory(stack)) {
+                        ItemStack extracted = sidedHandler.extractItem(slot, 1, false);
+                        if (!extracted.isEmpty()) return extracted;
+                    }
                 }
             }
             return ItemStack.EMPTY;
@@ -961,6 +990,22 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             }
         }
         return ItemStack.EMPTY;
+    }
+
+    /** Prefer the canonical handler view and preserve sided rules when no unsided view exists. */
+    private List<net.neoforged.neoforge.items.IItemHandler> itemHandlers(ServerLevel level, BlockPos pos) {
+        List<net.neoforged.neoforge.items.IItemHandler> handlers = new ArrayList<>();
+        net.neoforged.neoforge.items.IItemHandler unsided = level.getCapability(
+                net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, pos, null);
+        // Adding every sided view alongside an unsided view can expose the
+        // same slot multiple times on modded storage.
+        if (unsided != null) return List.of(unsided);
+        for (net.minecraft.core.Direction side : net.minecraft.core.Direction.values()) {
+            net.neoforged.neoforge.items.IItemHandler sided = level.getCapability(
+                    net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK, pos, side);
+            if (sided != null && !handlers.contains(sided)) handlers.add(sided);
+        }
+        return handlers;
     }
 
     private Container resolveChestContainer(ServerLevel level, BlockPos pos) {
@@ -2539,6 +2584,49 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.entityData.set(FARMER_PLANTED_LIFETIME, Math.max(0, count));
     }
 
+    public int getHunterKillsSession() {
+        return this.entityData.get(HUNTER_KILLS_SESSION);
+    }
+
+    public void setHunterKillsSession(int count) {
+        this.entityData.set(HUNTER_KILLS_SESSION, Math.max(0, count));
+    }
+
+    public void incrementHunterKills() {
+        setHunterKillsSession(getHunterKillsSession() + 1);
+        setHunterKillsLifetime(getHunterKillsLifetime() + 1);
+    }
+
+    public int getHunterKillsLifetime() {
+        return this.entityData.get(HUNTER_KILLS_LIFETIME);
+    }
+
+    public void setHunterKillsLifetime(int count) {
+        this.entityData.set(HUNTER_KILLS_LIFETIME, Math.max(0, count));
+    }
+
+    public int getChefCookedSession() {
+        return this.entityData.get(CHEF_COOKED_SESSION);
+    }
+
+    public void setChefCookedSession(int count) {
+        this.entityData.set(CHEF_COOKED_SESSION, Math.max(0, count));
+    }
+
+    public void incrementChefCooked(int count) {
+        int safeCount = Math.max(0, count);
+        setChefCookedSession(getChefCookedSession() + safeCount);
+        setChefCookedLifetime(getChefCookedLifetime() + safeCount);
+    }
+
+    public int getChefCookedLifetime() {
+        return this.entityData.get(CHEF_COOKED_LIFETIME);
+    }
+
+    public void setChefCookedLifetime(int count) {
+        this.entityData.set(CHEF_COOKED_LIFETIME, Math.max(0, count));
+    }
+
     public BlockPos getMinerPlanCenter() {
         return minerPlanCenter == null ? BlockPos.ZERO : minerPlanCenter;
     }
@@ -2585,6 +2673,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void recordKill(LivingEntity victim) {
         boolean major = isMajorKill(victim);
         incrementKillCount();
+        if (getJob() == CompanionJob.HUNTER) incrementHunterKills();
         personality.incrementTotalKills(major);
         if (major) {
             this.entityData.set(MAJOR_KILLS, personality.getMajorKills());
@@ -3287,6 +3376,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("FarmerHarvestedLifetime", getFarmerHarvestedLifetime());
         tag.putInt("FarmerPlantedSession", getFarmerPlantedSession());
         tag.putInt("FarmerPlantedLifetime", getFarmerPlantedLifetime());
+        tag.putInt("HunterKillsSession", getHunterKillsSession());
+        tag.putInt("HunterKillsLifetime", getHunterKillsLifetime());
+        tag.putInt("ChefCookedSession", getChefCookedSession());
+        tag.putInt("ChefCookedLifetime", getChefCookedLifetime());
         tag.putIntArray("MinerPlanCenter", new int[] { getMinerPlanCenter().getX(), getMinerPlanCenter().getY(), getMinerPlanCenter().getZ() });
         tag.putInt("MinerPlanRadius", getMinerPlanRadius());
         tag.putInt("MinerPlanUp", getMinerPlanUp());
@@ -3454,6 +3547,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         if (tag.contains("FarmerHarvestedLifetime")) setFarmerHarvestedLifetime(tag.getInt("FarmerHarvestedLifetime"));
         if (tag.contains("FarmerPlantedSession")) setFarmerPlantedSession(tag.getInt("FarmerPlantedSession"));
         if (tag.contains("FarmerPlantedLifetime")) setFarmerPlantedLifetime(tag.getInt("FarmerPlantedLifetime"));
+        if (tag.contains("HunterKillsSession")) setHunterKillsSession(tag.getInt("HunterKillsSession"));
+        if (tag.contains("HunterKillsLifetime")) setHunterKillsLifetime(tag.getInt("HunterKillsLifetime"));
+        if (tag.contains("ChefCookedSession")) setChefCookedSession(tag.getInt("ChefCookedSession"));
+        if (tag.contains("ChefCookedLifetime")) setChefCookedLifetime(tag.getInt("ChefCookedLifetime"));
         if (tag.contains("MinerPlanCenter")) {
             int[] arr = tag.getIntArray("MinerPlanCenter");
             if (arr.length == 3) {
@@ -3655,6 +3752,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             equipOffhandFromInventory();
             if (this.tickCount % 2 == 0) updateHeldLight();
             if (this.tickCount % 20 == 0) consumeUsefulCompanionPotion();
+            if (this.tickCount % 100 == 0 && this.level() instanceof ServerLevel server) {
+                JobReservations.cleanup(server, server.getGameTime());
+                if (isWorkEnabled()) {
+                    JobReservations.renew(server, this.getUUID(), server.getGameTime(), JobReservations.DEFAULT_TTL);
+                }
+            }
             tickBondAndMorale();
             if (this.tickCount % 10 == 0) {
                 checkStats();
@@ -4124,6 +4227,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void onRemovedFromLevel() {
         clearHeldLight();
         if (!this.level().isClientSide() && this.level() instanceof ServerLevel server) {
+            JobReservations.release(server, this.getUUID());
             com.majorbonghits.moderncompanions.entity.projectile.CompanionFishingHook.discardFor(this);
             releaseDeliveryChunkTicket(server);
         }
@@ -4310,9 +4414,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private void collectNearbyItems() {
         double range = 3.0D;
         var box = this.getBoundingBox().inflate(range);
-        for (ItemEntity item : this.level().getEntitiesOfClass(ItemEntity.class, box,
+                for (ItemEntity item : this.level().getEntitiesOfClass(ItemEntity.class, box,
                 e -> e.isAlive() && !e.hasPickUpDelay()
                         && !JobDropClaims.isOwnedByOther(e, getUUID())
+                        && !(getJob() == CompanionJob.CHEF && chefGoal != null && chefGoal.shouldDeferPickup(e))
                         && (isPickupEnabled() || JobDropClaims.isOwnedBy(e, getUUID())))) {
             if (item.getItem().isEmpty())
                 continue;
@@ -4352,6 +4457,27 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         item.setItem(leftover);
         return false;
+    }
+
+    /** Job-owned collection path for profession drops when the generic Pickup toggle is off. */
+    public boolean collectJobItems(AABB area, Predicate<ItemStack> accepted) {
+        if (area == null || accepted == null || level().isClientSide()) return false;
+        boolean collected = false;
+        for (ItemEntity item : level().getEntitiesOfClass(ItemEntity.class, area,
+                candidate -> candidate.isAlive() && !candidate.hasPickUpDelay()
+                        && !JobDropClaims.isOwnedByOther(candidate, getUUID())
+                        && accepted.test(candidate.getItem()))) {
+            ItemStack leftover = tryInsertBackpackFirst(item.getItem().copy());
+            if (!leftover.isEmpty()) leftover = inventory.addItem(leftover);
+            if (leftover.isEmpty()) {
+                item.discard();
+                collected = true;
+            } else {
+                item.setItem(leftover);
+            }
+        }
+        inventory.setChanged();
+        return collected;
     }
 
     /**

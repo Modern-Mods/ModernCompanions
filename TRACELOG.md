@@ -3263,3 +3263,12 @@
   - Removed a backpack gem only after its companion was successfully placed, then bumped the project version from 4.22 to 4.23.
 - Rationale: The same equipped-only handler boundary used by capture provides symmetric storage behavior without recursively opening arbitrary backpack items in player cargo.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.23.jar`; installed-mod deployment/fallback behavior remains a manual smoke test.
+## 2026-08-13 (Living Tribe jobs contract follow-up)
+
+- Prompt/task: Finish the remaining implementation required by `TASK.md` after the resumable job runtime work, including the compile blocker, profession statistics, contract coverage, localization, and release metadata.
+- Steps:
+  - Added synced and persisted Chef cooked-meal and Hunter kill counters, reset their session values on profession selection, and displayed both counters in the Jobs screen.
+  - Connected Hunter kill attribution to the existing server-side death path, added pure contract seams for Hunter weapon modes, Chef tag/recipe gating, and drop ownership, and expanded `JobContractTest` for reservation renewal, Miner return retention, tree layout metadata, and those rules.
+  - Required Lumberjack 2x2 footprints to use adjacent coordinates, added missing English status/stat translations, updated the job documentation and post-build smoke suggestions, and bumped the version from 4.38 to 4.39.
+- Rationale: Reusing the existing synced-statistics, NBT, job-change, and server kill/delivery seams keeps the fix small while making player-visible progress durable and testable. The contiguous-footprint guard prevents malformed replant debt from silently producing an invalid 2x2 layout.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed, all wired checks/tests including `jobContractCheck` passed, and `build/libs/ModernCompanions-4.39.jar` was produced; Minecraft navigation, protection, multiplayer, rendering, and the full acceptance matrix remain manual smoke tests.

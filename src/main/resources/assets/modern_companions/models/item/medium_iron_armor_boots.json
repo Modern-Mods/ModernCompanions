@@ -1,0 +1,6 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "modern_companions:item/medium_iron_boots"
+  }
+}

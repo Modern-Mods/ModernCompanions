@@ -28,6 +28,11 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Fisher job: stand near a water block and periodically generate simple fishing
@@ -58,7 +63,8 @@ public class FisherJobGoal extends ResumableJobGoal {
     private int recastCooldown;
     private CompanionFishingHook activeHook;
     private BlockPos castTarget;
-    private ItemStack pendingCatch = ItemStack.EMPTY;
+    private final List<ItemStack> pendingCatches = new ArrayList<>();
+    private boolean catchStatsPending;
     private boolean restoredPlan;
     private final Map<BlockPos, Integer> rejectedWater = new HashMap<>();
 
@@ -77,12 +83,12 @@ public class FisherJobGoal extends ResumableJobGoal {
         if (waterSpot != null && standPos != null && isFishableWater(waterSpot) && isStandValid(standPos)
                 && !isRejected(waterSpot)) {
             phase(JobPhase.TRAVELLING, "job_status.modern_companions.travelling_to_shore", waterSpot);
-            return reserve("shore:" + waterSpot.asLong());
+            return reserveWaterSpot();
         }
         if (searchCooldown-- > 0) return false;
         boolean found = findWaterAndStand();
         searchCooldown = SEARCH_COOLDOWN;
-        if (found && !reserve("shore:" + waterSpot.asLong())) {
+        if (found && !reserveWaterSpot()) {
             waiting("job_status.modern_companions.shore_reserved");
             return false;
         }
@@ -200,51 +206,54 @@ public class FisherJobGoal extends ResumableJobGoal {
 
     private void reelIn() {
         if (!(companion.level() instanceof ServerLevel server)) return;
-        ItemStack catchStack = pendingCatch.isEmpty() ? rollFishingLoot() : pendingCatch.copy();
-        if (catchStack.isEmpty()) return;
-        ItemStack leftover = companion.getInventory().addItem(catchStack);
-        pendingCatch = leftover;
-        if (leftover.isEmpty()) {
-            companion.incrementFishCaughtSession();
-            pendingCatch = ItemStack.EMPTY;
-            savePlan();
-            if (companion.hasDeliverableCargo()) companion.requestImmediateDelivery(null);
-        } else {
-            // Keep the catch in the durable plan until inventory pressure has been
-            // relieved; spawning an unowned item here would make Pickup OFF lossy.
-            companion.setJobStatus("job_status.modern_companions.inventory_full");
-            companion.requestImmediateDelivery(null);
-            savePlan();
+        if (pendingCatches.isEmpty()) {
+            pendingCatches.addAll(rollFishingLoot());
+            catchStatsPending = !pendingCatches.isEmpty();
         }
+        flushPendingCatch();
     }
 
     /** Retry a catch after delivery or unload without spawning an unexplained item. */
     private boolean flushPendingCatch() {
-        if (pendingCatch.isEmpty()) return true;
-        ItemStack leftover = companion.getInventory().addItem(pendingCatch.copy());
-        pendingCatch = leftover;
-        if (leftover.isEmpty()) {
-            companion.incrementFishCaughtSession();
-            savePlan();
-            return true;
+        while (!pendingCatches.isEmpty()) {
+            ItemStack current = pendingCatches.get(0);
+            if (current.isEmpty()) {
+                pendingCatches.remove(0);
+                continue;
+            }
+            ItemStack leftover = companion.getInventory().addItem(current.copy());
+            if (!leftover.isEmpty()) {
+                pendingCatches.set(0, leftover);
+                companion.setJobStatus("job_status.modern_companions.inventory_full");
+                companion.requestImmediateDelivery(null);
+                savePlan();
+                return false;
+            }
+            pendingCatches.remove(0);
         }
-        companion.setJobStatus("job_status.modern_companions.inventory_full");
-        companion.requestImmediateDelivery(null);
+        if (catchStatsPending) {
+            companion.incrementFishCaughtSession();
+            catchStatsPending = false;
+        }
         savePlan();
-        return false;
+        if (companion.hasDeliverableCargo()) companion.requestImmediateDelivery(null);
+        return true;
     }
 
-    private ItemStack rollFishingLoot() {
+    private List<ItemStack> rollFishingLoot() {
+        List<ItemStack> result = new ArrayList<>();
         if (!(companion.level() instanceof ServerLevel server)) {
-            return ItemStack.EMPTY;
+            return result;
         }
         LootTable lootTable = server.getServer().reloadableRegistries().getLootTable(BuiltInLootTables.FISHING);
         if (lootTable == null) {
-            return new ItemStack(Items.COD);
+            result.add(new ItemStack(Items.COD));
+            return result;
         }
         double luck = companion.getAttributes().hasAttribute(Attributes.LUCK)
                 ? companion.getAttributeValue(Attributes.LUCK)
                 : 0.0D;
+        if (activeHook != null) luck += activeHook.getFishingLuck();
         LootParams params = new LootParams.Builder(server)
                 // Vanilla fishing conditions such as biome/position-based loot use the bobber,
                 // not the worker standing on shore.
@@ -255,10 +264,9 @@ public class FisherJobGoal extends ResumableJobGoal {
                 .withLuck((float) luck)
                 .create(LootContextParamSets.FISHING);
         var list = lootTable.getRandomItems(params);
-        if (!list.isEmpty()) {
-            return list.get(random.nextInt(list.size())).copy();
-        }
-        return new ItemStack(Items.COD);
+        for (ItemStack stack : list) if (!stack.isEmpty()) result.add(stack.copy());
+        if (result.isEmpty()) result.add(new ItemStack(Items.COD));
+        return result;
     }
 
     private boolean findWaterAndStand() {
@@ -333,7 +341,8 @@ public class FisherJobGoal extends ResumableJobGoal {
         // Spawn at rod height then let the server simulate a short visible cast arc.
         castTarget = target.immutable();
         savePlan();
-        CompanionFishingHook hook = new CompanionFishingHook(server, companion, target);
+        CompanionFishingHook hook = new CompanionFishingHook(server, companion, target,
+                companion.getMainHandItem().copy());
         // Start at the rod and travel on a short server-authoritative arc. The
         // hook anchors at the validated water surface after the cast flight.
         Vec3 start = companion.getEyePosition().add(0.0D, -0.35D, 0.0D);
@@ -398,9 +407,18 @@ public class FisherJobGoal extends ResumableJobGoal {
         if (savedWater != null && isFishableWater(savedWater)) waterSpot = savedWater;
         if (savedStand != null && isStandValid(savedStand)) standPos = savedStand;
         castTarget = readPos(payload, "Cast");
-        if (payload.contains("PendingCatch", 10)) {
-            pendingCatch = ItemStack.parseOptional(companion.registryAccess(), payload.getCompound("PendingCatch"));
+        pendingCatches.clear();
+        if (payload.contains("PendingCatches", 9)) {
+            ListTag catches = payload.getList("PendingCatches", Tag.TAG_COMPOUND);
+            for (int index = 0; index < catches.size(); index++) {
+                ItemStack stack = ItemStack.parseOptional(companion.registryAccess(), catches.getCompound(index));
+                if (!stack.isEmpty()) pendingCatches.add(stack);
+            }
+        } else if (payload.contains("PendingCatch", 10)) {
+            ItemStack legacy = ItemStack.parseOptional(companion.registryAccess(), payload.getCompound("PendingCatch"));
+            if (!legacy.isEmpty()) pendingCatches.add(legacy);
         }
+        catchStatsPending = payload.getBoolean("CatchStatsPending") || !pendingCatches.isEmpty();
     }
 
     private void savePlan() {
@@ -408,8 +426,14 @@ public class FisherJobGoal extends ResumableJobGoal {
         putPos(payload, "Water", waterSpot);
         putPos(payload, "Stand", standPos);
         putPos(payload, "Cast", castTarget);
-        if (pendingCatch.isEmpty()) payload.remove("PendingCatch");
-        else payload.put("PendingCatch", pendingCatch.save(companion.registryAccess()));
+        payload.remove("PendingCatch");
+        payload.remove("PendingCatches");
+        if (!pendingCatches.isEmpty()) {
+            ListTag catches = new ListTag();
+            for (ItemStack stack : pendingCatches) catches.add(stack.save(companion.registryAccess()));
+            payload.put("PendingCatches", catches);
+        }
+        payload.putBoolean("CatchStatsPending", catchStatsPending);
         companion.setJobPlanPayload(payload);
     }
 
@@ -486,8 +510,26 @@ public class FisherJobGoal extends ResumableJobGoal {
     private void rejectWater() {
         if (waterSpot != null) {
             rejectedWater.put(waterSpot.immutable(), companion.tickCount + 20 * 30);
-            release("shore:" + waterSpot.asLong());
+            releaseWaterSpot();
         }
+    }
+
+    private boolean reserveWaterSpot() {
+        if (waterSpot == null || !reserve("shore:" + waterSpot.asLong())) return false;
+        String sector = castSectorKey(waterSpot);
+        if (reserve(sector)) return true;
+        release("shore:" + waterSpot.asLong());
+        return false;
+    }
+
+    private void releaseWaterSpot() {
+        if (waterSpot == null) return;
+        release("shore:" + waterSpot.asLong());
+        release(castSectorKey(waterSpot));
+    }
+
+    private String castSectorKey(BlockPos water) {
+        return "shore:sector:" + Math.floorDiv(water.getX(), 4) + ":" + Math.floorDiv(water.getZ(), 4);
     }
 
     private boolean isActiveJob() {

@@ -34,12 +34,14 @@ public class ArbalistCrossbowAttackGoal<T extends AbstractHumanCompanionEntity &
 
     @Override
     public boolean canUse() {
-        return hasValidTarget() && isHoldingCrossbow();
+        return this.mob.getJob() != com.majorbonghits.moderncompanions.entity.job.CompanionJob.HUNTER
+                && hasValidTarget() && isHoldingCrossbow();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return hasValidTarget() && (canUse() || !this.mob.getNavigation().isDone()) && isHoldingCrossbow();
+        return this.mob.getJob() != com.majorbonghits.moderncompanions.entity.job.CompanionJob.HUNTER
+                && hasValidTarget() && (canUse() || !this.mob.getNavigation().isDone()) && isHoldingCrossbow();
     }
 
     private boolean hasValidTarget() {

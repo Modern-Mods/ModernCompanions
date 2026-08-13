@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "aca",
+    "ada",
+    "a a"
+  ],
+  "key": {
+    "a": {
+      "item": "minecraft:iron_ingot"
+    },
+    "c": {
+      "item": "minecraft:iron_block"
+    },
+    "d": {
+      "item": "modern_companions:iron_mail_leggings"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "modern_companions:heavy_iron_armor_leggings"
+  }
+}

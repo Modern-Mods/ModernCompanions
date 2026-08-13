@@ -94,6 +94,9 @@ public final class CompanionJeiPlugin implements IModPlugin {
                 new ItemStack(ModItems.PLACEMENT_WAND.get()));
         RecipeHolder<CraftingRecipe> placementWandHolder = new RecipeHolder<>(
                 ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "placement_wand"), placementWandRecipe);
+        // Imported armor recipes use JEI's built-in minecraft crafting and smithing
+        // recipe types, so datapack discovery exposes every armor result here without
+        // maintaining a second, potentially divergent recipe list.
         registration.addRecipes(RecipeTypes.CRAFTING, List.of(holder, animalWandHolder, placementWandHolder));
     }
 

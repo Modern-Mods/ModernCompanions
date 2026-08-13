@@ -12,6 +12,8 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -29,6 +31,8 @@ public class CompanionFishingHook extends Projectile {
     private static final int CAST_TICKS = 12;
 
     private int lifeTicks;
+    private int timeUntilLured = 100;
+    private int fishingLuck;
     private int biteTicks;
     private BlockPos waterSpot;
 
@@ -37,10 +41,19 @@ public class CompanionFishingHook extends Projectile {
     }
 
     public CompanionFishingHook(Level level, AbstractHumanCompanionEntity owner, BlockPos waterSpot) {
+        this(level, owner, waterSpot, ItemStack.EMPTY);
+    }
+
+    public CompanionFishingHook(Level level, AbstractHumanCompanionEntity owner, BlockPos waterSpot, ItemStack rod) {
         this(ModEntityTypes.COMPANION_FISHING_HOOK.get(), level);
         this.waterSpot = waterSpot.immutable();
         this.setOwner(owner);
         this.entityData.set(DATA_OWNER_ID, owner.getId());
+        if (level instanceof net.minecraft.server.level.ServerLevel server && !rod.isEmpty()) {
+            timeUntilLured = Math.max(20, 100 + random.nextInt(501)
+                    - (int) (EnchantmentHelper.getFishingTimeReduction(server, rod, owner) * 20.0F));
+            fishingLuck = EnchantmentHelper.getFishingLuckBonus(server, rod, owner);
+        }
     }
 
     /** Remove transient hooks when their worker is removed or changes dimension. */
@@ -89,8 +102,13 @@ public class CompanionFishingHook extends Projectile {
         if (!this.level().isClientSide) {
             // A bite lasts long enough for the server goal to react instead of flickering for one tick.
             if (biteTicks > 0) biteTicks--;
-            if (isSettled() && isLineInWater() && biteTicks == 0 && lifeTicks > 80 && random.nextInt(100) == 0) {
+            if (timeUntilLured > 0) timeUntilLured--;
+            if (isSettled() && isLineInWater() && biteTicks == 0 && timeUntilLured <= 0
+                    && random.nextInt(80) == 0) {
                 biteTicks = 20;
+                // Keep the bobber visibly responsive while preserving a durable reel window.
+                setDeltaMovement(0.0D, -0.08D, 0.0D);
+                timeUntilLured = 100 + random.nextInt(501);
             }
             this.entityData.set(DATA_BITING, biteTicks > 0);
         }
@@ -108,6 +126,10 @@ public class CompanionFishingHook extends Projectile {
         return this.entityData.get(DATA_BITING);
     }
 
+    public int getFishingLuck() {
+        return fishingLuck;
+    }
+
     @Nullable
     public AbstractHumanCompanionEntity getOwnerCompanion() {
         Entity owner = this.level().getEntity(this.entityData.get(DATA_OWNER_ID));
@@ -121,6 +143,8 @@ public class CompanionFishingHook extends Projectile {
             tag.putLong("WaterSpot", waterSpot.asLong());
         }
         tag.putInt("OwnerId", this.entityData.get(DATA_OWNER_ID));
+        tag.putInt("TimeUntilLured", timeUntilLured);
+        tag.putInt("FishingLuck", fishingLuck);
     }
 
     @Override
@@ -132,5 +156,7 @@ public class CompanionFishingHook extends Projectile {
         if (tag.contains("OwnerId")) {
             this.entityData.set(DATA_OWNER_ID, tag.getInt("OwnerId"));
         }
+        timeUntilLured = tag.contains("TimeUntilLured") ? tag.getInt("TimeUntilLured") : 100;
+        fishingLuck = tag.getInt("FishingLuck");
     }
 }

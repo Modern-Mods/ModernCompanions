@@ -1,3 +1,7 @@
+- 2026-08-13 (Jobs contract follow-up): In a dev world, verify the Jobs screen counters reset when switching professions, survive relog, and display correctly for Hunter/Chef; verify a dark-oak 2x2 tree records four adjacent replant positions and never accepts a separated footprint.
+
+- 2026-08-13 (Imported armor): In a fresh dev world with and without Epic Fight, inspect every imported armor set on Steve/Alex companions and in JEI; verify the custom 128x128 Medieval Armory atlases align with the player-shaped armor layer, partial Cloth Mail/Copper Scale sets never occupy invalid slots, and the independent vanilla-rework sets do not alter vanilla item names or recipes.
+
 - 2026-08-13 (Jobs deferred-return gate): In a dev world, block a delivery return route and confirm every assigned job remains visibly `Returning`/`Route blocked` without starting profession actions; restore the route and verify the saved work unit resumes.
 
 - 2026-08-13 (Jobs runtime follow-up): Run a dev-world regression with a Miner starting above a solid stone/deepslate route to exposed and buried ores, then fill the delivery chest and interrupt a Lumberjack during return; verify bounded retry status, no lost ore/log work, return recovery, and resume after the route is restored.

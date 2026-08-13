@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "xxx",
+    "x x",
+    "x x"
+  ],
+  "key": {
+    "x": {
+      "item": "minecraft:gold_ingot"
+    }
+  },
+  "result": {
+    "id": "modern_companions:archaic_golden_leggings",
+    "count": 1
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "x x",
+    "x x"
+  ],
+  "key": {
+    "x": {
+      "item": "minecraft:iron_nugget"
+    }
+  },
+  "result": {
+    "id": "modern_companions:worn_chainmail_boots",
+    "count": 1
+  }
+}

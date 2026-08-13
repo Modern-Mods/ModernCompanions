@@ -132,6 +132,14 @@ public class CompanionJobScreen extends Screen {
                 y = drawLine(gfx, Component.translatable("job.modern_companions.farmer.stats.harvested", companion.getFarmerHarvestedSession()), x, y, width);
                 y = drawLine(gfx, Component.translatable("job.modern_companions.farmer.stats.planted", companion.getFarmerPlantedSession()), x, y, width);
                 y = drawLine(gfx, Component.translatable("job.modern_companions.farmer.stats.lifetime", companion.getFarmerHarvestedLifetime()), x, y, width);
+            } else if (job == CompanionJob.HUNTER) {
+                y += 6;
+                y = drawLine(gfx, Component.translatable("job.modern_companions.hunter.stats.session", companion.getHunterKillsSession()), x, y, width);
+                y = drawLine(gfx, Component.translatable("job.modern_companions.hunter.stats.lifetime", companion.getHunterKillsLifetime()), x, y, width);
+            } else if (job == CompanionJob.CHEF) {
+                y += 6;
+                y = drawLine(gfx, Component.translatable("job.modern_companions.chef.stats.session", companion.getChefCookedSession()), x, y, width);
+                y = drawLine(gfx, Component.translatable("job.modern_companions.chef.stats.lifetime", companion.getChefCookedLifetime()), x, y, width);
             }
         });
 

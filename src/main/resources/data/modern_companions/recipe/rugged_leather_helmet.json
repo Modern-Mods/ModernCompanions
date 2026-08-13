@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "xxx",
+    "x x"
+  ],
+  "key": {
+    "x": {
+      "item": "minecraft:leather"
+    }
+  },
+  "result": {
+    "id": "modern_companions:rugged_leather_helmet",
+    "count": 1
+  }
+}

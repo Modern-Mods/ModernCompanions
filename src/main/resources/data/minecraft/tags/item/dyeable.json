@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "modern_companions:rugged_leather_helmet",
+    "modern_companions:rugged_leather_chestplate",
+    "modern_companions:rugged_leather_leggings",
+    "modern_companions:rugged_leather_boots"
+  ]
+}

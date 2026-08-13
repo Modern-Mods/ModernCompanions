@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "x x",
+    "x x"
+  ],
+  "key": {
+    "x": {
+      "item": "minecraft:leather"
+    }
+  },
+  "result": {
+    "id": "modern_companions:rugged_leather_boots",
+    "count": 1
+  }
+}

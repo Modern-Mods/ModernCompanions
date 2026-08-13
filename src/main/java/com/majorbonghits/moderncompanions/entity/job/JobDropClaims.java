@@ -24,10 +24,14 @@ public final class JobDropClaims {
     }
 
     public static boolean isOwnedBy(ItemEntity item, UUID owner) {
-        return isClaimed(item) && item.getPersistentData().getUUID(OWNER).equals(owner);
+        return isClaimed(item) && ownerMatches(item.getPersistentData().getUUID(OWNER), owner);
     }
 
     public static boolean isOwnedByOther(ItemEntity item, UUID owner) {
-        return isClaimed(item) && !item.getPersistentData().getUUID(OWNER).equals(owner);
+        return isClaimed(item) && !ownerMatches(item.getPersistentData().getUUID(OWNER), owner);
+    }
+
+    static boolean ownerMatches(UUID claimOwner, UUID requestedOwner) {
+        return claimOwner != null && claimOwner.equals(requestedOwner);
     }
 }

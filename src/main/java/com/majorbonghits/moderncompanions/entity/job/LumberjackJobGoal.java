@@ -7,6 +7,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
@@ -21,6 +22,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import org.slf4j.Logger;
@@ -75,13 +77,18 @@ public class LumberjackJobGoal extends ResumableJobGoal {
     private boolean searchingForNextTree;
     private boolean treeScanExhausted;
     private final List<BlockPos> treeFootprint = new ArrayList<>();
+    /** Tight log/leaf envelope used to avoid collecting drops from a neighboring canopy. */
+    private BlockPos treeDropMin;
+    private BlockPos treeDropMax;
     private final Deque<ReplantSite> replantDebt = new ArrayDeque<>();
     private boolean restoredPlan;
     private static final int STALL_KICK_TICKS = 120;
     private static final int MAX_STAND_SEARCH_RADIUS = 1;
     private static final int MAX_ACTION_RETRIES = 3;
 
-    private record ReplantSite(ArrayDeque<BlockPos> remaining, Block sapling) { }
+    private record ReplantSite(ArrayDeque<BlockPos> remaining, Block sapling,
+                               ResourceKey<Level> dimension, BlockPos workCenter,
+                               int radius, int layout) { }
 
     public LumberjackJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
         super(companion, CompanionJob.LUMBERJACK);
@@ -100,6 +107,11 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             normalizeReplantDebt();
             BlockPos next = nextReplantTarget();
             if (next == null) return false;
+            ReplantSite site = replantDebt.peekFirst();
+            if (site != null && !site.dimension().equals(companion.level().dimension())) {
+                waiting("job_status.modern_companions.replant_wrong_dimension");
+                return false;
+            }
             standPos = WorkerSite.findStand(companion, next, 2);
             phase(JobPhase.COLLECTING, "job_status.modern_companions.replanting", next);
             return standPos != null;
@@ -174,6 +186,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             return;
         }
         if (!retryReady()) return;
+        collectTreeDrops();
         if (!replantDebt.isEmpty()) {
             normalizeReplantDebt();
             if (replantDebt.isEmpty()) return;
@@ -316,6 +329,8 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         targetLog = null;
         stumpPos = null;
         treeFootprint.clear();
+        treeDropMin = null;
+        treeDropMax = null;
         searchCooldown = 0;
         replantedThisTree = false;
         searchingForNextTree = false;
@@ -333,6 +348,9 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         targetLog = null;
         standPos = null;
         treeFootprint.clear();
+        // A failed/empty scan must not reuse the previous tree's drop envelope.
+        treeDropMin = null;
+        treeDropMax = null;
         treePlanActive = false;
 
         Level level = companion.level();
@@ -371,7 +389,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
                         boolean diagonal = Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 1;
                         if (diagonal && (current.getY() <= stumpPos.getY() + 1 || current.getY() + dy <= stumpPos.getY() + 1)) continue;
                         BlockPos adj = current.offset(dx, dy, dz);
-                        if (visited.contains(adj) || level.getBlockState(adj).getBlock() != treeBlock) continue;
+                        if (visited.contains(adj) || !shouldJoinTreeLog(current, adj, treeBlock)) continue;
                         if (Math.abs(adj.getX() - stumpPos.getX()) > 7 || Math.abs(adj.getZ() - stumpPos.getZ()) > 7
                                 || adj.getY() - stumpPos.getY() > 32) {
                             pendingLogs.clear();
@@ -401,6 +419,16 @@ public class LumberjackJobGoal extends ResumableJobGoal {
                 .forEach(pos -> treeFootprint.add(pos.immutable()));
         if (treeFootprint.isEmpty()) treeFootprint.add(stumpPos.immutable());
         stumpPos = treeFootprint.get(0);
+        treeDropMin = null;
+        treeDropMax = null;
+        for (BlockPos log : componentLogs) {
+            includeDropBounds(log);
+            // Leaves immediately attached to this reserved component are part
+            // of its drop envelope; neighboring trunks remain outside it.
+            for (BlockPos leaf : BlockPos.betweenClosed(log.offset(-3, -3, -3), log.offset(3, 3, 3))) {
+                if (level.getBlockState(leaf).is(BlockTags.LEAVES)) includeDropBounds(leaf);
+            }
+        }
         pendingLogs.addAll(componentLogs);
 
         // Keep one ground-level stand beside the stump so upper logs are never discarded.
@@ -484,6 +512,54 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         while (base.getY() > companion.level().getMinBuildHeight()
                 && companion.level().getBlockState(base.below()).getBlock() == block) base = base.below();
         return base.immutable();
+    }
+
+    /**
+     * Keep touching trees separate while still admitting a true 2x2 trunk and
+     * horizontal branch logs.  A second grounded vertical column is only
+     * joined when both bases belong to the same 2x2 footprint.
+     */
+    private boolean shouldJoinTreeLog(BlockPos current, BlockPos candidate, Block treeBlock) {
+        Level level = companion.level();
+        if (level.getBlockState(candidate).getBlock() != treeBlock) return false;
+        int dy = Math.abs(candidate.getY() - current.getY());
+        int horizontal = Math.abs(candidate.getX() - current.getX()) + Math.abs(candidate.getZ() - current.getZ());
+        if (horizontal == 0) return true;
+        if (dy == 0 && current.getY() == stumpPos.getY()) {
+            return sameTwoByTwoBase(stumpPos, findTreeBase(candidate), treeBlock);
+        }
+        if (horizontal == 1 && candidate.getY() >= stumpPos.getY()) {
+            BlockPos candidateBase = findTreeBase(candidate);
+            if (candidateBase.getY() <= stumpPos.getY() && !sameTwoByTwoBase(stumpPos, candidateBase, treeBlock)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean sameTwoByTwoBase(BlockPos first, BlockPos second, Block treeBlock) {
+        if (first.equals(second)) return true;
+        if (first.getY() != second.getY()) return false;
+        Level level = companion.level();
+        for (int anchorX = Math.min(first.getX(), second.getX()) - 1;
+             anchorX <= Math.max(first.getX(), second.getX()); anchorX++) {
+            for (int anchorZ = Math.min(first.getZ(), second.getZ()) - 1;
+                 anchorZ <= Math.max(first.getZ(), second.getZ()); anchorZ++) {
+                boolean containsBoth = first.getX() >= anchorX && first.getX() <= anchorX + 1
+                        && first.getZ() >= anchorZ && first.getZ() <= anchorZ + 1
+                        && second.getX() >= anchorX && second.getX() <= anchorX + 1
+                        && second.getZ() >= anchorZ && second.getZ() <= anchorZ + 1;
+                if (!containsBoth) continue;
+                boolean complete = true;
+                for (int dx = 0; dx < 2; dx++) for (int dz = 0; dz < 2; dz++) {
+                    if (level.getBlockState(new BlockPos(anchorX + dx, first.getY(), anchorZ + dz)).getBlock() != treeBlock) {
+                        complete = false;
+                    }
+                }
+                if (complete) return true;
+            }
+        }
+        return false;
     }
 
     private boolean isNaturalTreeBase(BlockPos base) {
@@ -659,6 +735,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
     private void finishFelledTree() {
         if (targetLog != null || !pendingLogs.isEmpty()) return;
         if (stumpPos != null) release("tree:" + stumpPos.asLong());
+        collectTreeDrops();
         prepareReplantDebt();
         treePlanActive = false;
         targetLog = null;
@@ -666,8 +743,46 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         stumpPos = null;
         expectedSapling = null;
         treeFootprint.clear();
+        treeDropMin = null;
+        treeDropMax = null;
         replantedThisTree = true;
         savePlan();
+    }
+
+    private void includeDropBounds(BlockPos pos) {
+        if (pos == null) return;
+        if (treeDropMin == null) {
+            treeDropMin = treeDropMax = pos.immutable();
+            return;
+        }
+        treeDropMin = new BlockPos(
+                Math.min(treeDropMin.getX(), pos.getX()),
+                Math.min(treeDropMin.getY(), pos.getY()),
+                Math.min(treeDropMin.getZ(), pos.getZ()));
+        treeDropMax = new BlockPos(
+                Math.max(treeDropMax.getX(), pos.getX()),
+                Math.max(treeDropMax.getY(), pos.getY()),
+                Math.max(treeDropMax.getZ(), pos.getZ()));
+    }
+
+    /** Collect only recent log-family output and saplings inside the reserved tree envelope. */
+    private void collectTreeDrops() {
+        if (stumpPos == null || expectedSapling == null || expectedSapling == Blocks.AIR) return;
+        ResourceLocation saplingId = BuiltInRegistries.BLOCK.getKey(expectedSapling);
+        String family = saplingId == null ? "" : saplingId.getPath().replace("_sapling", "");
+        AABB canopy = treeDropMin != null && treeDropMax != null
+                ? new AABB(treeDropMin).expandTowards(
+                        treeDropMax.getX() - treeDropMin.getX() + 1.0D,
+                        treeDropMax.getY() - treeDropMin.getY() + 1.0D,
+                        treeDropMax.getZ() - treeDropMin.getZ() + 1.0D).inflate(0.5D, 0.0D, 0.5D)
+                : new AABB(stumpPos).inflate(2.0D, 8.0D, 2.0D);
+        companion.collectJobItems(canopy, stack -> {
+            Block block = Block.byItem(stack.getItem());
+            if (block == expectedSapling) return true;
+            ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+            return id != null && id.getNamespace().equals(saplingId == null ? "minecraft" : saplingId.getNamespace())
+                    && id.getPath().contains(family) && block.defaultBlockState().is(BlockTags.LOGS);
+        });
     }
 
     /** Add one deduplicated site only after every reserved log has disappeared. */
@@ -677,9 +792,42 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             return;
         }
         List<BlockPos> footprint = treeFootprint.stream().map(BlockPos::immutable).distinct().toList();
+        int layout = isTwoByTwoFootprint(footprint) ? 2 : 1;
+        BlockPos center = companion.getWorkCenter().orElse(stumpPos);
+        int radius = Math.min(128, Math.max(searchRadius, companion.getPatrolRadius()));
+        ResourceKey<Level> dimension = companion.level().dimension();
         boolean alreadyQueued = replantDebt.stream().anyMatch(site -> site.sapling() == expectedSapling
+                && site.dimension().equals(dimension)
+                && site.workCenter().equals(center)
+                && site.radius() == radius
+                && site.layout() == layout
                 && site.remaining().containsAll(footprint) && footprint.containsAll(site.remaining()));
-        if (!alreadyQueued) replantDebt.addLast(new ReplantSite(new ArrayDeque<>(footprint), expectedSapling));
+        if (!alreadyQueued) {
+            replantDebt.addLast(new ReplantSite(new ArrayDeque<>(footprint), expectedSapling,
+                    dimension, center.immutable(), radius, layout));
+        }
+    }
+
+    static boolean isTwoByTwoFootprint(List<BlockPos> footprint) {
+        if (footprint.size() != 4) return false;
+        Set<Integer> xs = new HashSet<>();
+        Set<Integer> zs = new HashSet<>();
+        int y = footprint.get(0).getY();
+        for (BlockPos pos : footprint) {
+            if (pos.getY() != y) return false;
+            xs.add(pos.getX());
+            zs.add(pos.getZ());
+        }
+        if (xs.size() != 2 || zs.size() != 2) return false;
+        int minX = xs.stream().mapToInt(Integer::intValue).min().orElse(0);
+        int maxX = xs.stream().mapToInt(Integer::intValue).max().orElse(0);
+        int minZ = zs.stream().mapToInt(Integer::intValue).min().orElse(0);
+        int maxZ = zs.stream().mapToInt(Integer::intValue).max().orElse(0);
+        if (maxX - minX != 1 || maxZ - minZ != 1) return false;
+        for (int x : xs) for (int z : zs) {
+            if (footprint.stream().noneMatch(pos -> pos.getX() == x && pos.getZ() == z)) return false;
+        }
+        return true;
     }
 
     private BlockPos nextReplantTarget() {
@@ -692,6 +840,10 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         Level level = companion.level();
         while (!replantDebt.isEmpty()) {
             ReplantSite site = replantDebt.peekFirst();
+            if (!site.dimension().equals(level.dimension())) {
+                companion.setJobStatus("job_status.modern_companions.replant_wrong_dimension");
+                break;
+            }
             while (!site.remaining().isEmpty()) {
                 BlockPos target = site.remaining().peekFirst();
                 if (!level.hasChunkAt(target)) break;
@@ -779,6 +931,8 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         if (payload.contains("TreeStand")) standPos = BlockPos.of(payload.getLong("TreeStand"));
         expectedSapling = blockFromId(payload.getString("TreeSapling"));
         for (long raw : payload.getLongArray("TreeFootprint")) treeFootprint.add(BlockPos.of(raw));
+        if (payload.contains("TreeDropMin")) treeDropMin = BlockPos.of(payload.getLong("TreeDropMin"));
+        if (payload.contains("TreeDropMax")) treeDropMax = BlockPos.of(payload.getLong("TreeDropMax"));
         for (long raw : payload.getLongArray("TreeLogs")) {
             BlockPos log = BlockPos.of(raw);
             if (isTreeLog(log) && !log.equals(targetLog)) pendingLogs.add(log);
@@ -790,7 +944,16 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             if (sapling == null || sapling == Blocks.AIR) continue;
             ArrayDeque<BlockPos> remaining = new ArrayDeque<>();
             for (long raw : entry.getLongArray("Remaining")) remaining.add(BlockPos.of(raw));
-            if (!remaining.isEmpty()) replantDebt.addLast(new ReplantSite(remaining, sapling));
+            ResourceKey<Level> dimension = companion.level().dimension();
+            ResourceLocation dimensionId = ResourceLocation.tryParse(entry.getString("Dimension"));
+            if (dimensionId != null) dimension = ResourceKey.create(Registries.DIMENSION, dimensionId);
+            BlockPos center = entry.contains("Center") ? BlockPos.of(entry.getLong("Center")) :
+                    companion.getWorkCenter().orElse(companion.blockPosition());
+            int radius = entry.contains("Radius") ? entry.getInt("Radius") :
+                    Math.min(128, Math.max(searchRadius, companion.getPatrolRadius()));
+            int layout = entry.contains("Layout") ? entry.getInt("Layout") : (remaining.size() == 4 ? 2 : 1);
+            if (!remaining.isEmpty()) replantDebt.addLast(new ReplantSite(remaining, sapling,
+                    dimension, center.immutable(), radius, Math.max(1, layout)));
         }
         if (treePlanActive && targetLog == null && pendingLogs.isEmpty()) finishFelledTree();
     }
@@ -809,6 +972,8 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         payload.remove("TreeStand");
         payload.remove("TreeSapling");
         payload.remove("TreeFootprint");
+        payload.remove("TreeDropMin");
+        payload.remove("TreeDropMax");
         payload.remove("TreeLogs");
         payload.remove("ReplantDebt");
         payload.putBoolean("TreePlanActive", treePlanActive);
@@ -819,12 +984,18 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             payload.putString("TreeSapling", BuiltInRegistries.BLOCK.getKey(expectedSapling).toString());
         }
         if (!treeFootprint.isEmpty()) payload.putLongArray("TreeFootprint", treeFootprint.stream().mapToLong(BlockPos::asLong).toArray());
+        if (treeDropMin != null) payload.putLong("TreeDropMin", treeDropMin.asLong());
+        if (treeDropMax != null) payload.putLong("TreeDropMax", treeDropMax.asLong());
         if (!pendingLogs.isEmpty()) payload.putLongArray("TreeLogs", pendingLogs.stream().mapToLong(BlockPos::asLong).toArray());
         ListTag debt = new ListTag();
         for (ReplantSite site : replantDebt) {
             CompoundTag entry = new CompoundTag();
             entry.putString("Sapling", BuiltInRegistries.BLOCK.getKey(site.sapling()).toString());
             entry.putLongArray("Remaining", site.remaining().stream().mapToLong(BlockPos::asLong).toArray());
+            entry.putString("Dimension", site.dimension().location().toString());
+            entry.putLong("Center", site.workCenter().asLong());
+            entry.putInt("Radius", site.radius());
+            entry.putInt("Layout", site.layout());
             debt.add(entry);
         }
         if (!debt.isEmpty()) payload.put("ReplantDebt", debt);

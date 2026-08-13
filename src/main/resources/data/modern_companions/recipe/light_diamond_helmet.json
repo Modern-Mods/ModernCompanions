@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "aaa",
+    "ada"
+  ],
+  "key": {
+    "a": {
+      "item": "minecraft:diamond"
+    },
+    "d": {
+      "item": "minecraft:leather_helmet"
+    }
+  },
+  "result": {
+    "count": 1,
+    "id": "modern_companions:light_diamond_helmet"
+  }
+}

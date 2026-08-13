@@ -7,15 +7,19 @@ import com.majorbonghits.moderncompanions.client.screen.CompanionScreen;
 import com.majorbonghits.moderncompanions.client.screen.CompanionTableScreen;
 import com.majorbonghits.moderncompanions.client.screen.TraitReforgingScreen;
 import com.majorbonghits.moderncompanions.client.renderer.CompanionTableRenderer;
+import com.majorbonghits.moderncompanions.client.armor.MedievalArmorClientExtensions;
+import com.majorbonghits.moderncompanions.client.armor.MedievalArmorModel;
 import com.majorbonghits.moderncompanions.core.ModBlockEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModMenuTypes;
 import com.majorbonghits.moderncompanions.core.ModEffects;
+import com.majorbonghits.moderncompanions.registry.ModArmorItems;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.screens.inventory.EffectRenderingInventoryScreen;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.Item;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModList;
@@ -75,6 +79,17 @@ public final class ModClientEvents {
         magic(event, ModEntityTypes.BATTLEMAGE);
         event.registerEntityRenderer(ModEntityTypes.COMPANION_FISHING_HOOK.get(), CompanionFishingHookRenderer::new);
         event.registerEntityRenderer(ModEntityTypes.HOLY_SPARK.get(), HolySparkProjectileRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void onRegisterArmorLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        MedievalArmorModel.registerLayerDefinitions(event);
+    }
+
+    @SubscribeEvent
+    public static void onRegisterArmorClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(MedievalArmorClientExtensions.INSTANCE,
+                ModArmorItems.getMedievalArmorItems().toArray(Item[]::new));
     }
 
     @SubscribeEvent

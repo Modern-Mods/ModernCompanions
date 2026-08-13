@@ -3,6 +3,8 @@ package com.majorbonghits.moderncompanions.entity.job;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
@@ -21,6 +23,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 
 import java.util.EnumSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -30,7 +34,7 @@ import java.util.UUID;
  */
 public class HunterJobGoal extends ResumableJobGoal {
     private static final int CHECK_INTERVAL = 20;
-    private static final int POST_KILL_WAIT_TICKS = 10;
+    private static final int POST_KILL_WAIT_TICKS = 40;
     private static final TagKey<net.minecraft.world.entity.EntityType<?>> DENIED_ANIMALS = TagKey.create(Registries.ENTITY_TYPE,
             ResourceLocation.fromNamespaceAndPath(ModernCompanions.MOD_ID, "hunter_denied"));
     private static final TagKey<net.minecraft.world.entity.EntityType<?>> ALLOWED_ANIMALS = TagKey.create(Registries.ENTITY_TYPE,
@@ -44,6 +48,7 @@ public class HunterJobGoal extends ResumableJobGoal {
     private UUID jobTargetId;
     private BlockPos lastTargetPos;
     private ItemEntity ownedDrop;
+    private final List<UUID> ownedDropIds = new ArrayList<>();
     private int postKillWaitTicks;
     private boolean restoredPlan;
 
@@ -124,7 +129,8 @@ public class HunterJobGoal extends ResumableJobGoal {
 
     private LivingEntity findTarget() {
         net.minecraft.core.BlockPos center = companion.getWorkCenter().orElse(companion.blockPosition());
-        AABB box = new AABB(center).inflate(Math.min(searchRadius, companion.getPatrolRadius()));
+        double radius = Math.min(128.0D, Math.max(searchRadius, companion.getPatrolRadius()));
+        AABB box = new AABB(center).inflate(radius);
         LivingEntity best = null;
         double bestDistance = Double.MAX_VALUE;
         for (LivingEntity entity : companion.level().getEntitiesOfClass(LivingEntity.class, box, LivingEntity::isAlive)) {
@@ -139,21 +145,35 @@ public class HunterJobGoal extends ResumableJobGoal {
     }
 
     private boolean validTarget(LivingEntity entity) {
-        if (entity == companion || !entity.isAlive() || entity.isAlliedTo(companion)
-                || !companion.isInWorkArea(entity.blockPosition())) return false;
-        if (entity instanceof Animal animal && animal.isBaby()) return false;
-        if (!(entity instanceof Animal) && !entity.getType().is(ALLOWED_ANIMALS)) return false;
-        if (entity instanceof TamableAnimal tameable && tameable.isTame()) return false;
-        if (entity.getType().is(DENIED_ANIMALS)) return false;
+        if (entity == companion || !entity.isAlive() || !companion.isInWorkArea(entity.blockPosition())) return false;
+        boolean animal = entity instanceof Animal;
+        boolean baby = animal && ((Animal) entity).isBaby();
+        boolean tame = entity instanceof TamableAnimal tameable && tameable.isTame();
+        if (!passesEligibility(animal, baby, entity.isAlliedTo(companion), tame,
+                entity.getType().is(DENIED_ANIMALS), entity.getType().is(ALLOWED_ANIMALS))) return false;
         // Default every adult wild Animal is eligible; pack tags can add animal-like mod entities.
         var path = companion.getNavigation().createPath(entity, 0);
         return path != null && path.canReach();
     }
 
+    /** Pure contract predicate: tags may add entity types, but never override safety exclusions. */
+    static boolean passesEligibility(boolean animal, boolean baby, boolean allied, boolean tame,
+                                     boolean denied, boolean explicitlyAllowed) {
+        return !baby && !allied && !tame && !denied && (animal || explicitlyAllowed);
+    }
+
     private boolean confirmKill() {
         lastTargetPos = lastTargetPos == null ? companion.blockPosition() : lastTargetPos;
-        ownedDrop = findOwnedDrop();
-        if (ownedDrop != null && reserve("drop:" + ownedDrop.getUUID())) {
+        if (ownedDrop == null) ownedDrop = nextOwnedDrop();
+        if (ownedDrop == null) {
+            for (ItemEntity drop : findOwnedDrops()) {
+                if (!ownedDropIds.contains(drop.getUUID()) && reserve("drop:" + drop.getUUID())) {
+                    ownedDropIds.add(drop.getUUID());
+                }
+            }
+            ownedDrop = nextOwnedDrop();
+        }
+        if (ownedDrop != null) {
             phase(JobPhase.COLLECTING, "job_status.modern_companions.collecting", ownedDrop.blockPosition());
             savePlan();
             return true;
@@ -161,25 +181,46 @@ public class HunterJobGoal extends ResumableJobGoal {
         return false;
     }
 
-    private ItemEntity findOwnedDrop() {
+    private List<ItemEntity> findOwnedDrops() {
         BlockPos center = lastTargetPos == null ? companion.blockPosition() : lastTargetPos;
-        AABB box = new AABB(center).inflate(10.0D);
-        ItemEntity best = null;
-        double bestDistance = Double.MAX_VALUE;
-        for (ItemEntity item : companion.level().getEntitiesOfClass(ItemEntity.class, box,
-                candidate -> candidate.isAlive() && JobDropClaims.isOwnedBy(candidate, companion.getUUID()))) {
-            double distance = companion.distanceToSqr(item);
-            if (distance < bestDistance) {
-                best = item;
-                bestDistance = distance;
+        AABB box = new AABB(center).inflate(16.0D);
+        List<ItemEntity> drops = new ArrayList<>(companion.level().getEntitiesOfClass(ItemEntity.class, box,
+                candidate -> candidate.isAlive() && JobDropClaims.isOwnedBy(candidate, companion.getUUID())));
+        drops.sort(java.util.Comparator.comparingDouble(companion::distanceToSqr));
+        return drops;
+    }
+
+    private ItemEntity nextOwnedDrop() {
+        if (!(companion.level() instanceof ServerLevel server)) return null;
+        for (int index = 0; index < ownedDropIds.size(); index++) {
+            UUID id = ownedDropIds.get(index);
+            if (server.getEntity(id) instanceof ItemEntity item && item.isAlive()
+                    && JobDropClaims.isOwnedBy(item, companion.getUUID())) {
+                return item;
             }
+            release("drop:" + id);
+            ownedDropIds.remove(index--);
         }
-        return best;
+        return null;
     }
 
     private void tickOwnedDrop() {
-        if (ownedDrop == null || !ownedDrop.isAlive() || !JobDropClaims.isOwnedBy(ownedDrop, companion.getUUID())) {
-            ownedDrop = null;
+        if (ownedDrop == null) ownedDrop = nextOwnedDrop();
+        if (ownedDrop == null) {
+            // A generic pickup goal may have collected one claimed drop before
+            // this goal ticked; refresh the complete owned set before ending.
+            for (ItemEntity drop : findOwnedDrops()) {
+                if (!ownedDropIds.contains(drop.getUUID()) && reserve("drop:" + drop.getUUID())) {
+                    ownedDropIds.add(drop.getUUID());
+                }
+            }
+            ownedDrop = nextOwnedDrop();
+        }
+        if (ownedDrop == null) {
+            if (!ownedDropIds.isEmpty()) {
+                savePlan();
+                return;
+            }
             abandonTarget();
             return;
         }
@@ -196,8 +237,18 @@ public class HunterJobGoal extends ResumableJobGoal {
             companion.requestImmediateDelivery(null);
             return;
         }
-        release("drop:" + ownedDrop.getUUID());
-        ownedDrop = findOwnedDrop();
+        UUID collectedId = ownedDrop.getUUID();
+        release("drop:" + collectedId);
+        ownedDropIds.remove(collectedId);
+        ownedDrop = nextOwnedDrop();
+        if (ownedDrop == null) {
+            for (ItemEntity drop : findOwnedDrops()) {
+                if (!ownedDropIds.contains(drop.getUUID()) && reserve("drop:" + drop.getUUID())) {
+                    ownedDropIds.add(drop.getUUID());
+                }
+            }
+            ownedDrop = nextOwnedDrop();
+        }
         if (ownedDrop == null) abandonTarget();
         else savePlan();
     }
@@ -210,7 +261,9 @@ public class HunterJobGoal extends ResumableJobGoal {
         jobTargetId = null;
         lastTargetPos = null;
         if (ownedDrop != null) release("drop:" + ownedDrop.getUUID());
+        for (UUID dropId : ownedDropIds) release("drop:" + dropId);
         ownedDrop = null;
+        ownedDropIds.clear();
         postKillWaitTicks = 0;
         savePlan();
     }
@@ -220,9 +273,19 @@ public class HunterJobGoal extends ResumableJobGoal {
         payload.remove("HunterTarget");
         payload.remove("HunterTargetPos");
         payload.remove("HunterDrop");
+        payload.remove("HunterDrops");
         if (jobTargetId != null) payload.putUUID("HunterTarget", jobTargetId);
         if (lastTargetPos != null) payload.putLong("HunterTargetPos", lastTargetPos.asLong());
         if (ownedDrop != null) payload.putUUID("HunterDrop", ownedDrop.getUUID());
+        if (!ownedDropIds.isEmpty()) {
+            ListTag drops = new ListTag();
+            for (UUID dropId : ownedDropIds) {
+                CompoundTag entry = new CompoundTag();
+                entry.putUUID("Id", dropId);
+                drops.add(entry);
+            }
+            payload.put("HunterDrops", drops);
+        }
         companion.setJobPlanPayload(payload);
     }
 
@@ -238,9 +301,16 @@ public class HunterJobGoal extends ResumableJobGoal {
             }
         }
         if (payload.contains("HunterTargetPos")) lastTargetPos = BlockPos.of(payload.getLong("HunterTargetPos"));
+        ownedDropIds.clear();
+        ListTag drops = payload.getList("HunterDrops", Tag.TAG_COMPOUND);
+        for (int index = 0; index < drops.size(); index++) {
+            CompoundTag entry = drops.getCompound(index);
+            if (entry.hasUUID("Id")) ownedDropIds.add(entry.getUUID("Id"));
+        }
         if (payload.hasUUID("HunterDrop") && companion.level() instanceof ServerLevel server
                 && server.getEntity(payload.getUUID("HunterDrop")) instanceof ItemEntity item) {
             ownedDrop = item;
+            if (!ownedDropIds.contains(item.getUUID())) ownedDropIds.add(item.getUUID());
         }
     }
 

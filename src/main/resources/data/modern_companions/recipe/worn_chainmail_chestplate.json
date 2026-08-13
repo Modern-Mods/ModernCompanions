@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    "x x",
+    "xxx",
+    "xxx"
+  ],
+  "key": {
+    "x": {
+      "item": "minecraft:iron_nugget"
+    }
+  },
+  "result": {
+    "id": "modern_companions:worn_chainmail_chestplate",
+    "count": 1
+  }
+}

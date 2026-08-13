@@ -35,12 +35,14 @@ public class ArcherRangedBowAttackGoal<T extends AbstractHumanCompanionEntity & 
 
     @Override
     public boolean canUse() {
-        return this.mob.getTarget() != null && this.isHoldingBow();
+        return this.mob.getJob() != com.majorbonghits.moderncompanions.entity.job.CompanionJob.HUNTER
+                && this.mob.getTarget() != null && this.isHoldingBow();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return (this.canUse() || !this.mob.getNavigation().isDone()) && this.isHoldingBow();
+        return this.mob.getJob() != com.majorbonghits.moderncompanions.entity.job.CompanionJob.HUNTER
+                && (this.canUse() || !this.mob.getNavigation().isDone()) && this.isHoldingBow();
     }
 
     private boolean isHoldingBow() {

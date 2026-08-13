@@ -12,11 +12,14 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.PickaxeItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -28,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.Optional;
 
@@ -61,9 +65,23 @@ public class MinerJobGoal extends ResumableJobGoal {
     private BlockPos targetOre;
     private final List<BlockPos> oreQueue = new ArrayList<>();
     private int oreIndex = 0;
-    private enum RouteAction { BREAK, WALK }
-    private record RouteStep(RouteAction action, BlockPos pos) {}
+    private enum RouteAction { BREAK, WALK, PLACE }
+    /** Destructive steps retain the feet cell approved during route planning. */
+    private record RouteStep(RouteAction action, BlockPos pos, ResourceLocation blockId, BlockPos stand) {
+        private RouteStep(RouteAction action, BlockPos pos) {
+            this(action, pos, null, null);
+        }
+
+        private RouteStep(RouteAction action, BlockPos pos, ResourceLocation blockId) {
+            this(action, pos, blockId, null);
+        }
+    }
+    private record RouteNode(BlockPos pos, double cost, double score, BlockPos previous, int bridges) {}
     private final ArrayDeque<RouteStep> digQueue = new ArrayDeque<>();
+    /** Feet cells actually entered on the approved excavation route. */
+    private final List<BlockPos> returnRouteCells = new ArrayList<>();
+    private boolean nativeReturnValidated;
+    private int bridgePlacements;
     private int searchCooldown;
     private int breakTicksRemaining;
     private int swingCooldown;
@@ -84,6 +102,10 @@ public class MinerJobGoal extends ResumableJobGoal {
     private int surveyColumn, surveyY, surveyMinY, surveyMaxY;
     private boolean restoredJobPlan;
     private boolean returnRouteBlocked;
+    private static final int MAX_ROUTE_NODES = 8192;
+    private static final int MAX_BRIDGE_PLACEMENTS = 4;
+    private int actionBackoffTicks;
+    private int failedActionAttempts;
 
     public MinerJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
         super(companion, CompanionJob.MINER);
@@ -145,11 +167,17 @@ public class MinerJobGoal extends ResumableJobGoal {
         lastActionTick = 0;
         idleTicks = 0;
         announcedNoWork = false;
+        actionBackoffTicks = 0;
+        failedActionAttempts = 0;
         info("Goal stopped; state persisted (remaining=%d, mined=%d)", oreQueue.size(), companion.getMinerOresMined());
     }
 
     @Override
     public void tick() {
+        if (actionBackoffTicks > 0) {
+            actionBackoffTicks--;
+            return;
+        }
         if (digQueue.isEmpty()) {
             // Immediately replan so we never sit at "end of plan".
             if (!tryPlanNextOre()) {
@@ -169,6 +197,8 @@ public class MinerJobGoal extends ResumableJobGoal {
         if (step.action() == RouteAction.WALK) {
             if (companion.blockPosition().equals(current)) {
                 digQueue.pollFirst();
+                recordEnteredRouteCell(current);
+                tryPlaceTorch(current);
                 // Revalidate the return route after entering a newly excavated
                 // feet cell, not after each head/feet block in the same step.
                 // Native path probes can be transient while the world updates;
@@ -194,6 +224,11 @@ public class MinerJobGoal extends ResumableJobGoal {
                     progressStallTicks = 0;
                 }
             }
+            return;
+        }
+
+        if (step.action() == RouteAction.PLACE) {
+            tickPlaceStep(step);
             return;
         }
 
@@ -252,7 +287,7 @@ public class MinerJobGoal extends ResumableJobGoal {
         // standing on the approved feet cell. Wait for navigation to reach the
         // actual action stand before starting the break timer; otherwise a
         // buried step can spend its entire timer swinging from an invalid tile.
-        BlockPos actionStand = currentDigStand(current);
+        BlockPos actionStand = currentDigStand(step);
         if (actionStand == null) {
             breakTicksRemaining = 0;
             companion.setJobStatus("job_status.modern_companions.route_blocked");
@@ -293,7 +328,7 @@ public class MinerJobGoal extends ResumableJobGoal {
         breakTicksRemaining--;
 
         if (breakTicksRemaining <= 0) {
-            WorkerActionResult result = mine(current);
+            WorkerActionResult result = mine(current, actionStand);
             if (result != WorkerActionResult.SUCCESS) {
                 if (result == WorkerActionResult.INVALID_TARGET) {
                     if (current.equals(targetOre)) removeOreFromPlan(current);
@@ -304,10 +339,16 @@ public class MinerJobGoal extends ResumableJobGoal {
                     return;
                 }
                 companion.setJobStatus(result == WorkerActionResult.INVENTORY_FULL ? "job_status.modern_companions.inventory_full" : "job_status.modern_companions.mining_blocked");
+                // Keep the target and queue, but do not swing at a protected or
+                // changing block every tick while the world catches up.
+                failedActionAttempts = Math.min(5, failedActionAttempts + 1);
+                actionBackoffTicks = Math.min(200, 10 << Math.min(4, failedActionAttempts - 1));
                 breakTicksRemaining = 0;
                 moveToCurrentDigPos();
                 return;
             }
+            failedActionAttempts = 0;
+            actionBackoffTicks = 0;
             digQueue.pollFirst();
             if (current.equals(targetOre) && !isOre(current)) targetOre = null;
             persistPlanProgress();
@@ -393,8 +434,17 @@ public class MinerJobGoal extends ResumableJobGoal {
             } catch (IllegalArgumentException ignored) {
                 continue;
             }
-            if (step.contains("Pos")) digQueue.addLast(new RouteStep(action, BlockPos.of(step.getLong("Pos"))));
+            ResourceLocation blockId = null;
+            if (step.contains("Block")) blockId = ResourceLocation.tryParse(step.getString("Block"));
+            if (step.contains("Pos")) {
+                BlockPos stand = step.contains("Stand") ? BlockPos.of(step.getLong("Stand")) : null;
+                digQueue.addLast(new RouteStep(action, BlockPos.of(step.getLong("Pos")), blockId, stand));
+            }
         }
+        long[] savedReturnCells = payload.getLongArray("MinerReturnCells");
+        for (long raw : savedReturnCells) returnRouteCells.add(BlockPos.of(raw));
+        nativeReturnValidated = payload.getBoolean("MinerReturnValidated");
+        bridgePlacements = payload.getInt("MinerBridgePlacements");
         if (targetOre == null) targetOre = companion.getJobCheckpointTarget().orElse(null);
         validateRestoredRoute();
     }
@@ -410,6 +460,14 @@ public class MinerJobGoal extends ResumableJobGoal {
             digQueue.clear();
             return;
         }
+        for (BlockPos routeCell : returnRouteCells) {
+            if (!withinVolume(routeCell) || !companion.level().hasChunkAt(routeCell)
+                    || !safeCell(companion.level(), routeCell, false)) {
+                returnRouteCells.clear();
+                nativeReturnValidated = false;
+                break;
+            }
+        }
         if (digQueue.isEmpty()) return;
         ArrayDeque<RouteStep> valid = new ArrayDeque<>();
         for (RouteStep step : digQueue) {
@@ -418,8 +476,27 @@ public class MinerJobGoal extends ResumableJobGoal {
                 digQueue.clear();
                 return;
             }
+            if (step.action() != RouteAction.WALK && step.stand() == null) {
+                // Older route payloads did not retain an action stand. Rebuild
+                // the route from the durable ore rather than allowing an
+                // unbound operation to mine through a wall after reload.
+                digQueue.clear();
+                return;
+            }
             if (step.action() == RouteAction.WALK) {
-                if (!safeCell(companion.level(), pos)) {
+                if (!safeCell(companion.level(), pos, true)) {
+                    digQueue.clear();
+                    return;
+                }
+                valid.addLast(step);
+                continue;
+            }
+            if (step.action() == RouteAction.PLACE) {
+                if (step.stand() == null || !withinVolume(step.stand())
+                        || !companion.level().hasChunkAt(step.stand())
+                        || !safeCell(companion.level(), step.stand(), false)
+                        || (!companion.level().getBlockState(pos).isAir()
+                        && !isStableFloor(companion.level().getBlockState(pos), pos))) {
                     digQueue.clear();
                     return;
                 }
@@ -427,6 +504,12 @@ public class MinerJobGoal extends ResumableJobGoal {
                 continue;
             }
             BlockState state = companion.level().getBlockState(pos);
+            if (step.stand() == null || !withinVolume(step.stand())
+                    || !companion.level().hasChunkAt(step.stand())
+                    || !safeCell(companion.level(), step.stand(), false)) {
+                digQueue.clear();
+                return;
+            }
             if (state.isAir()) continue;
             if (!isMineableBlock(state) || isHazard(state)) {
                 digQueue.clear();
@@ -570,6 +653,7 @@ public class MinerJobGoal extends ResumableJobGoal {
         CompoundTag payload = companion.getJobPlanPayload();
         payload.remove("MinerTargetOre");
         payload.remove("MinerRoute");
+        payload.remove("MinerReturnCells");
         if (targetOre != null) payload.putLong("MinerTargetOre", targetOre.asLong());
         if (!digQueue.isEmpty()) {
             ListTag route = new ListTag();
@@ -577,10 +661,17 @@ public class MinerJobGoal extends ResumableJobGoal {
                 CompoundTag entry = new CompoundTag();
                 entry.putString("Action", step.action().name());
                 entry.putLong("Pos", step.pos().asLong());
+                if (step.blockId() != null) entry.putString("Block", step.blockId().toString());
+                if (step.stand() != null) entry.putLong("Stand", step.stand().asLong());
                 route.add(entry);
             }
             payload.put("MinerRoute", route);
         }
+        if (!returnRouteCells.isEmpty()) {
+            payload.putLongArray("MinerReturnCells", returnRouteCells.stream().mapToLong(BlockPos::asLong).toArray());
+        }
+        payload.putBoolean("MinerReturnValidated", nativeReturnValidated);
+        payload.putInt("MinerBridgePlacements", bridgePlacements);
         companion.setJobPlanPayload(payload);
     }
 
@@ -741,9 +832,16 @@ public class MinerJobGoal extends ResumableJobGoal {
     private boolean planPathToOre(BlockPos ore) {
         if (ore == null) return false;
         digQueue.clear();
+        // Keep the entered feet cells as the miner's proven way home. Clearing
+        // them here makes every subsequent ore look like a fresh surface job;
+        // native pathfinding then cannot see through the already excavated
+        // tunnel and the miner remains stuck at the first target.
+        if (returnRouteCells.isEmpty()) nativeReturnValidated = false;
+        bridgePlacements = 0;
         BlockPos cursor = companion.blockPosition();
         Level level = companion.level();
-        // Do not begin irreversible digging without a native route back from current safe ground.
+        if (!WorkerSite.isSafeStand(level, cursor)) return false;
+        // Do not begin irreversible digging without a route back from current safe ground.
         if (!hasReturnPath()) return false;
 
         // Existing caves are cheaper and safer than excavation, so use native navigation first.
@@ -752,82 +850,120 @@ public class MinerJobGoal extends ResumableJobGoal {
             if (companion.distanceToSqr(Vec3.atCenterOf(caveStand)) > 2.25D) {
                 digQueue.addLast(new RouteStep(RouteAction.WALK, caveStand));
             }
-            digQueue.addLast(new RouteStep(RouteAction.BREAK, ore));
+            digQueue.addLast(new RouteStep(RouteAction.BREAK, ore, null, caveStand.immutable()));
             return true;
         }
 
-        BlockPos destination = findOreApproach(ore, cursor);
-        if (destination == null) return false;
-        int steps = 0;
-        debug("Planning path to %s from %s", fmt(ore), fmt(cursor));
-
-        // First, descend (or stay level) toward ore with staircase pattern.
-        while (cursor.getY() > destination.getY() && steps++ < MAX_PLAN_STEPS) {
-            int dx = Integer.compare(destination.getX(), cursor.getX());
-            int dz = Integer.compare(destination.getZ(), cursor.getZ());
-            // Ensure there is a horizontal component so we never dig straight down.
-            if (dx == 0 && dz == 0) {
-                // Nudge along X first to create a stair landing.
-                dx = (cursor.getX() + 1 <= workCenter().getX() + horizontalRadius()) ? 1 : -1;
-            }
-            BlockPos next = cursor.offset(dx, -1, dz);
-            if (!withinVolume(next)) {
-                debug("Path abort: next stair outside volume %s", fmt(next));
+        List<BlockPos> route = findRouteToOreApproach(ore, cursor);
+        if (route == null) return false;
+        debug("Planning bounded route to %s from %s (%d feet cells)", fmt(ore), fmt(cursor), route.size());
+        nativeReturnValidated = true;
+        returnRouteCells.add(cursor.immutable());
+        for (BlockPos next : route) {
+            if (!enqueueStep(cursor, next, level)) {
+                // A route that cannot queue every required edit is not a
+                // route. Leave the ore for another bounded planning attempt.
+                digQueue.clear();
+                returnRouteCells.clear();
+                nativeReturnValidated = false;
+                bridgePlacements = 0;
                 return false;
             }
-            if (!safeStep(level, cursor, next)) {
-                info("Path abort: hazard at %s", fmt(next));
-                return false;
-            }
-            if (Math.abs(next.getY() - cursor.getY()) != 1) {
-                debug("Path abort: invalid step delta from %s to %s", fmt(cursor), fmt(next));
-                return false;
-            }
-
-            enqueueStep(cursor, next, level);
             cursor = next;
         }
-
-        // Horizontal / upward approach.
-        while (!cursor.equals(destination) && steps++ < MAX_PLAN_STEPS) {
-            int dx = Integer.compare(destination.getX(), cursor.getX());
-            int dz = Integer.compare(destination.getZ(), cursor.getZ());
-            int dy = Integer.compare(destination.getY(), cursor.getY());
-
-            BlockPos next;
-            if (dy > 0) { // need to go up
-                if (dx == 0 && dz == 0) dx = cursor.getX() < workCenter().getX() + horizontalRadius() ? 1 : -1;
-                next = cursor.offset(dx, 1, dz);
-            } else {
-                // prefer horizontal step first
-                if (Math.abs(destination.getX() - cursor.getX()) >= Math.abs(destination.getZ() - cursor.getZ())) {
-                    next = cursor.offset(dx, 0, 0);
-                } else {
-                    next = cursor.offset(0, 0, dz);
-                }
-            }
-
-            if (!withinVolume(next)) {
-                debug("Path abort: next step outside volume %s", fmt(next));
-                return false;
-            }
-            if (!safeStep(level, cursor, next)) {
-                info("Path abort: hazard at %s", fmt(next));
-                return false;
-            }
-            if (Math.abs(next.getY() - cursor.getY()) > 1) {
-                debug("Path abort: too-steep step from %s to %s", fmt(cursor), fmt(next));
-                return false;
-            }
-
-            enqueueStep(cursor, next, level);
-            cursor = next;
-        }
-
-        if (!cursor.equals(destination) || !withinVolume(ore)) return false;
-        digQueue.addLast(new RouteStep(RouteAction.BREAK, ore));
+        if (!withinVolume(ore)) return false;
+        digQueue.addLast(new RouteStep(RouteAction.BREAK, ore, null, cursor.immutable()));
         debug("Planned %d dig steps toward %s", digQueue.size(), fmt(ore));
         return !digQueue.isEmpty();
+    }
+
+    /**
+     * Bounded best-first search over feet cells.  Air/cave cells win on cost;
+     * solid cells are admitted only when both body blocks are mineable and the
+     * supporting floor is stable or can receive one supplied bridge block.
+     */
+    private List<BlockPos> findRouteToOreApproach(BlockPos ore, BlockPos start) {
+        Level level = companion.level();
+        Set<BlockPos> goals = new HashSet<>();
+        for (net.minecraft.core.Direction direction : net.minecraft.core.Direction.values()) {
+            BlockPos candidate = ore.relative(direction);
+            if (withinVolume(candidate) && canRouteCell(level, candidate, true)) goals.add(candidate.immutable());
+        }
+        if (goals.isEmpty()) return null;
+        int margin = 8;
+        int minX = Math.min(start.getX(), ore.getX()) - margin;
+        int maxX = Math.max(start.getX(), ore.getX()) + margin;
+        int minY = Math.min(start.getY(), ore.getY()) - margin;
+        int maxY = Math.max(start.getY(), ore.getY()) + margin;
+        int minZ = Math.min(start.getZ(), ore.getZ()) - margin;
+        int maxZ = Math.max(start.getZ(), ore.getZ()) + margin;
+
+        PriorityQueue<RouteNode> open = new PriorityQueue<>(Comparator.comparingDouble(RouteNode::score));
+        Map<BlockPos, Double> bestCost = new HashMap<>();
+        Map<BlockPos, BlockPos> previous = new HashMap<>();
+        open.add(new RouteNode(start.immutable(), 0.0D, routeHeuristic(start, goals), null, 0));
+        bestCost.put(start.immutable(), 0.0D);
+        int visited = 0;
+        while (!open.isEmpty() && visited++ < MAX_ROUTE_NODES) {
+            RouteNode node = open.poll();
+            if (goals.contains(node.pos())) return rebuildRoute(previous, start, node.pos());
+            if (node.cost() > bestCost.getOrDefault(node.pos(), Double.MAX_VALUE)) continue;
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (dx == 0 && dy == 0 && dz == 0) continue;
+                        BlockPos next = node.pos().offset(dx, dy, dz);
+                        if (next.getX() < minX || next.getX() > maxX || next.getY() < minY || next.getY() > maxY
+                                || next.getZ() < minZ || next.getZ() > maxZ || !withinVolume(next)
+                                || !MinerRouteRules.isStairStep(node.pos(), next)) continue;
+                        boolean needsBridge = !isStableFloor(level.getBlockState(next.below()), next.below());
+                        int bridges = node.bridges() + (needsBridge ? 1 : 0);
+                        if (needsBridge && !MinerRouteRules.bridgeBudgetAvailable(bridges - 1, MAX_BRIDGE_PLACEMENTS)) continue;
+                        if (!canRouteCell(level, next, true)) continue;
+                        double cost = node.cost() + routeStepCost(level, next, needsBridge, dy);
+                        if (cost >= bestCost.getOrDefault(next, Double.MAX_VALUE)) continue;
+                        BlockPos copy = next.immutable();
+                        bestCost.put(copy, cost);
+                        previous.put(copy, node.pos());
+                        open.add(new RouteNode(copy, cost, cost + routeHeuristic(copy, goals), node.pos(), bridges));
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Lower-bound estimate for cardinal feet-cell travel; keeps long radii from exhausting the node cap. */
+    private double routeHeuristic(BlockPos pos, Set<BlockPos> goals) {
+        long best = Long.MAX_VALUE;
+        for (BlockPos goal : goals) {
+            long horizontal = Math.abs((long) goal.getX() - pos.getX())
+                    + Math.abs((long) goal.getZ() - pos.getZ());
+            long vertical = Math.abs((long) goal.getY() - pos.getY());
+            best = Math.min(best, Math.max(horizontal, vertical));
+        }
+        return best == Long.MAX_VALUE ? 0.0D : best;
+    }
+
+    private List<BlockPos> rebuildRoute(Map<BlockPos, BlockPos> previous, BlockPos start, BlockPos goal) {
+        List<BlockPos> route = new ArrayList<>();
+        BlockPos cursor = goal;
+        while (cursor != null && !cursor.equals(start)) {
+            route.add(cursor.immutable());
+            cursor = previous.get(cursor);
+        }
+        if (cursor == null) return null;
+        java.util.Collections.reverse(route);
+        return route;
+    }
+
+    private double routeStepCost(Level level, BlockPos pos, boolean needsBridge, int verticalDelta) {
+        BlockState feet = level.getBlockState(pos);
+        BlockState head = level.getBlockState(pos.above());
+        boolean existingAir = feet.isAir() && head.isAir();
+        float hardness = Math.max(0.0F, feet.getDestroySpeed(level, pos))
+                + Math.max(0.0F, head.getDestroySpeed(level, pos.above()));
+        return MinerRouteRules.stepCost(existingAir, needsBridge, hardness, verticalDelta);
     }
 
     private BlockPos findOreApproach(BlockPos ore, BlockPos from) {
@@ -849,32 +985,46 @@ public class MinerJobGoal extends ResumableJobGoal {
      * Adds the floor/headroom blocks for a step into the dig queue if they are solid and
      * mineable (ore or filler). Leaves air untouched.
      */
-    private void enqueueStep(BlockPos from, BlockPos to, Level level) {
+    private boolean enqueueStep(BlockPos from, BlockPos to, Level level) {
+        if (!MinerRouteRules.isStairStep(from, to)) return false;
+        BlockState floor = level.getBlockState(to.below());
+        if (!isStableFloor(floor, to.below())) {
+            Block bridge = findBridgeBlock(to.below());
+            if (bridge == null || bridgePlacements >= MAX_BRIDGE_PLACEMENTS) return false;
+            digQueue.addLast(new RouteStep(RouteAction.PLACE, to.below().immutable(),
+                    BuiltInRegistries.BLOCK.getKey(bridge), from.immutable()));
+            bridgePlacements++;
+        }
         // `to` is the future feet cell. Its floor is `to.below()` and must stay intact.
         // Descending exposes the upper face first; other steps expose the feet block first.
         if (WorkerSafetyPredicates.excavationHeadFirst(from.getY(), to.getY())) {
-            addIfMineable(level, to.above());
-            addIfMineable(level, to);
+            if (!addIfMineable(level, to.above(), from) || !addIfMineable(level, to, from)) return false;
         } else {
-            addIfMineable(level, to);
-            addIfMineable(level, to.above());
+            if (!addIfMineable(level, to, from) || !addIfMineable(level, to.above(), from)) return false;
         }
         digQueue.addLast(new RouteStep(RouteAction.WALK, to.immutable()));
+        return true;
     }
 
-    private void addIfMineable(Level level, BlockPos pos) {
+    private boolean addIfMineable(Level level, BlockPos pos, BlockPos stand) {
         BlockState state = level.getBlockState(pos);
-        if (state.isAir()) return;
+        if (state.isAir()) return true;
         if (isMineableBlock(state)) {
-            digQueue.addLast(new RouteStep(RouteAction.BREAK, pos.immutable()));
+            digQueue.addLast(new RouteStep(RouteAction.BREAK, pos.immutable(), null, stand.immutable()));
+            return true;
         }
+        return false;
     }
 
     private boolean safeStep(Level level, BlockPos from, BlockPos to) {
-        return WorkerSafetyPredicates.stepHeightIsSafe(from.getY(), to.getY()) && safeCell(level, to);
+        return MinerRouteRules.isStairStep(from, to) && safeCell(level, to, true);
     }
 
     private boolean safeCell(Level level, BlockPos to) {
+        return safeCell(level, to, false);
+    }
+
+    private boolean safeCell(Level level, BlockPos to, boolean allowBridge) {
         BlockState feet = level.getBlockState(to);
         BlockState head = level.getBlockState(to.above());
         BlockState ceiling = level.getBlockState(to.above(2));
@@ -882,10 +1032,52 @@ public class MinerJobGoal extends ResumableJobGoal {
         return canOpen(feet) && canOpen(head)
                 && !isHazard(feet) && !isHazard(head) && !isHazard(ceiling) && !isHazard(floor)
                 && !hasAdjacentFluid(level, to) && !hasAdjacentFluid(level, to.above())
-                && !(feet.getBlock() instanceof net.minecraft.world.level.block.FallingBlock)
-                && !(head.getBlock() instanceof net.minecraft.world.level.block.FallingBlock)
-                && !(ceiling.getBlock() instanceof net.minecraft.world.level.block.FallingBlock)
-                && !floor.isAir() && floor.isFaceSturdy(level, to.below(), net.minecraft.core.Direction.UP);
+                && !(feet.getBlock() instanceof FallingBlock)
+                && !(head.getBlock() instanceof FallingBlock)
+                && !(ceiling.getBlock() instanceof FallingBlock)
+                && (isStableFloor(floor, to.below()) || allowBridge && findBridgeBlock(to.below()) != null);
+    }
+
+    private boolean canRouteCell(Level level, BlockPos to, boolean allowBridge) {
+        return level.hasChunkAt(to) && safeCell(level, to, allowBridge);
+    }
+
+    private boolean isStableFloor(BlockState floor, BlockPos pos) {
+        return !floor.isAir() && !isHazard(floor)
+                && !(floor.getBlock() instanceof FallingBlock)
+                && !floor.hasBlockEntity()
+                && floor.isFaceSturdy(companion.level(), pos, net.minecraft.core.Direction.UP);
+    }
+
+    private Block findBridgeBlock(BlockPos target) {
+        if (bridgePlacements >= MAX_BRIDGE_PLACEMENTS) return null;
+        for (int slot = -1; slot < companion.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = slot < 0 ? companion.getMainHandItem() : companion.getInventory().getItem(slot);
+            if (!(stack.getItem() instanceof BlockItem blockItem) || stack.isEmpty()) continue;
+            Block block = blockItem.getBlock();
+            if (isBridgeBlock(block, target)) return block;
+        }
+        return null;
+    }
+
+    private BlockState placementState(RouteStep step) {
+        if (step.blockId() != null) {
+            Block block = BuiltInRegistries.BLOCK.get(step.blockId());
+            if (block != null && isBridgeBlock(block, step.pos())) return block.defaultBlockState();
+        }
+        Block block = findBridgeBlock(step.pos());
+        return block == null ? Blocks.AIR.defaultBlockState() : block.defaultBlockState();
+    }
+
+    private boolean isBridgeBlock(Block block, BlockPos target) {
+        if (block == null || block == Blocks.AIR || block instanceof FallingBlock) return false;
+        BlockState state = block.defaultBlockState();
+        return state.getFluidState().isEmpty()
+                && !state.hasBlockEntity()
+                && !state.is(BlockTags.LEAVES)
+                && !state.getCollisionShape(companion.level(), target).isEmpty()
+                && state.isCollisionShapeFullBlock(companion.level(), target)
+                && state.canSurvive(companion.level(), target);
     }
 
     private boolean canOpen(BlockState state) {
@@ -962,14 +1154,14 @@ public class MinerJobGoal extends ResumableJobGoal {
         if (step == null) return;
         BlockPos current = step.pos();
         if (step.action() == RouteAction.WALK) {
-            if (!WorkerSite.isSafeStand(companion.level(), current)) {
+            if (!safeCell(companion.level(), current, false)) {
                 companion.setJobStatus("job_status.modern_companions.route_blocked");
                 return;
             }
             companion.getNavigation().moveTo(current.getX() + 0.5D, current.getY(), current.getZ() + 0.5D, 1.05D);
             return;
         }
-        BlockPos stand = currentDigStand(current);
+        BlockPos stand = currentDigStand(step);
         if (stand == null) {
             // Preserve ore and route for retry after a transient obstruction/path update.
             companion.setJobStatus("job_status.modern_companions.route_blocked");
@@ -977,6 +1169,84 @@ public class MinerJobGoal extends ResumableJobGoal {
         }
         debug("Navigating toward dig target %s (stand at %s)", fmt(current), fmt(stand));
         companion.getNavigation().moveTo(stand.getX() + 0.5D, stand.getY(), stand.getZ() + 0.5D, 1.05D);
+    }
+
+    private void tickPlaceStep(RouteStep step) {
+        BlockPos target = step.pos();
+        if (returnRouteBlocked && !hasReturnPath()) {
+            companion.setJobStatus("job_status.modern_companions.route_blocked");
+            return;
+        }
+        BlockState existing = companion.level().getBlockState(target);
+        if (!existing.isAir()) {
+            if (isStableFloor(existing, target)) {
+                digQueue.pollFirst();
+                persistPlanProgress();
+                moveToCurrentDigPos();
+            } else {
+                companion.setJobStatus("job_status.modern_companions.bridge_blocked");
+            }
+            return;
+        }
+        BlockPos stand = currentDigStand(step);
+        if (stand == null) {
+            companion.setJobStatus("job_status.modern_companions.route_blocked");
+            return;
+        }
+        if (companion.distanceToSqr(Vec3.atCenterOf(stand)) > 2.25D) {
+            phase(JobPhase.TRAVELLING, "job_status.modern_companions.advancing_tunnel", stand);
+            if (companion.getNavigation().isDone()) moveToCurrentDigPos();
+            return;
+        }
+        phase(JobPhase.WORKING, "job_status.modern_companions.bridging", target);
+        companion.getLookControl().setLookAt(Vec3.atCenterOf(target));
+        BlockState placement = placementState(step);
+        if (placement.isAir()) {
+            companion.setJobStatus("job_status.modern_companions.no_bridge_blocks");
+            return;
+        }
+        WorkerActionResult result = WorkerBlockActions.placePlannedResult(companion, target, stand, placement);
+        if (result != WorkerActionResult.SUCCESS) {
+            companion.setJobStatus(result == WorkerActionResult.INVENTORY_FULL
+                    ? "job_status.modern_companions.inventory_full"
+                    : result == WorkerActionResult.TOOL_MISSING
+                    ? "job_status.modern_companions.no_bridge_blocks"
+                    : "job_status.modern_companions.bridge_blocked");
+            return;
+        }
+        digQueue.pollFirst();
+        persistPlanProgress();
+        moveToCurrentDigPos();
+    }
+
+    private void recordEnteredRouteCell(BlockPos cell) {
+        if (returnRouteCells.isEmpty() || !returnRouteCells.get(returnRouteCells.size() - 1).equals(cell)) {
+            returnRouteCells.add(cell.immutable());
+        }
+    }
+
+    /** Optional fixed-spacing lighting using only supplied vanilla torch items. */
+    private void tryPlaceTorch(BlockPos feet) {
+        if (returnRouteCells.size() < 2 || returnRouteCells.size() % 8 != 0 || !hasTorch()) return;
+        Level level = companion.level();
+        for (net.minecraft.core.Direction direction : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            BlockPos target = feet.relative(direction);
+            if (!level.getBlockState(target).isAir()
+                    || !level.getBlockState(target.below()).isFaceSturdy(level, target.below(), net.minecraft.core.Direction.UP)
+                    || !level.getBlockState(target).canBeReplaced()) continue;
+            if (returnRouteCells.stream().anyMatch(cell -> cell.equals(target))) continue;
+            WorkerActionResult result = WorkerBlockActions.placePlannedResult(
+                    companion, target, feet, Blocks.TORCH.defaultBlockState());
+            if (result == WorkerActionResult.SUCCESS) return;
+        }
+    }
+
+    private boolean hasTorch() {
+        if (companion.getMainHandItem().is(Items.TORCH)) return true;
+        for (int slot = 0; slot < companion.getInventory().getContainerSize(); slot++) {
+            if (companion.getInventory().getItem(slot).is(Items.TORCH)) return true;
+        }
+        return false;
     }
 
     private Optional<BlockPos> findAdjacentAir(BlockPos target) {
@@ -994,12 +1264,13 @@ public class MinerJobGoal extends ResumableJobGoal {
         return Optional.ofNullable(best);
     }
 
-    private WorkerActionResult mine(BlockPos pos) {
+    private WorkerActionResult mine(BlockPos pos, BlockPos stand) {
         if (!(companion.level() instanceof ServerLevel server)) return WorkerActionResult.RETRYABLE_BLOCKED;
         BlockState state = server.getBlockState(pos);
-        if (!isMineableBlock(state)) return WorkerActionResult.INVALID_TARGET;
+        if (!isMineableBlock(state) || isHazard(state) || state.getBlock() instanceof FallingBlock) {
+            return WorkerActionResult.INVALID_TARGET;
+        }
         boolean wasOre = isOreState(state);
-        BlockPos stand = currentDigStand(pos);
         if (stand == null) return WorkerActionResult.RETRYABLE_BLOCKED;
         WorkerActionResult result = WorkerBlockActions.breakPlannedExcavationBlock(
                 companion, pos, stand, WorkerSite.INTERACT_RANGE_SQR);
@@ -1033,17 +1304,38 @@ public class MinerJobGoal extends ResumableJobGoal {
         JobReservations.release(server, ReservationType.ROUTE, routeKey, companion.getUUID());
     }
 
-    /** A tunnel's next block has no navigable stand yet; mine it from current safe feet first. */
-    private BlockPos currentDigStand(BlockPos target) {
-        BlockPos current = companion.blockPosition();
-        if (WorkerSite.isSafeStand(companion.level(), current)
-                && WorkerSite.canActFromStandIgnoringSight(companion, target, current, WorkerSite.INTERACT_RANGE_SQR)) return current;
-        return WorkerSite.findStand(companion, target, 2);
+    /** Only use the feet cell recorded for the queued operation; never mine from a new wall-side stand. */
+    private BlockPos currentDigStand(RouteStep step) {
+        BlockPos stand = step.stand();
+        if (stand == null || !withinVolume(stand) || !companion.level().hasChunkAt(stand)
+                || !safeCell(companion.level(), stand, false)) return null;
+        return stand;
     }
 
     /** Chest itself is solid; return navigation must target any reachable safe adjacent feet cell. */
     private boolean hasReturnPath() {
         if (companion.getWorkCenter().isEmpty()) return false;
+        if (!returnRouteCells.isEmpty()) {
+            int currentIndex = -1;
+            for (int index = returnRouteCells.size() - 1; index >= 0; index--) {
+                if (returnRouteCells.get(index).equals(companion.blockPosition())) {
+                    currentIndex = index;
+                    break;
+                }
+            }
+            if (currentIndex < 0 || !nativeReturnValidated) return false;
+            for (int index = currentIndex; index >= 0; index--) {
+                BlockPos cell = returnRouteCells.get(index);
+                if (!withinVolume(cell) || !companion.level().hasChunkAt(cell)
+                        || !safeCell(companion.level(), cell, false)) return false;
+                if (index > 0 && !MinerRouteRules.isStairStep(returnRouteCells.get(index - 1), cell)) return false;
+            }
+            // The original chest route was validated before excavation.  The
+            // controlled tunnel cells above are the only new navigation facts;
+            // probing the native path from the buried position would reject a
+            // valid route until the tunnel is fully visible to vanilla pathing.
+            return true;
+        }
         BlockPos chest = workCenter();
         for (BlockPos stand : BlockPos.betweenClosed(chest.offset(-2, -1, -2), chest.offset(2, 1, 2))) {
             if (!WorkerSite.isSafeStand(companion.level(), stand)

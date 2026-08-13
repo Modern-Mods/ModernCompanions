@@ -1,6 +1,7 @@
 package com.majorbonghits.moderncompanions;
 
 import com.majorbonghits.moderncompanions.registry.ModCreativeTabHandler;
+import com.majorbonghits.moderncompanions.registry.ModArmorItems;
 import com.majorbonghits.moderncompanions.core.ModEntityTypes;
 import com.majorbonghits.moderncompanions.core.ModBlocks;
 import com.majorbonghits.moderncompanions.core.ModBlockEntityTypes;
@@ -34,6 +35,7 @@ public final class ModernCompanions {
             com.majorbonghits.moderncompanions.client.ModConfigScreens.register();
         }
 
+        ModArmorItems.register(modBus); // imported armor and independent vanilla-rework sets
         com.majorbonghits.moderncompanions.registry.ModItems.register(modBus); // weapons
         ModBlocks.register(modBus);
         ModBlockEntityTypes.register(modBus);

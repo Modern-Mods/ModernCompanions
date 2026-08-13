@@ -42,6 +42,17 @@ public final class WorkerBlockActions {
         return breakBlockResult(companion, target, stand, interactRangeSqr, true);
     }
 
+    /**
+     * Miner-only route placement: the planner has already approved this support
+     * cell, so foliage or the other half of the same stair may hide it during
+     * execution.  Distance, floor safety, protection, and inventory checks stay
+     * identical to ordinary placement.
+     */
+    public static WorkerActionResult placePlannedResult(AbstractHumanCompanionEntity companion, BlockPos target,
+                                                        BlockPos stand, BlockState state) {
+        return placeResult(companion, target, stand, state, true);
+    }
+
     public static WorkerActionResult breakBlockResult(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, double interactRangeSqr) {
         return breakBlockResult(companion, target, stand, interactRangeSqr, false);
     }
@@ -62,6 +73,7 @@ public final class WorkerBlockActions {
         var drops = Block.getDrops(state, level, target, level.getBlockEntity(target), companion, tool);
         if (!canStoreAll(companion, drops)) return WorkerActionResult.INVENTORY_FULL;
         if (!level.destroyBlock(target, false, companion)) return WorkerActionResult.PROTECTED;
+        if (!level.getBlockState(target).isAir()) return WorkerActionResult.RETRYABLE_BLOCKED;
         for (ItemStack drop : drops) {
             ItemStack leftover = companion.getInventory().addItem(drop.copy());
             if (!leftover.isEmpty()) return WorkerActionResult.RETRYABLE_BLOCKED; // world changed after simulation
@@ -77,10 +89,19 @@ public final class WorkerBlockActions {
     /** Validates, places, verifies, and consumes one matching block item atomically. */
     public static WorkerActionResult placeResult(AbstractHumanCompanionEntity companion, BlockPos target,
                                                  BlockPos stand, net.minecraft.world.level.block.state.BlockState state) {
+        return placeResult(companion, target, stand, state, false);
+    }
+
+    private static WorkerActionResult placeResult(AbstractHumanCompanionEntity companion, BlockPos target,
+                                                  BlockPos stand, BlockState state, boolean ignoreSight) {
         if (!(companion.level() instanceof ServerLevel level)) return WorkerActionResult.RETRYABLE_BLOCKED;
+        if (state == null || state.isAir()) return WorkerActionResult.INVALID_TARGET;
         if (!level.hasChunkAt(target)) return WorkerActionResult.UNLOADED;
         if (!level.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)) return WorkerActionResult.PROTECTED;
-        if (!WorkerSite.canActFromStand(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR)) {
+        boolean canAct = ignoreSight
+                ? WorkerSite.canActFromStandIgnoringSight(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR)
+                : WorkerSite.canActFromStand(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR);
+        if (!canAct) {
             return WorkerActionResult.RETRYABLE_BLOCKED;
         }
         if (!level.getBlockState(target).isAir() || !state.canSurvive(level, target)) {

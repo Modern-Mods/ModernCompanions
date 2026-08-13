@@ -2,6 +2,7 @@ package com.majorbonghits.moderncompanions.entity.job;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import com.majorbonghits.moderncompanions.entity.ai.HunterCombatGoal;
 
 import java.util.UUID;
 
@@ -14,6 +15,11 @@ public final class JobContractTest {
         planRoundTripsDeliveryAndPayload();
         reservationsRespectOwnerExpiryAndRelease();
         failedActionsNeverAdvanceAPlan();
+        minerRouteRulesPreferSafeCavesAndRejectStraightDrops();
+        treeMetadataPreservesTwoByTwoFootprints();
+        hunterContractRejectsUnsafeTargetsAndUnsupportedWeapons();
+        chefContractRequiresTaggedRecipeInput();
+        dropClaimsKeepOwnershipTyped();
     }
 
     private static void lifecycleRetainsPausedWork() {
@@ -80,7 +86,9 @@ public final class JobContractTest {
         assert JobReservations.claim(null, ReservationType.ENTITY, "animal:1", first, "hunter", 10L, 5L);
         assert !JobReservations.claim(null, ReservationType.ENTITY, "animal:1", second, "hunter", 11L, 5L)
                 : "reservation unexpectedly replaced; size=" + JobReservations.size(null);
-        assert JobReservations.claim(null, ReservationType.ENTITY, "animal:1", second, "hunter", 15L, 5L);
+        assert JobReservations.renew(null, first, 12L, 10L) == 1;
+        assert !JobReservations.claim(null, ReservationType.ENTITY, "animal:1", second, "hunter", 20L, 5L);
+        assert JobReservations.claim(null, ReservationType.ENTITY, "animal:1", second, "hunter", 23L, 5L);
         assert JobReservations.size(null) == 1;
         JobReservations.release(null, second);
         assert JobReservations.size(null) == 0;
@@ -91,5 +99,70 @@ public final class JobContractTest {
         for (WorkerActionResult result : WorkerActionResult.values()) {
             if (result != WorkerActionResult.SUCCESS) assert !result.advancesPlan();
         }
+    }
+
+    private static void minerRouteRulesPreferSafeCavesAndRejectStraightDrops() {
+        BlockPos start = new BlockPos(0, 64, 0);
+        assert MinerRouteRules.isStairStep(start, new BlockPos(1, 63, 0));
+        assert !MinerRouteRules.isStairStep(start, new BlockPos(0, 63, 0));
+        assert MinerRouteRules.stepCost(true, false, 0.0F, 0)
+                < MinerRouteRules.stepCost(false, false, 1.5F, 0);
+        assert MinerRouteRules.bridgeBudgetAvailable(0, 4);
+        assert !MinerRouteRules.bridgeBudgetAvailable(4, 4);
+
+        JobPlan plan = new JobPlan();
+        plan.setJob(CompanionJob.MINER);
+        BlockPos ore = new BlockPos(9, 28, 3);
+        BlockPos returnPoint = new BlockPos(0, 64, 0);
+        plan.checkpoint(JobPhase.WORKING, ore, new BlockPos(8, 28, 3), "ore", returnPoint);
+        plan.beginDelivery(JobPhase.WORKING, ore, new BlockPos(8, 28, 3), "ore", returnPoint);
+        plan.restoreAfterDelivery();
+        assert plan.phase() == JobPhase.RETURNING;
+        assert ore.equals(plan.target());
+        assert returnPoint.equals(plan.returnPosition());
+        assert plan.completeDeliveryReturn() == JobPhase.WORKING;
+    }
+
+    private static void treeMetadataPreservesTwoByTwoFootprints() {
+        assert LumberjackJobGoal.isTwoByTwoFootprint(java.util.List.of(
+                new BlockPos(0, 64, 0), new BlockPos(1, 64, 0),
+                new BlockPos(0, 64, 1), new BlockPos(1, 64, 1)));
+        assert !LumberjackJobGoal.isTwoByTwoFootprint(java.util.List.of(
+                new BlockPos(0, 64, 0), new BlockPos(1, 64, 0),
+                new BlockPos(0, 64, 1)));
+        assert !LumberjackJobGoal.isTwoByTwoFootprint(java.util.List.of(
+                new BlockPos(0, 64, 0), new BlockPos(2, 64, 0),
+                new BlockPos(0, 64, 1), new BlockPos(2, 64, 1)));
+    }
+
+    private static void hunterContractRejectsUnsafeTargetsAndUnsupportedWeapons() {
+        assert HunterJobGoal.passesEligibility(true, false, false, false, false, false);
+        assert HunterJobGoal.passesEligibility(false, false, false, false, false, true);
+        assert !HunterJobGoal.passesEligibility(true, true, false, false, false, false);
+        assert !HunterJobGoal.passesEligibility(true, false, true, false, false, false);
+        assert !HunterJobGoal.passesEligibility(true, false, false, true, false, false);
+        assert !HunterJobGoal.passesEligibility(true, false, false, false, true, false);
+        assert !HunterJobGoal.passesEligibility(false, false, false, false, false, false);
+
+        assert JobToolPolicy.isRequired(CompanionJob.HUNTER);
+        assert HunterCombatGoal.supportsWeaponMode(true, false, false, false);
+        assert HunterCombatGoal.supportsWeaponMode(false, true, false, false);
+        assert HunterCombatGoal.supportsWeaponMode(false, false, true, true);
+        assert !HunterCombatGoal.supportsWeaponMode(false, false, true, false);
+        assert !HunterCombatGoal.supportsWeaponMode(false, false, false, true);
+    }
+
+    private static void chefContractRequiresTaggedRecipeInput() {
+        assert ChefJobGoal.acceptsTaggedRecipe(true, true);
+        assert !ChefJobGoal.acceptsTaggedRecipe(false, true);
+        assert !ChefJobGoal.acceptsTaggedRecipe(true, false);
+    }
+
+    private static void dropClaimsKeepOwnershipTyped() {
+        UUID owner = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        assert JobDropClaims.ownerMatches(owner, owner);
+        assert !JobDropClaims.ownerMatches(owner, other);
+        assert !JobDropClaims.ownerMatches(null, owner);
     }
 }

@@ -366,6 +366,8 @@ Available jobs:
 
 To use a job, assign it in the Jobs screen, give the companion the required tool, and bind a delivery container with the Assignment Wand. The **Work** control starts or pauses the job. Job phases and waiting reasons are shown in the worker panel; combat, blocked routes, full inventories, and unavailable chests preserve the job checkpoint for later resumption.
 
+The worker plan is server-owned and versioned. It preserves the active field cell, tree/log queue and species-correct replant debt, ore target and ordered tunnel operations, fishing shore/catch state, Hunter target/drop claims, or Chef workstation batch across goal interruption and entity reload. Delivery keeps the pre-delivery work unit, releases the chest claim after each attempt, and returns the companion to its saved checkpoint before the profession resumes. Protection denials, unsafe or unloaded work, occupied replant spots, missing fuel/tools, and full storage remain visible waiting states instead of silently advancing the plan.
+
 ## Configuration
 
 Open **Mods → Modern Companions → Config** for the player-facing settings. Dedicated servers use the common server config. Values below are the shipped defaults and accepted ranges.

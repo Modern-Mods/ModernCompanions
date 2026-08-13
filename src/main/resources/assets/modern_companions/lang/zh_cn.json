@@ -791,6 +791,7 @@
   "job_status.modern_companions.mining_blocked": "开采被阻挡",
   "job_status.modern_companions.no_pickaxe": "没有镐子",
   "food.modern_companions.item_amount": "%sx",
+  "job_status.modern_companions.replant_blocked": "\u91cd\u65b0\u79cd\u690d\u4f4d\u7f6e\u88ab\u5360\u7528",
   "food.modern_companions.done": "已完成",
   "food.modern_companions.none": "无需招募物品",
   "food.modern_companions.wants_single": "想要：%s",
@@ -888,7 +889,7 @@
   "modern_companions.configuration.jobs.chef_enabled": "启用厨师",
   "modern_companions.configuration.jobs.chef_radius": "厨师搜索半径",
   "modern_companions.configuration.jobs.assigned_chests_chunkload": "保持指派箱子加载",
-  "modern_companions.configuration.jobs.show_jobs_button": "显示职业按钮"
+  "modern_companions.configuration.jobs.show_jobs_button": "显示职业按钮",
   "tooltip.modern_companions.placement_wand": "潜行并右击空气可将附近所有同伴回收至背包，再次潜行并右击空气将所有背包中的同伴部署至周围。",
   "message.modern_companions.placement_wand.placed": "已部署灵魂宝石：%s。",
   "message.modern_companions.placement_wand.captured": "已将伙伴存储为灵魂宝石：%s。",

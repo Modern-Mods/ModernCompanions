@@ -5,6 +5,7 @@ import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -20,11 +21,15 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.EnumSet;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -69,8 +74,14 @@ public class LumberjackJobGoal extends ResumableJobGoal {
     private boolean treePlanActive;
     private boolean searchingForNextTree;
     private boolean treeScanExhausted;
+    private final List<BlockPos> treeFootprint = new ArrayList<>();
+    private final Deque<ReplantSite> replantDebt = new ArrayDeque<>();
+    private boolean restoredPlan;
     private static final int STALL_KICK_TICKS = 120;
     private static final int MAX_STAND_SEARCH_RADIUS = 1;
+    private static final int MAX_ACTION_RETRIES = 3;
+
+    private record ReplantSite(ArrayDeque<BlockPos> remaining, Block sapling) { }
 
     public LumberjackJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
         super(companion, CompanionJob.LUMBERJACK);
@@ -84,6 +95,14 @@ public class LumberjackJobGoal extends ResumableJobGoal {
     public boolean canUse() {
         if (!isActiveJob()) {
             return false;
+        }
+        if (!replantDebt.isEmpty()) {
+            normalizeReplantDebt();
+            BlockPos next = nextReplantTarget();
+            if (next == null) return false;
+            standPos = WorkerSite.findStand(companion, next, 2);
+            phase(JobPhase.COLLECTING, "job_status.modern_companions.replanting", next);
+            return standPos != null;
         }
         if (targetLog != null || !pendingLogs.isEmpty() || treePlanActive) {
             searchingForNextTree = false;
@@ -130,12 +149,12 @@ public class LumberjackJobGoal extends ResumableJobGoal {
 
     @Override
     public boolean canContinueToUse() {
-        return isActiveJob() && (targetLog != null || !pendingLogs.isEmpty() || treePlanActive || searchingForNextTree);
+        return isActiveJob() && (!replantDebt.isEmpty() || targetLog != null || !pendingLogs.isEmpty() || treePlanActive || searchingForNextTree);
     }
 
     @Override
     public void start() {
-        moveToTarget();
+        if (!replantDebt.isEmpty()) moveToReplant(); else moveToTarget();
     }
 
     @Override
@@ -155,6 +174,12 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             return;
         }
         if (!retryReady()) return;
+        if (!replantDebt.isEmpty()) {
+            normalizeReplantDebt();
+            if (replantDebt.isEmpty()) return;
+            tickReplant();
+            return;
+        }
         if (stuckAfterDepositCooldown > 0) {
             stuckAfterDepositCooldown--;
         }
@@ -182,11 +207,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         if (targetLog == null) {
             if (treePlanActive) {
                 phase(JobPhase.COLLECTING, "job_status.modern_companions.collecting", stumpPos);
-                if (!replantedThisTree) {
-                    tryReplantSapling();
-                    replantedThisTree = true;
-                }
-                treePlanActive = false;
+                finishFelledTree();
             }
             // Keep this goal alive while the bounded scan looks for the next tree;
             // stopping here is what previously left the lumberjack standing after one tree.
@@ -252,13 +273,14 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             if (result == WorkerActionResult.SUCCESS) {
                 logDebug("chopped", "pos", targetLog, "queue", pendingLogs.size());
                 targetLog = nextLogTarget();
-                if (targetLog == null && !replantedThisTree) {
+                if (targetLog == null) {
                     phase(JobPhase.COLLECTING, "job_status.modern_companions.collecting", stumpPos);
-                    tryReplantSapling();
-                    replantedThisTree = true;
+                    finishFelledTree();
                 }
+                savePlan();
             } else if (result == WorkerActionResult.INVALID_TARGET) {
                 targetLog = nextLogTarget();
+                savePlan();
             } else {
                 retry(result == WorkerActionResult.INVENTORY_FULL
                         ? "job_status.modern_companions.inventory_full"
@@ -273,6 +295,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
     }
 
     private boolean isActiveJob() {
+        restorePlan();
         if (!enabled) return false;
         if (companion.getJob() != CompanionJob.LUMBERJACK) return false;
         if (!workActive(enabled)) return false;
@@ -292,6 +315,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         pendingLogs.clear();
         targetLog = null;
         stumpPos = null;
+        treeFootprint.clear();
         searchCooldown = 0;
         replantedThisTree = false;
         searchingForNextTree = false;
@@ -308,6 +332,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         stumpPos = null;
         targetLog = null;
         standPos = null;
+        treeFootprint.clear();
         treePlanActive = false;
 
         Level level = companion.level();
@@ -325,6 +350,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         Block treeBlock = level.getBlockState(start).getBlock();
 
         Deque<BlockPos> frontier = new ArrayDeque<>();
+        List<BlockPos> componentLogs = new ArrayList<>();
         Set<BlockPos> visited = new HashSet<>();
         frontier.add(start);
         visited.add(start);
@@ -333,7 +359,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
 
         while (!frontier.isEmpty() && count < MAX_LOGS_PER_TREE) {
             BlockPos current = frontier.poll();
-            pendingLogs.add(current);
+            componentLogs.add(current.immutable());
             if (current.getY() < stumpPos.getY()) {
                 stumpPos = current;
             }
@@ -364,6 +390,19 @@ public class LumberjackJobGoal extends ResumableJobGoal {
             return false;
         }
 
+        int lowestY = componentLogs.stream().mapToInt(BlockPos::getY).min().orElse(stumpPos.getY());
+        treeFootprint.clear();
+        componentLogs.stream()
+                .filter(pos -> pos.getY() == lowestY)
+                .sorted((left, right) -> {
+                    int x = Integer.compare(left.getX(), right.getX());
+                    return x != 0 ? x : Integer.compare(left.getZ(), right.getZ());
+                })
+                .forEach(pos -> treeFootprint.add(pos.immutable()));
+        if (treeFootprint.isEmpty()) treeFootprint.add(stumpPos.immutable());
+        stumpPos = treeFootprint.get(0);
+        pendingLogs.addAll(componentLogs);
+
         // Keep one ground-level stand beside the stump so upper logs are never discarded.
         standPos = WorkerSite.findApproachStand(companion, stumpPos, 1);
         // A leaf wall can make the probe fail before the worker gets a chance to clear its approach.
@@ -371,6 +410,7 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         if (standPos == null) return false;
         targetLog = nextLogTarget();
         treePlanActive = targetLog != null;
+        savePlan();
         return treePlanActive;
     }
 
@@ -616,50 +656,179 @@ public class LumberjackJobGoal extends ResumableJobGoal {
         return 0;
     }
 
-    private boolean tryReplantSapling() {
-        if (stumpPos == null || !(companion.level() instanceof ServerLevel server)) return false;
-        BlockPos placePos = stumpPos;
-        BlockPos ground = stumpPos.below();
-        BlockState groundState = server.getBlockState(ground);
-        BlockState airCheck = server.getBlockState(placePos);
-        if (!airCheck.isAir()) return false;
-
-        if (!isConfiguredTreeGround(groundState)) return false;
-
-        Predicate<ItemStack> saplingMatcher = stack -> stack.getItem() instanceof BlockItem bi
-                && bi.getBlock() == expectedSapling;
-        ItemStack sapling = ItemStack.EMPTY;
-        if (saplingMatcher.test(companion.getMainHandItem())) {
-            sapling = companion.getMainHandItem();
-        } else {
-            int slot = findInventorySlot(saplingMatcher);
-            if (slot >= 0) {
-                sapling = companion.getInventory().getItem(slot);
-            }
-        }
-        if (sapling.isEmpty()) {
-            companion.setJobStatus("job_status.modern_companions.needs_sapling");
-            return false;
-        }
-        BlockItem bi = (BlockItem) sapling.getItem();
-        BlockState saplingState = bi.getBlock().defaultBlockState();
-        if (!saplingState.canSurvive(server, placePos)) return false;
-        BlockPos stand = WorkerSite.findStand(companion, placePos, 2);
-        if (stand != null && WorkerBlockActions.place(companion, placePos, stand, saplingState)) {
-            sapling.shrink(1);
-            stumpPos = null;
-            return true;
-        }
-        return false;
+    private void finishFelledTree() {
+        if (targetLog != null || !pendingLogs.isEmpty()) return;
+        if (stumpPos != null) release("tree:" + stumpPos.asLong());
+        prepareReplantDebt();
+        treePlanActive = false;
+        targetLog = null;
+        standPos = null;
+        stumpPos = null;
+        expectedSapling = null;
+        treeFootprint.clear();
+        replantedThisTree = true;
+        savePlan();
     }
 
-    private int findInventorySlot(Predicate<ItemStack> matcher) {
-        for (int i = 0; i < companion.getInventory().getContainerSize(); i++) {
-            if (matcher.test(companion.getInventory().getItem(i))) {
-                return i;
+    /** Add one deduplicated site only after every reserved log has disappeared. */
+    private void prepareReplantDebt() {
+        if (treeFootprint.isEmpty() || expectedSapling == null || expectedSapling == Blocks.AIR) {
+            companion.setJobStatus("job_status.modern_companions.needs_sapling");
+            return;
+        }
+        List<BlockPos> footprint = treeFootprint.stream().map(BlockPos::immutable).distinct().toList();
+        boolean alreadyQueued = replantDebt.stream().anyMatch(site -> site.sapling() == expectedSapling
+                && site.remaining().containsAll(footprint) && footprint.containsAll(site.remaining()));
+        if (!alreadyQueued) replantDebt.addLast(new ReplantSite(new ArrayDeque<>(footprint), expectedSapling));
+    }
+
+    private BlockPos nextReplantTarget() {
+        ReplantSite site = replantDebt.peekFirst();
+        return site == null || site.remaining().isEmpty() ? null : site.remaining().peekFirst();
+    }
+
+    private void normalizeReplantDebt() {
+        boolean changed = false;
+        Level level = companion.level();
+        while (!replantDebt.isEmpty()) {
+            ReplantSite site = replantDebt.peekFirst();
+            while (!site.remaining().isEmpty()) {
+                BlockPos target = site.remaining().peekFirst();
+                if (!level.hasChunkAt(target)) break;
+                if (level.getBlockState(target).getBlock() != site.sapling()) break;
+                site.remaining().pollFirst();
+                changed = true;
+            }
+            if (!site.remaining().isEmpty()) break;
+            replantDebt.removeFirst();
+            changed = true;
+        }
+        if (changed) savePlan();
+    }
+
+    private void moveToReplant() {
+        BlockPos target = nextReplantTarget();
+        if (target == null || standPos == null) return;
+        companion.getNavigation().moveTo(standPos.getX() + 0.5D, standPos.getY(), standPos.getZ() + 0.5D, 1.0D);
+    }
+
+    private void tickReplant() {
+        ReplantSite site = replantDebt.peekFirst();
+        BlockPos target = nextReplantTarget();
+        if (site == null || target == null) return;
+        if (!(companion.level() instanceof ServerLevel server) || !server.isLoaded(target)) {
+            waiting("job_status.modern_companions.route_blocked");
+            return;
+        }
+        if (standPos == null || !WorkerSite.isSafeStand(companion.level(), standPos)) {
+            standPos = WorkerSite.findStand(companion, target, 2);
+            if (standPos == null) {
+                waiting("job_status.modern_companions.route_blocked");
+                return;
             }
         }
-        return -1;
+        double distance = companion.distanceToSqr(Vec3.atCenterOf(standPos));
+        if (distance > 2.25D) {
+            phase(JobPhase.COLLECTING, "job_status.modern_companions.replanting", target);
+            if (companion.getNavigation().isDone()) moveToReplant();
+            return;
+        }
+        if (!WorkerSite.canActFromStand(companion, target, standPos, WorkerSite.INTERACT_RANGE_SQR)) {
+            retry("job_status.modern_companions.route_blocked", MAX_ACTION_RETRIES);
+            return;
+        }
+        if (!companion.level().getBlockState(target).isAir()) {
+            waiting("job_status.modern_companions.replant_blocked");
+            return;
+        }
+        BlockState saplingState = site.sapling().defaultBlockState();
+        if (!saplingState.canSurvive(companion.level(), target)) {
+            // The recorded ground is gone; this one footprint is permanently invalid.
+            site.remaining().pollFirst();
+            companion.setJobStatus("job_status.modern_companions.replanting");
+            normalizeReplantDebt();
+            return;
+        }
+        companion.getLookControl().setLookAt(Vec3.atCenterOf(target));
+        WorkerActionResult result = WorkerBlockActions.placeResult(companion, target, standPos, saplingState);
+        if (result == WorkerActionResult.SUCCESS) {
+            site.remaining().pollFirst();
+            standPos = null;
+            normalizeReplantDebt();
+            savePlan();
+            return;
+        }
+        if (result == WorkerActionResult.INVENTORY_FULL || result == WorkerActionResult.TOOL_MISSING) {
+            companion.setJobStatus("job_status.modern_companions.needs_sapling");
+        } else {
+            retry(result == WorkerActionResult.PROTECTED
+                    ? "job_status.modern_companions.farm_protected"
+                    : "job_status.modern_companions.route_blocked", MAX_ACTION_RETRIES);
+        }
+        savePlan();
+    }
+
+    private void restorePlan() {
+        if (restoredPlan) return;
+        restoredPlan = true;
+        CompoundTag payload = companion.getJobPlanPayload();
+        treePlanActive = payload.getBoolean("TreePlanActive");
+        if (payload.contains("TreeStump")) stumpPos = BlockPos.of(payload.getLong("TreeStump"));
+        if (payload.contains("TreeTarget")) targetLog = BlockPos.of(payload.getLong("TreeTarget"));
+        if (targetLog == null && treePlanActive) targetLog = companion.getJobCheckpointTarget().orElse(null);
+        if (payload.contains("TreeStand")) standPos = BlockPos.of(payload.getLong("TreeStand"));
+        expectedSapling = blockFromId(payload.getString("TreeSapling"));
+        for (long raw : payload.getLongArray("TreeFootprint")) treeFootprint.add(BlockPos.of(raw));
+        for (long raw : payload.getLongArray("TreeLogs")) {
+            BlockPos log = BlockPos.of(raw);
+            if (isTreeLog(log) && !log.equals(targetLog)) pendingLogs.add(log);
+        }
+        ListTag debt = payload.getList("ReplantDebt", Tag.TAG_COMPOUND);
+        for (int index = 0; index < debt.size(); index++) {
+            CompoundTag entry = debt.getCompound(index);
+            Block sapling = blockFromId(entry.getString("Sapling"));
+            if (sapling == null || sapling == Blocks.AIR) continue;
+            ArrayDeque<BlockPos> remaining = new ArrayDeque<>();
+            for (long raw : entry.getLongArray("Remaining")) remaining.add(BlockPos.of(raw));
+            if (!remaining.isEmpty()) replantDebt.addLast(new ReplantSite(remaining, sapling));
+        }
+        if (treePlanActive && targetLog == null && pendingLogs.isEmpty()) finishFelledTree();
+    }
+
+    private Block blockFromId(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        ResourceLocation id = ResourceLocation.tryParse(raw);
+        return id != null && BuiltInRegistries.BLOCK.containsKey(id) ? BuiltInRegistries.BLOCK.get(id) : null;
+    }
+
+    private void savePlan() {
+        CompoundTag payload = companion.getJobPlanPayload();
+        payload.remove("TreePlanActive");
+        payload.remove("TreeStump");
+        payload.remove("TreeTarget");
+        payload.remove("TreeStand");
+        payload.remove("TreeSapling");
+        payload.remove("TreeFootprint");
+        payload.remove("TreeLogs");
+        payload.remove("ReplantDebt");
+        payload.putBoolean("TreePlanActive", treePlanActive);
+        if (stumpPos != null) payload.putLong("TreeStump", stumpPos.asLong());
+        if (targetLog != null) payload.putLong("TreeTarget", targetLog.asLong());
+        if (standPos != null) payload.putLong("TreeStand", standPos.asLong());
+        if (expectedSapling != null && expectedSapling != Blocks.AIR) {
+            payload.putString("TreeSapling", BuiltInRegistries.BLOCK.getKey(expectedSapling).toString());
+        }
+        if (!treeFootprint.isEmpty()) payload.putLongArray("TreeFootprint", treeFootprint.stream().mapToLong(BlockPos::asLong).toArray());
+        if (!pendingLogs.isEmpty()) payload.putLongArray("TreeLogs", pendingLogs.stream().mapToLong(BlockPos::asLong).toArray());
+        ListTag debt = new ListTag();
+        for (ReplantSite site : replantDebt) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("Sapling", BuiltInRegistries.BLOCK.getKey(site.sapling()).toString());
+            entry.putLongArray("Remaining", site.remaining().stream().mapToLong(BlockPos::asLong).toArray());
+            debt.add(entry);
+        }
+        if (!debt.isEmpty()) payload.put("ReplantDebt", debt);
+        companion.setJobPlanPayload(payload);
     }
 
     private Block saplingFor(BlockPos log) {

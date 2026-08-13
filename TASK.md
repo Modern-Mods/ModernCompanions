@@ -1,540 +1,695 @@
 # Living Tribe Jobs Reliability Revamp
 
-## Outcome
+## Deliverable
 
-Turn Lumberjack, Miner, Fisher, Hunter, and Chef into reliable, resumable
-professions that feel like living members of a settlement rather than isolated
-AI demonstrations.
+Implement a robust, resumable companion-job system for Farmer, Lumberjack,
+Miner, Fisher, Hunter, and Chef. The result must make companions behave like
+reliable members of a settlement rather than isolated AI demonstrations.
 
-Each companion must visibly find work, travel to it, perform it, collect the
-result, deliver outputs to its assigned chest, and resume where it left off.
-Combat, unloading, a temporarily blocked path, a full inventory, or another
-worker claiming the same target must pause or replan work without silently
-discarding it.
+Every assigned companion must be able to:
 
-This is a focused repair and strengthening of the existing Jobs system. Reuse
-the current job enum, goals, inventory, patrol center/radius, Assignment Wand,
-custom fishing hook, synced statistics, and server-side block-action gate. Do
-not introduce a generic behavior-tree framework, capability-based job system,
-or MineColonies dependency.
+1. Find valid work inside its assigned work contract.
+2. Reserve a work unit so another companion cannot invalidate the plan.
+3. Travel to the work safely.
+4. Perform the profession-specific action through the existing server-side
+   safety/action gate.
+5. Collect the resulting items or confirm the world-state change.
+6. Deliver job output to the assigned chest/container.
+7. Return to the saved checkpoint and continue without silently losing work.
 
-## Current-source audit: root problems to eliminate
+Combat, Work being toggled off, owner recall, unloading, a blocked route, a
+full inventory, a missing/full/protected chest, a protected target, or another
+worker claiming a target must suspend or replan the work without discarding a
+valid plan. Only confirmed completion or proven permanent invalidation may
+discard a work unit.
+
+This is a focused strengthening of the existing Jobs system. Preserve the
+current job enum, concrete goals, inventory/equipment behavior, patrol
+center/radius, Assignment Wand, custom fishing hook, synced statistics,
+server-authoritative Work toggle, and server-side block-action gate.
+
+Do not introduce a generic behavior-tree framework, a capability-based job
+system, a MineColonies dependency, arbitrary terrain destruction, teleport-
+to-target recovery, infinite scans, or permanent chunk forcing by default.
+
+## Reference-derived design requirements
+
+The following local source trees were audited before this task was written:
+
+- `workers-main/` — Village Workers.
+- `MineColonies/` — MineColonies.
+- `SmartBrainLib-1.21.11/` — SmartBrainLib.
+- The current ModernCompanions job implementation under `src/`.
+
+The goal is to adopt proven design principles while keeping ModernCompanions'
+existing architecture, safety rules, UI, equipment rules, and multiplayer
+behavior.
+
+### Village Workers lessons
+
+Village Workers is all-rights-reserved/ARR source. Use it only to discover and
+infer behavior; do not copy its source, assets, comments, or implementation.
+
+Apply these concepts independently:
+
+- Treat the assigned patrol center, radius, chest, and job settings as an
+  explicit work contract, analogous to a persistent work-area entity.
+- Separate profession work into small confirmed operations: planting,
+  harvesting, plowing, tree discovery, leaf clearing, stripping, breaking,
+  replanting, mining, and fishing.
+- Keep supply acquisition and output deposit as explicit job phases rather
+  than incidental inventory side effects.
+- Use a dedicated storage/delivery state machine with target selection,
+  travel, validation, interaction, success, and error states.
+- Track profession-specific work objects and queues instead of inferring all
+  work from the companion's current position.
+
+Do not reproduce its weaker patterns: boolean ownership in place of typed
+reservations, repeated broad scans, direct world edits that bypass the
+ModernCompanions action contract, or direct fishing-loot insertion.
+
+### MineColonies lessons
+
+`MineColonies/LICENSE` is GPLv3. This repository may study its architecture,
+but this task does not authorize copying MineColonies source or importing its
+worker framework. Any future direct source reuse requires a separate legal and
+distribution decision, preserved notices, and a GPL-compliance plan. Implement
+the following ideas independently:
+
+- Separate persistent job/building/module state from transient AI execution.
+- Use one shared execution/state-machine contract for ordered transitions,
+  blocking events, delays, exceptions, progress, and diagnostics.
+- Treat requests, tools, supplies, dumping, inventory-full, and paused states
+  as first-class job conditions.
+- Persist deterministic progress and advance it only after confirmed success.
+- Persist complete profession work units: field cells, fishing candidates,
+  tree components, mine nodes, remaining work, and production batches.
+- Track available/in-progress/completed mine work so competing workers do not
+  duplicate or invalidate each other's routes.
+- Rebuild native navigation paths after reload instead of pretending a path is
+  durable world state.
+
+ModernCompanions must retain its own protection hooks, drop handling,
+`mobGriefing` behavior, item-handler/container integration, equipment policy,
+and assigned-chest contract. MineColonies' colony, warehouse, building-level,
+request, and skill systems are not to be introduced.
+
+### SmartBrainLib lessons
+
+`SmartBrainLib-1.21.11/LICENSE` is MPL-2.0. Do not add it as a dependency or
+copy its source for this task. Use its behavior as a design reference for
+narrow mechanisms only:
+
+- Throttle sensors and expensive scans with configurable scan intervals.
+- Bound behavior runtime and add cooldown/backoff rather than retrying every
+  tick forever.
+- Use explicit start/stop predicates and cleanup for temporary execution.
+- Model ordered, repeated, delayed, and held actions explicitly.
+- Track meaningful unreachable-target state rather than assuming that a path
+  object means progress.
+- Rebuild or expire observations/memories when their world data is stale.
+- Use gradual work progress and cleanup presentation without weakening the
+  server-side action/drop/protection contract.
+
+Do not replace the current Goals with a generic behavior-tree or brain system.
+The shared job coordinator below is the smaller project-specific abstraction
+required here.
+
+## Current-source audit: problems to eliminate
 
 ### Shared lifecycle and safety
 
-- Each goal currently owns its own partial search/travel/retry loop. Goal
-  preemption calls `stop()`, which often clears the active plan and cannot
-  distinguish completion from combat, delivery, unload, or temporary failure.
+- Each goal owns its own partial search/travel/retry loop. Goal `stop()` often
+  clears the active plan and cannot distinguish combat, delivery, unload,
+  temporary failure, and completion.
+- `JobLifecycle` and `ResumableJobGoal` currently provide a status/retry bridge,
+  not authoritative ownership of the active work plan.
 - `WorkerSite.isValid` conflates destination planning with action validation.
-  It asks for line of sight from the worker's current position while evaluating
-  a future stand, and it does not centrally require the worker to actually be
-  at that stand before editing the world.
-- Boolean block actions do not describe why work failed. Some callers remove a
-  queued target even when the block was not broken.
-- There is no shared target reservation. Multiple workers can select the same
-  tree, ore, animal, fishing shore, furnace, or chest stand and invalidate each
-  other's plans.
-- Large searches are repeated instead of cached or incrementally budgeted.
-  Lumberjack can scan hundreds of thousands of blocks; Chef performs path/LOS
-  work for ordinary non-heat blocks; Miner can survey millions of positions at
-  large configured radii.
-- Existing tests cover only two pure worker-safety predicates. They do not
-  exercise job state transitions, target retention, navigation failure,
-  interruption, collection, delivery, or persistence.
+  Future stands must not require line of sight from the worker's current
+  position.
+- World actions have inconsistent failure semantics. A queue entry can be
+  removed even when the target was protected, unloaded, invalid, or not
+  actually changed.
+- Reservations are string-keyed TTL claims without typed target ownership and
+  complete death/removal/dimension cleanup.
+- Large searches and path/LOS checks are repeated instead of incrementally
+  budgeted and cached.
+- Existing tests do not adequately cover transitions, persistence, target
+  retention, navigation failure, collection, delivery, or contention.
 
 ### Delivery and inventory
 
-- Automatic delivery waits for every inventory slot to be occupied or a full
-  Minecraft day. Jobs can fail to insert their current output and drop it into
-  the world long before that condition is useful.
-- Chest stand selection requires initial line of sight from the remote worker,
-  so an otherwise reachable chest behind a wall, doorway, hill, or corner can
-  be rejected before travel starts.
-- Delivery does not preserve and resume an explicit work checkpoint. Only the
-  Lumberjack receives an ad hoc rescan callback after success.
-- All cooked food is retained as personal food, so Chef output is not delivered.
-- Hunters rely on the optional generic three-block Pickup toggle. Ranged kills
-  and moving prey can leave job-owned drops outside pickup range.
-- Container insertion uses only `Container`; compatible modded item-handler
-  containers and their insertion rules are not used.
+- Delivery waits too long, often until every inventory slot is occupied or a
+  long idle period has elapsed.
+- Chest stand selection can require remote line of sight before travel,
+  rejecting reachable chests behind walls, doors, hills, or corners.
+- Delivery does not consistently preserve a pre-delivery phase, target, and
+  return checkpoint.
+- Cooked Chef output can be retained as personal food instead of delivered
+  job output.
+- Hunter collection depends on the optional generic Pickup toggle and does not
+  own a complete ranged-kill drop flow.
+- Container insertion must support NeoForge item handlers first and `Container`
+  fallback, including sided rules and compatible modded storage.
 - Full, missing, protected, unloaded, and temporarily unreachable chests need
-  bounded retry/backoff and a stable player-visible reason, not repeated goal
-  churn or permanent loss of the work plan.
+  bounded retry/backoff and a stable player-visible reason.
 
 ### Lumberjack
 
-- A “natural tree” is currently any log with nearby leaves. Player structures,
-  adjacent trees, or decorative logs can be merged through diagonal log
-  adjacency, while giant trees are silently truncated at 96 logs.
-- The vertical scan covers only two blocks below and six above the patrol
-  center, so slopes and elevation changes are poorly covered.
-- Stall recovery can skip an unbroken log. Goal interruption can attempt to
-  replant before the tree is actually finished.
-- One arbitrary sapling is planted at one stump. Species, multi-trunk/2x2 tree
-  footprints, and whether the sapling came from the felled tree are not tracked.
-- The extended felling distance is only a distance exemption; it is not tied to
-  a reserved, validated tree component. Foliage/branch line of sight can still
-  stall the plan.
+- A natural tree must not be inferred from a nearby log/leaves heuristic that
+  merges adjacent trees, decorative structures, or diagonal-only connections.
+- Search must cover the full horizontal work radius and relevant terrain
+  heights without silently truncating oversized trees.
+- Stall recovery must not skip an unbroken log or replant before the reserved
+  tree is completely felled.
+- Replanting must preserve species, sapling family, stump footprint, and 1x1
+  versus 2x2 layout.
+- Extended felling reach is allowed only for the reserved validated tree
+  component, never as a generic remote-break exemption.
 
 ### Miner
 
-- The route model confuses a walkable feet cell with a block to break. It queues
-  the destination floor itself, potentially removing the support the Miner was
-  meant to stand on.
-- A synthetic straight staircase is planned toward known ore, but every queued
-  buried block later requires a currently reachable vanilla stand and line of
-  sight. This prevents the first controlled excavation through solid stone.
-- Existing caves are not preferred as cheap walkable routes before excavation.
-  Caverns and ravines have no explicit ledge, fall, bridge, or alternate-route
-  logic.
-- Hazard checks are local and incomplete: no stable-floor model, falling-block
-  ceiling check, adjacent/above fluid exposure check, world-border/chunk check,
-  or complete prevalidated return route.
-- A dig queue entry is removed after `mine()` even when the protected, blocked,
-  unloaded, or invalid block was not broken.
-- Global rescans, movement-stall handling, and repeated abandonment can replace
-  an active plan mid-step. Unreachable ore memory has no useful expiry model.
-- Dead/duplicated planner paths and the repeated `abandonCurrentOre()` call make
-  state transitions harder to reason about and test.
+- A walkable feet cell, its supporting floor, its two-block body clearance,
+  and a block to break are different things and must never be conflated.
+- A synthetic route must not require a currently reachable vanilla stand for
+  every buried excavation step when the controlled route planner approved the
+  excavation.
+- Existing caves should be preferred before paying to excavate solid stone.
+- Caverns and ravines need explicit ledge, fall, bridge, fluid, hazard,
+  alternate-route, and return-route handling.
+- A failed/protected/unloaded/invalid dig must retain the target and route
+  operation instead of advancing the queue.
+- Rescans and movement stalls must not replace an active plan mid-step.
 
 ### Fisher
 
-- Shore discovery scans around the worker and is restricted by a small patrol
-  radius; it does not efficiently sample river/ocean surface shorelines across
-  a larger work area.
-- Tool UI accepts `FishingRodItem`, while the goal requires exactly the vanilla
-  fishing rod.
-- Facing is asynchronous but cast selection uses the current look vector. The
-  hook is teleported to water with zero velocity/no gravity, so there is no real
-  cast arc or convincing reel-in.
-- Bite state is a one-tick random boolean with no durable bite window or splash
-  sequence. `fishCooldown` is assigned but does not control the hook.
-- Successful loot is inserted directly into inventory; no fish/item travels
-  visually from the bobber to the worker.
-- Rejected-water entries are not pruned, and any interruption clears the useful
-  shoreline plan instead of suspending it.
+- Shore discovery must sample loaded surface/heightmap positions throughout
+  the work radius and reject puddles or unsafe/unreachable shores.
+- The plan must accept safe compatible fishing rods rather than accidentally
+  requiring only one concrete vanilla item type.
+- Casting must visibly travel from rod to reserved water; a hook teleported to
+  water with zero velocity is not a complete fishing interaction.
+- Bite needs a durable response window and explicit splash/bob state.
+- Fishing loot must use native fishing conditions and be collected through a
+  guaranteed insertion/delivery path, not direct unexplained insertion.
+- Rejected shore candidates must expire, and orphan hooks must be cleaned on
+  job change, death, dimension change, unload, and entity removal.
 
 ### Hunter
 
-- `HuntGoal` and `HunterJobGoal` independently select targets. The legacy target
-  goal is enabled by the Hunter job but does not enforce the job planner's patrol
-  boundary/reservation contract.
-- Hunt targets are hard-coded to six classes rather than all eligible animals or
-  data-driven modded animals.
-- The Hunter job only assigns a target and assumes every companion subclass has
-  a compatible attack goal for the held sword, axe, bow, or crossbow.
-- There is no explicit pursue/attack/confirm-kill/collect-loot sequence. Target
-  movement beyond the work area, ranged-kill drops, pickup disabled, inventory
-  pressure, and kill interruption are not handled as job states.
+- `HuntGoal` and `HunterJobGoal` must not independently select authoritative
+  job targets.
+- Target eligibility must be data-driven rather than a hard-coded six-class
+  allowlist: adult, alive, non-allied animals are eligible by default, with
+  owned/tamed/protected exclusions and configurable allow/deny tags.
+- The job needs explicit acquire, pursue, attack, kill confirmation, owned
+  drop collection, delivery, and return states.
+- Melee and ranged kills must work with the companion's actual held weapon and
+  must not lose drops when prey moves, leaves the work area, or dies at range.
 
 ### Chef
 
-- Cooking is hard-coded to seven vanilla raw foods instead of using Minecraft's
-  cooking recipes and data tags. Modded meats and future recipes are invisible.
-- The Chef searches for a stand before checking whether a scanned block is a
-  heat source, causing unnecessary path/LOS work.
-- The goal can travel to a workstation with no cookable input and idle there.
-- Normal campfires convert food directly while soul campfires are recognized but
-  do nothing. Furnace/smoker behavior can remove unrelated cooked output and
-  does not represent ownership of inserted work.
-- There is no shared-chest supply loop. Hunters may deposit raw meat, but Chefs
-  cannot withdraw that meat, cook it, and deposit the result.
+- Replace hard-coded food mappings with recipe-manager lookup plus a
+  data-driven raw-meat tag, including valid modded recipes.
+- Search only when cookable input exists or can be obtained from the assigned
+  chest; filter heat sources before path/LOS work.
+- Reserve the workstation and track the Chef's inserted batch/output. Never
+  steal unrelated player output.
+- Use native furnace, smoker, normal campfire, and soul-campfire behavior,
+  including fuel, cook time, visible food, and output capacity.
+- Support the Hunter-to-Chef shared-chest supply loop.
 
 ## Required shared job contract
 
-### 1. Resumable job lifecycle
+### 1. Authoritative resumable lifecycle
 
-Keep one small shared lifecycle used by every concrete job goal:
+Use one narrow shared lifecycle for every concrete goal:
 
-`SEARCHING -> TRAVELLING -> WORKING -> COLLECTING -> DELIVERING -> RETURNING`
+```text
+SEARCHING -> TRAVELLING -> WORKING -> COLLECTING -> DELIVERING -> RETURNING
+```
 
-`PAUSED` and `WAITING` are explicit side states, not completion.
+`PAUSED` and `WAITING` are explicit side states, not completion. Distinguish
+at least these exits:
 
-- Centralize common active-job gates, bounded movement progress, target
-  reservation, retry/backoff, delivery requests, and owner-visible status in a
-  narrow shared base/coordinator. Keep job-specific discovery and actions in the
-  existing concrete goal classes.
-- Distinguish `COMPLETED`, `SUSPENDED`, `RETRYABLE`, and `ABANDONED` exits.
-  Combat, eating, delivery, following an emergency owner recall, or unload must
-  suspend a valid plan. Only successful completion or proven invalidation may
-  discard it.
-- Persist only durable checkpoints: job/work center, phase, current target or
-  workstation, current tree/ore/death/shore identity, delivery chest, and return
-  position. Rebuild volatile native paths and scan cursors after load.
-- A companion must defend itself, then return to the suspended job when combat
-  ends and it remains inside the work contract.
-- When a companion has any job other than `NONE`, replace the existing `Guard`
-  button's label and action with `Work`. `Work` is the single explicit gate for
-  profession execution: jobs may search, travel, act, collect, deliver, or
-  return only while it is toggled on and rendered green. Turning it off enters
-  `PAUSED`, stops starting new job actions, and preserves the resumable
-  checkpoint; it must not masquerade as completion or silently clear the plan.
-  Patrol/Guard state must not independently start job work.
-- Persist and synchronize the Work toggle so its green pressed state is derived
-  from server-authoritative companion state, not client click focus. When the
-  companion has no assigned job, the same control returns to its existing
-  `Guard` label, appearance, and guarding behavior.
-- Switching jobs or selecting `NONE` intentionally releases active reservations
-  and clears incompatible active checkpoints. A Lumberjack's durable replant
-  backlog is retained as completed-work debt so it can be resumed if that
-  companion is assigned Lumberjack again, unless the site is proven permanently
-  invalid or the owner explicitly clears that memory.
+- `COMPLETED` — the current work unit was confirmed complete.
+- `SUSPENDED` — combat, Work OFF, recall, delivery, unload, or another
+  temporary preemption preserved the valid plan.
+- `RETRYABLE` — the target or route remains valid but needs bounded backoff or
+  replanning.
+- `ABANDONED` — the target was proven permanently invalid or explicitly
+  cancelled by a job change/player action.
 
-### 2. Separate planning from action validation
+The shared coordinator must own active-job gates, phase transitions, target
+reservation, navigation progress, retry/backoff, delivery requests, status,
+and cleanup. Concrete goals keep profession-specific discovery and actions.
 
-Refactor the shared worker-site API into explicit contracts:
+### 2. Server-authoritative Work toggle
 
-- Destination discovery checks safe floor, two-block body clearance, hazards,
-  work bounds, loaded chunks, and whether a native path can reach the future
-  stand. It must not require current line of sight to the work target.
-- Action validation requires the companion to be physically within tolerance of
-  the approved stand, the target to be loaded/in bounds, current line of sight
-  where appropriate, correct held tool/action, and valid interaction distance.
-- Excavation planning may approve a blocked future feet cell only through the
-  Miner route planner; ordinary jobs may not treat unreachable terrain as a
-  world-edit instruction.
-- Central block actions return a reasoned result such as `SUCCESS`,
-  `RETRYABLE_BLOCKED`, `INVALID_TARGET`, `PROTECTED`, `INVENTORY_FULL`, or
-  `TOOL_MISSING`. A queue advances only on `SUCCESS` or confirmed external
-  completion.
-- Breaking and placement remain server-authoritative and must respect loaded
-  chunks, world border, unbreakable blocks, `mobGriefing`, correct drops and
-  durability, NeoForge entity-destroy/protection hooks, and compatible claim
-  protection behavior. No direct `setBlock(AIR)` recovery path.
+- A non-`NONE` job changes the existing Guard control to `Work`.
+- Work ON is the single explicit gate for job searching, travel, action,
+  collection, delivery, and return.
+- Work OFF enters `PAUSED`, stops starting new profession actions, preserves
+  the durable checkpoint, and does not masquerade as completion.
+- Work state and pressed/green UI state are synchronized from the server.
+- Removing the job restores the original Guard label, appearance, and behavior.
+- Changing jobs releases incompatible reservations and clears incompatible
+  active checkpoints. Lumberjack replant debt remains durable unless the site
+  is proven permanently invalid or the owner explicitly clears it.
 
-### 3. Reservations, bounded scans, and status
+### 3. Durable plan and checkpoint model
 
-- Add one lightweight per-server reservation registry for block positions,
-  entity UUIDs, and workstations. Reservations expire, are released on job
-  change/death/removal, and are never durable world data.
-- Budget large scans across ticks and cache positive/negative results until the
-  nearby world changes or a short expiry elapses. Do not rescan a whole work
-  volume every goal evaluation.
-- Track progress by decreasing distance, changed navigation nodes, successful
-  actions, or collected outputs—not merely “navigation exists.” Retry the same
-  plan a bounded number of times, then replan with a temporary target backoff.
-- Sync a compact job status and waiting reason to the Jobs screen: searching,
-  travelling, chopping/mining/fishing/hunting/cooking, collecting, delivering,
-  returning, no tool, no work, inventory full, chest full/missing/unreachable,
-  target protected, or route unsafe.
+Add a versioned, server-owned plan payload appropriate to the existing entity
+NBT boundary. It must be sufficient to rebuild execution after goal stop,
+combat, Work OFF, entity/chunk unload, dimension reload, and server restart.
 
-## Job-specific deliverables
+Persist:
+
+- Job, Work state, work center, patrol radius, and assigned delivery chest.
+- Phase, waiting reason, plan schema/version, and current work-unit identity.
+- Current target block/entity/workstation/shore where applicable.
+- Approved stand or route checkpoint when it is durable and meaningful.
+- Pre-delivery phase/target and return position.
+- Profession-specific durable payload: field cell, tree, ore route/node,
+  fishing shore/cast plan, Hunter target/drop claim, Chef batch, and Lumberjack
+  replant debt.
+- Completed/session counters and player-visible status data.
+
+Do not persist native navigation paths, rebuildable scan cursors, short-lived
+retry counters, or a temporary hook entity as if it were the job plan. Rebuild
+those safely after load. A checkpoint call must not overwrite the actual return
+position merely because the current phase changed.
+
+### 4. Separate planning from action validation
+
+Destination discovery must check:
+
+- Safe floor, two-block body clearance, hazards, bounds, loaded chunks, and a
+  path to the future stand where possible.
+- Work-area/dimension ownership and reservation availability.
+- No remote line-of-sight requirement for a future stand.
+
+Action validation must check at execution time:
+
+- Companion is physically within tolerance of the approved stand.
+- Target is loaded, in bounds, unchanged/valid, and still reserved.
+- Current line of sight where the action requires it.
+- Correct tool, item, workstation, interaction range, and job gate.
+
+Excavation may approve a blocked future feet cell only through the Miner route
+planner. Ordinary jobs may not treat unreachable terrain as a world-edit
+instruction.
+
+### 5. Reasoned, transactional actions
+
+Shared block/item actions must return a reasoned result, for example:
+
+```text
+SUCCESS
+RETRYABLE_BLOCKED
+INVALID_TARGET
+PROTECTED
+INVENTORY_FULL
+TOOL_MISSING
+UNLOADED
+UNSAFE
+```
+
+Advance a queue only after `SUCCESS` or confirmed external completion. Breaking
+must preserve correct drops, durability, `mobGriefing`, loaded-world checks,
+NeoForge destroy/protection hooks, claim protection, and inventory safety.
+Placement must validate and consume the item through a reasoned result; no
+direct `setBlock` bypass may be used as recovery.
+
+### 6. Reservations, scans, progress, and status
+
+Implement one lightweight per-server reservation registry for:
+
+- Block positions and connected work components.
+- Entity UUIDs and owned drops.
+- Workstations, shore stands/cast sectors, and chest interaction stands.
+
+Every reservation has typed ownership, purpose, expiry/renewal, and cleanup on
+success, cancellation, job change, death, removal, dimension change, and
+server-level cleanup. Reservations are transient and are not durable world
+data.
+
+Budget large scans across ticks. Cache positive and negative results until a
+short expiry or relevant world change. Do not rescan an entire work volume on
+every goal evaluation.
+
+Measure progress by decreasing distance, changed navigation nodes, successful
+actions, collected outputs, or confirmed world changes. A merely existing path
+is not progress. Retry the same plan a bounded number of times, then apply a
+temporary target backoff and replan.
+
+Synchronize a compact job status and waiting reason to the Jobs screen and the
+bottom-left `Currently` panel. Include searching, travelling, profession
+action, collecting, delivering, returning, paused, no tool, no work,
+inventory full, chest full/missing/unreachable, target protected, and route
+unsafe.
+
+## Profession deliverables
+
+### Farmer: confirmed field progression
+
+- Persist field cell and crop identity.
+- Discover and process cells incrementally inside the work contract.
+- Use native planting, harvesting, plowing, and item behavior.
+- Advance the cell only after confirmed success.
+- Preserve the cell on missing seed/tool, protected farmland, unloaded chunks,
+  blocked stands, or inventory pressure.
+- Collect and deliver outputs using the shared contract.
 
 ### Lumberjack: bounded deforestation and correct replanting
 
-- Incrementally discover mature tree candidates throughout the full horizontal
-  work radius and terrain-height range, using loaded chunks only.
-- Validate a tree component before reservation: lowest logs stand on natural
-  growable ground, the component has a plausible trunk/canopy relationship, and
-  connected logs/leaves stay within a bounded tree envelope. Avoid merging
-  neighboring trees or touching structures through diagonal-only adjacency.
-- Record the complete connected log set, canopy set, lowest-log footprint, log
-  family, and candidate sapling drops before work starts. Support single-stump
-  and 2x2 multi-trunk trees. Do not silently truncate a tree; reject an
-  over-limit component with a visible reason.
-- Reserve the whole tree, choose a reachable stump-side stand, clear only leaves
-  that block the approved approach/action, face the active log, and break logs
-  bottom-up. A tree-authorized felling reach may cover its reserved connected
-  component, but must never become a generic remote block-break exemption.
-- Retain every unbroken log until success. Combat, delivery, unload, foliage, or
-  temporary LOS failure may not mark the tree complete.
-- Enter a collection/replant phase after every reserved log is gone. Collect
-  canopy drops, prefer the sapling produced by that tree's leaves, and plant at
-  the recorded stump footprint only after the site is clear and valid. Plant a
-  correct 2x2 pattern for 2x2 trees. If no compatible sapling is available,
-  wait/back off and report `needs sapling`; do not plant a random species.
-- Before leaving a completely felled tree, add its exact stump footprint, work
-  area/dimension, required sapling family, and 1x1 or 2x2 layout to a deduplicated
-  durable replant backlog. This memory survives combat, delivery, Work being
-  toggled off, job interruption, and entity/chunk unload. When compatible
-  saplings become available, the Lumberjack revisits reachable remembered sites
-  and replants them even if it had to continue felling other trees first. Remove
-  an entry only after every required sapling is successfully planted or the
-  location is conclusively and permanently invalid; an unloaded, protected,
-  occupied, or temporarily unreachable site remains pending with a visible
-  waiting reason and bounded retry/backoff.
-- Continue tree-by-tree until no eligible mature tree remains in the work area,
-  then service remembered replant sites before reporting the area complete and
-  waiting for growth/world changes.
+- Incrementally discover mature tree candidates across the complete horizontal
+  work radius and relevant terrain-height range using loaded chunks only.
+- Validate a tree component before reservation: plausible trunk/canopy
+  relationship, natural growable ground, bounded envelope, and no accidental
+  merge through neighboring or diagonal-only logs.
+- Record every connected log and relevant leaf, the lowest-log footprint, log
+  family, compatible sapling family, and single-stump versus 2x2 layout.
+- Reject oversized/ambiguous components with a visible reason; never silently
+  truncate them.
+- Reserve the whole tree, select a reachable stump-side stand, clear only
+  approach-blocking foliage, face the active log, and break bottom-up.
+- Retain every unbroken log through combat, delivery, foliage, LOS failure,
+  unload, or Work OFF.
+- Enter collection/replant only after every reserved log is confirmed gone.
+- Collect canopy drops and prefer saplings produced by the felled tree.
+- Plant the correct species at every recorded footprint; support 2x2 patterns.
+- Add exact stump footprints, dimension/work area, sapling family, and layout
+  to a deduplicated durable replant backlog before leaving a fully felled tree.
+- Revisit pending sites with bounded retry/backoff. Remove an entry only after
+  every required sapling is planted or the location is conclusively permanent
+  invalid. Unloaded, protected, occupied, and temporarily unreachable sites
+  remain pending with a visible reason.
+- Service replant backlog before reporting the work area complete.
 
-Acceptance examples: ordinary oak/birch/spruce, branching acacia, 2x2 dark oak,
-two adjacent canopies, a tree against a hill, approach-blocking leaves, a
-protected trunk, combat interruption, unload/reload, inventory-triggered
-delivery, and successful same-footprint replanting.
+Acceptance examples: oak, birch, spruce, acacia, 2x2 dark oak, adjacent
+canopies, a hill, approach-blocking leaves, protected trunk, combat
+interruption, unload/reload, full-inventory delivery, and same-footprint
+species-correct replanting.
 
-### Miner: safe cave traversal plus controlled excavation
+### Miner: safe cave traversal and controlled excavation
 
-- Replace the straight synthetic staircase with one bounded, testable 3D route
-  planner over feet cells. A route step is `WALK`, `BREAK`, or `PLACE`; the feet
-  cell, two-block clearance, and supporting floor are distinct.
-- Prefer existing walkable cave/cavern routes using native navigation before
-  paying to excavate solid stone. Use controlled excavation only when no safe
-  walk route reaches a valid ore-side stand.
-- Score routes to favor existing air, stable floors, short tunnels, gentle
-  stairs, and low hardness. Reject fluids, lava/fire/magma exposure, falling
-  blocks above an opened cell, unbreakable/protected blocks, unloaded chunks,
-  world-border exits, unsupported drops, and steps outside the assigned volume.
-- Never mine the support floor under the planned feet position. Never dig
-  straight down or open a fluid/falling-block cell into the worker.
-- Caverns and ravines must be handled deliberately: route around or descend on
-  existing safe terrain first; when supplied with approved filler blocks, allow
-  only a bounded, prevalidated bridge/stair placement whose complete outward and
-  return route is safe. Without supplies, reject that crossing and choose
-  another ore.
-- Require a complete return route to the patrol center or assigned chest before
-  the first irreversible excavation/placement. Revalidate after world changes.
-- Execute one operation at a time, physically move into the opened route, and
-  advance only after confirmed success. On failure, preserve the ore target and
-  replan from the actual current position; back off only when the route is
-  proven unsafe/protected.
-- Survey ores incrementally in the bounded work volume, reserve the selected ore
-  vein, and mine the connected vein once safely reached. Avoid duplicate plans
-  between Miners. Persist the active ore/checkpoint but rebuild route nodes after
-  load.
-- Optionally place supplied torches in newly excavated dark tunnels using a
-  small fixed spacing; do not create a lighting framework or require torches to
-  traverse existing safe caves.
-- Collect all drops, request delivery before output capacity is exhausted,
-  deliver, then return to the saved route checkpoint and continue.
+- Replace a straight synthetic staircase with a bounded 3D feet-cell route
+  planner whose operations are explicitly `WALK`, `BREAK`, or `PLACE`.
+- Keep feet cell, support floor, two-block clearance, target block, and route
+  operation distinct.
+- Prefer existing walkable caves/caverns before excavating solid stone.
+- Score routes for existing air, stable floors, short tunnels, gentle stairs,
+  and low hardness.
+- Reject fluids, lava/fire/magma exposure, falling blocks above an opened cell,
+  unbreakable/protected blocks, unloaded chunks, world-border exits,
+  unsupported drops, and out-of-contract steps.
+- Never mine the support floor beneath planned feet. Never dig straight down.
+- Handle ravines and ledges deliberately. Allow only bounded, prevalidated
+  supplied-block bridges/stairs, with a complete safe outward and return route.
+- Require a validated return route before the first irreversible excavation or
+  placement, then revalidate after world changes.
+- Survey ores incrementally, reserve the selected ore vein, and persist the
+  active ore/checkpoint while rebuilding route nodes after load.
+- Execute one operation at a time and advance only after confirmed success.
+- Preserve the ore target on failure; replan from the actual current position.
+- Optionally place supplied torches at fixed spacing, without adding a general
+  lighting framework or requiring torches in existing safe caves.
+- Collect all drops, deliver before capacity is exhausted, and resume at the
+  saved route checkpoint.
 
-Acceptance examples: exposed cave ore, ore around a cave corner, ore across a
-small supplied-block ravine crossing, an unsafe wide ravine that is rejected,
-solid-stone staircase, gravel ceiling, water pocket, lava-adjacent ore,
-protected block, competing Miner, combat interruption, unload/reload, full
-inventory delivery, and a verified return to the patrol center.
+Acceptance examples: exposed cave ore, ore around a corner, supplied ravine
+crossing, unsafe ravine rejection, solid-stone route, gravel ceiling, water,
+lava-adjacent ore, protected block, competing Miners, combat, unload/reload,
+full-inventory delivery, and return to the work center.
 
 ### Fisher: reliable shoreline discovery and visible fishing
 
-- Discover water by incrementally sampling loaded surface/heightmap positions
-  throughout the work radius, then validate contiguous river/ocean-quality
-  surface water and a dry reachable shoreline stand. Avoid full-volume block
-  scans and one-block puddles.
-- Cache/reject shoreline candidates with expiry and reserve the selected stand
-  and cast sector so multiple Fishers spread out.
-- Accept compatible `FishingRodItem` implementations rather than only the
-  vanilla item, while retaining explicit exclusions if a modded rod cannot use
-  vanilla durability semantics.
-- Turn toward a preselected water target before casting. Launch the custom hook
-  with a visible server-authoritative arc, validate that it lands in the
-  reserved water, and show the line from rod to bobber.
-- Give the hook explicit waiting, bite-window, hooked, and reeled states. Use
-  splash/sound/bob motion and a bite window long enough for the goal to respond;
-  remove the unused competing cooldown behavior.
-- On reel, visibly move the caught item from the bobber toward the companion,
-  then guarantee insertion/collection or trigger delivery if capacity is
-  insufficient. Use the vanilla fishing loot table, rod components, and Luck.
-- Suspend and restore the shoreline/hook plan correctly around combat or
-  delivery. Clean up orphaned hooks on job change, death, dimension change, or
-  removal.
+- Incrementally sample loaded surface/heightmap positions throughout the work
+  radius and validate contiguous river/ocean-quality surface water plus a dry
+  reachable shore stand.
+- Cache/reject candidates with expiry and reserve the selected stand and cast
+  sector so multiple Fishers spread out.
+- Accept compatible `FishingRodItem` implementations when their durability and
+  vanilla fishing semantics are safe.
+- Face the preselected water target before casting.
+- Launch the custom hook with a visible server-authoritative arc, validate its
+  reserved landing water, and render the line from rod to bobber.
+- Implement explicit waiting, bite-window, hooked, reeled, and collection
+  states, with splash/bob motion and a response window long enough to act.
+- Use native fishing loot conditions, rod components, durability, and Luck.
+- Visibly move caught item presentation toward the companion, then guarantee
+  insertion or trigger delivery when capacity is insufficient.
+- Suspend and restore shore/hook plan around combat and delivery.
+- Clean orphaned hooks on job change, death, dimension change, unload, and
+  entity removal.
 
-Acceptance examples: riverbank, ocean beach, irregular shore, elevation above
-water, blocked/unsafe shore, distant water near the edge of the work radius,
-two Fishers, combat interruption, unload/reload cleanup, visible cast/bite/reel,
-rod durability, vanilla loot, and full-inventory delivery.
+Acceptance examples: riverbank, ocean beach, irregular shore, high shore,
+blocked shore, distant water near the radius edge, two Fishers, combat,
+unload/reload, visible cast/line/bite/reel, rod durability, vanilla loot, and
+full-inventory delivery.
 
 ### Hunter: complete target, kill, loot, and return loop
 
-- Remove the competing Hunter target-selection paths. One Hunter job planner is
-  authoritative; defensive/owner-protection targets may preempt it and then
-  return control.
-- Treat every adult, alive, non-allied `Animal` inside the work radius as
-  eligible by default, excluding owned/tamed animals and entity types in a
-  data-driven protected/deny tag. Provide allow/deny entity-type tags so packs
-  can add modded animals or protect species without code changes.
-- Reserve one animal, pursue it while it remains inside the work boundary, and
-  choose only an attack mode the companion can actually execute with its held
-  weapon. Supply a reliable Hunter melee path for sword/axe users and reuse the
-  companion's compatible bow/crossbow path for ranged users.
-- Maintain `ACQUIRE -> PURSUE -> ATTACK -> CONFIRM_KILL -> COLLECT_LOOT ->
-  DELIVER/RETURN`. Moving prey, temporary LOS loss, another attacker, or combat
-  defense must not cause target thrashing.
-- Attribute direct and projectile kills to the Hunter. Mark the resulting
-  vanilla drops as short-lived job-owned loot, walk to the death/drop position,
-  and collect every remaining drop even when the generic Pickup toggle is off.
-  Do not steal another worker's claimed drops.
-- If inventory capacity is insufficient, preserve the claimed drops briefly,
-  deliver existing outputs, return, and collect before expiry where possible.
-- Continue until every eligible animal in the assigned area has been hunted,
-  then wait for new eligible animals. Existing tame/allied/player/villager
-  safety rules remain authoritative.
+- Remove competing authoritative target-selection paths. Defensive/owner
+  protection targets may preempt the job and then return control.
+- Treat adult, alive, non-allied animals inside the work radius as eligible by
+  default; exclude owned/tamed/protected types through data-driven tags.
+- Reserve one target and keep it inside the work boundary while pursuing.
+- Select only an attack mode the companion can execute with its held weapon.
+- Provide reliable melee sword/axe behavior and reuse compatible bow/crossbow
+  behavior for ranged Hunters.
+- Implement:
 
-Acceptance examples: every vanilla `Animal` subtype represented by the default
-predicate, babies excluded, owned/tamed animals excluded, modded allow/deny tag,
-melee and ranged Hunters, fleeing prey, prey leaving bounds, competing Hunters,
-defensive combat interruption, all vanilla drops collected, Pickup toggle off,
-full inventory delivery, and return to the work center.
+  ```text
+  ACQUIRE -> PURSUE -> ATTACK -> CONFIRM_KILL -> COLLECT_OWNED_DROPS
+  -> DELIVER/RETURN
+  ```
 
-### Chef: data-driven cooking and hunter-to-chef supply chain
+- Attribute direct and projectile kills to the Hunter. Mark resulting vanilla
+  drops as short-lived job-owned loot and collect all remaining owned drops,
+  even when generic Pickup is disabled.
+- Preserve claimed drops through delivery and temporary inventory pressure
+  where possible; never steal another worker's claimed drops.
+- Wait for new eligible animals after the assigned area is exhausted.
+- Preserve existing tame/allied/player/villager safety rules.
 
-- Replace the hard-coded raw/cooked map with Minecraft's recipe manager plus a
-  data-driven raw-meat item tag. Ship vanilla meat coverage and accept modded
-  tagged meats with valid smelting/smoking/campfire recipes.
-- Search only when the Chef has cookable input or can obtain it from the
-  assigned chest. Filter for heat-source blocks before performing stand/path
-  checks.
-- Treat the assigned chest as a shared settlement stock point for Chef only:
-  when personal raw-meat input is empty, withdraw only cookable raw meat; after
-  cooking, deposit finished meat and unrelated outputs. Other jobs remain
-  deposit-only.
-- Use actual furnace/smoker/campfire block-entity and recipe behavior. Insert
-  only compatible raw meat, require existing fuel or explicitly supplied fuel,
+Acceptance examples: every vanilla Animal subtype covered by the predicate,
+babies excluded, owned/tamed excluded, modded allow/deny tags, melee/ranged
+Hunters, fleeing prey, prey leaving bounds, competing Hunters, defensive
+interruption, all drops collected, Pickup OFF, full delivery, and return.
+
+### Chef: native recipes and Hunter-to-Chef supply chain
+
+- Use Minecraft's recipe manager plus a data-driven raw-meat tag. Cover vanilla
+  meats and valid modded tagged meats without hard-coded item maps.
+- Search only when cookable input exists locally or can be withdrawn from the
+  assigned chest. Filter heat sources before stand/path/LOS checks.
+- Withdraw only cookable raw meat from the assigned shared chest when personal
+  input is empty; remain deposit-only for other jobs.
+- Reserve the workstation during an active batch.
+- Insert only compatible input, require existing or explicitly supplied fuel,
   wait for native cooking completion, and collect only output attributable to
-  the Chef's inserted batch. Do not steal unrelated player output.
-- Support normal and soul campfires through the native campfire recipe/slot
-  path, with visible placed food and normal cook timing. Remove direct instant
-  conversion.
-- Reserve the workstation while a batch is active, release it between batches,
-  and persist enough batch identity to recover safely after unload without
-  duplicating or stealing items.
-- Keep only a small personal food ration required by companion survival; cooked
-  job output must be deliverable. Continue withdrawing/cooking/depositing until
-  no tagged raw meat remains in inventory or the shared chest.
+  the Chef's batch.
+- Support furnace, smoker, normal campfire, and soul campfire using native
+  block-entity/recipe behavior and visible placed food. Do not perform instant
+  direct conversion.
+- Keep only a small personal survival ration; cooked job output is deliverable.
+- Persist enough batch identity to recover after unload without duplicating or
+  stealing items.
+- Continue until no tagged raw meat remains in inventory or assigned stock.
 
-Acceptance examples: every vanilla raw meat, furnace, smoker, normal campfire,
-soul campfire, no fuel, incompatible/busy output, player-owned unrelated batch,
-modded tagged meat recipe, Hunter depositing raw meat to a shared chest, Chef
-withdrawing/cooking/depositing it, combat interruption, unload/reload, and full
-output chest.
+Acceptance examples: every vanilla raw meat, furnace, smoker, normal/soul
+campfire, no fuel, incompatible/busy output, unrelated player batch, modded
+tagged meat, Hunter deposit, Chef withdrawal/cook/deposit, combat,
+unload/reload, and full output chest.
 
 ## Shared assigned-chest delivery contract
 
-- Every non-`NONE` job can use one Assignment-Wand-linked chest/container.
-- Select a reachable chest-side destination without requiring remote line of
-  sight; require proximity and line of sight only when interacting.
-- Prefer NeoForge item-handler insertion/extraction when available, with vanilla
-  `Container` fallback. Respect container validity, sided insertion/extraction,
-  protected claims, loaded dimensions/chunks, stack components, and double
-  chests.
-- Trigger delivery when the next output cannot fit, when a completed work unit
-  reaches a bounded batch threshold, on a short idle timer with cargo, or on
-  manual Deposit—not only when every slot is occupied or after one game day.
-- Reserve active tools, armor, potions, a small personal food ration, required
+- Every non-`NONE` job can use the Assignment Wand-linked chest/container.
+- Select a reachable chest-side destination without requiring remote LOS.
+  Require proximity and LOS only while interacting.
+- Prefer NeoForge item-handler insertion/extraction, with vanilla `Container`
+  fallback. Respect sided insertion/extraction, container validity, stack
+  components, double chests, protected claims, loaded dimensions/chunks, and
+  existing Sophisticated Backpacks support.
+- Trigger delivery when the next output cannot fit, a bounded work batch is
+  complete, cargo has been idle for a short interval, capacity pressure is
+  approaching, or the player requests Deposit. Do not wait for every slot.
+- Retain tools, armor, potions, a small personal-food ration, required
   Lumberjack saplings, and approved Miner bridge/torch supplies. Deposit job
-  outputs, including cooked food. Make retention job-aware and test it.
-- Save the pre-delivery phase/target/return point, deliver, then return and resume
-  without rescanning valid completed work. A chest failure pauses delivery and
-  reports a reason; it does not erase cargo, assignment, or the job plan.
-- Clear forced-delivery state on terminal success/cancel and back off full or
-  unreachable chests. Do not spam the owner or pathfind every tick.
+  outputs, including cooked food.
+- Save pre-delivery phase, target, plan identity, and return point. Deliver,
+  then return and resume without rescanning valid completed work.
+- A full/missing/protected/unreachable chest pauses delivery with a reason; it
+  never deletes cargo, assignment, reservation, or work plan.
+- Clear forced-delivery state only after terminal success or cancellation, and
+  back off without pathfinding or attempting interaction every tick.
 
-## Living presentation
+## Living presentation and UI
 
-- During work, continuously face the relevant log, ore block, bobber, animal,
-  furnace, campfire, chest, or collected drop.
-- Reuse existing swing, held-tool, fishing-line, sound, particle, eating,
-  combat, and navigation systems. Add only the narrow missing cast/reel/cook
-  presentation required by the job.
-- Use short deterministic work pauses and status changes for readability; do
-  not add random delays that reduce reliability.
-- Expose current phase, target summary, completed/session counts, and waiting
-  reason on the Jobs screen. The player should be able to tell whether a worker
-  is searching, travelling, working, interrupted, full, missing supplies, or
-  genuinely finished.
-- Also render the server-synchronized current job and compact current
-  task/state inside the bottom-left `Currently` panel already baked into
-  `newinventory.png`. Draw only dynamic text beneath the existing `Currently`
-  label--do not duplicate the label or modify the texture. Keep all text clipped
-  to that panel and prefer a short job line plus action/waiting line, for example
-  `Lumberjack` / `Chopping oak`, `Delivering`, `Paused`, or `Needs sapling`.
-  Update it promptly when Work is toggled, a phase changes, or a waiting reason
-  changes, and show a clear idle state when no job is assigned.
+- Continuously face the relevant log, ore, bobber, animal, furnace, campfire,
+  chest, or collected drop during work.
+- Reuse existing swings, held tools, fishing line, sounds, particles, eating,
+  combat, and navigation systems.
+- Add only the narrow missing cast/reel/cook presentation required by the
+  specific job. Avoid random delays that reduce reliability.
+- Show current phase, target summary, completed/session counts, and waiting
+  reason on the Jobs screen.
+- In the bottom-left `Currently` panel already baked into `newinventory.png`,
+  draw only dynamic text beneath the existing `Currently` label. Do not
+  duplicate the label or modify the texture. Keep text clipped to the panel,
+  for example `Lumberjack` / `Chopping oak`, `Delivering`, `Paused`, or
+  `Needs sapling`.
+- Update promptly when Work toggles, phases change, or waiting reasons change.
+  Show a clear idle state for `NONE`.
 
 ## Implementation order
 
-1. Inventory the current goal scheduling, state persistence, item pickup,
-   block/protection hooks, container capability, recipe-manager, kill/drop, and
-   fishing-render seams. Delete dead duplicate job logic only after callers are
-   accounted for.
-2. Implement the shared resumable lifecycle, server-authoritative Work toggle,
-   reasoned action results, split planning/action site checks, reservations,
-   bounded retry/backoff, status sync, and delivery pause/return contract.
-3. Repair assigned-chest capability handling and job-aware retention/delivery;
-   prove every job can deliver and resume before expanding profession behavior.
-4. Rebuild Lumberjack around complete reserved tree plans and post-felling
-   collection/replanting.
-5. Rebuild Miner around the bounded feet-cell route planner and execute
-   walk/break/place operations with a prevalidated return route.
-6. Consolidate Hunter targeting/combat ownership and add guaranteed job-loot
+1. Inventory the current goal scheduling, state persistence, equipment/tool
+   policy, item pickup, block/protection hooks, container capabilities,
+   recipe-manager seams, kill/drop attribution, and fishing-render seams.
+2. Implement the shared durable plan/coordinator, server-authoritative Work
+   toggle, lifecycle exits, typed reservations, progress/stuck detection,
+   bounded retry/backoff, status synchronization, and cleanup.
+3. Split destination planning from action validation and make block/item
+   actions transactional with reasoned results.
+4. Repair assigned-chest capability handling, job-aware retention, delivery
+   triggers, and delivery pause/return behavior. Prove every job can deliver
+   and resume before expanding profession behavior.
+5. Repair Farmer's confirmed field-cell progression.
+6. Rebuild Lumberjack around complete reserved tree plans and durable replant
+   debt.
+7. Rebuild Miner around the bounded feet-cell route planner and safe
+   walk/break/place execution.
+8. Consolidate Hunter target ownership, combat confirmation, and owned-drop
    collection.
-7. Rebuild Fisher shoreline selection and visible hook state/cast/reel flow.
-8. Replace Chef's hard-coded conversion with native recipes/workstations and the
-   shared-chest hunter-to-chef pipeline.
-9. Add status UI, statistics where missing, player-facing documentation, config
-   descriptions, `TRACELOG.md`, `SUGGESTIONS.md`, and the required version bump.
-10. Run the complete automated and manual validation matrix before shipping.
+9. Rebuild Fisher shoreline selection, hook states, visible cast/reel, and
+   orphan cleanup.
+10. Replace Chef's remaining hard-coded conversion with native recipes,
+    workstation ownership, batch attribution, and the shared-chest supply
+    chain.
+11. Add status UI, statistics where missing, player documentation, config
+    descriptions, `TRACELOG.md`, and `SUGGESTIONS.md` with shipped facts.
+12. Run the complete automated and manual acceptance matrix before claiming
+    completion or shipping.
 
-## Automated checks
+## Automated acceptance checks
 
-Keep planners/rules pure where possible and leave the smallest deterministic
-checks that fail on the known regressions:
+Keep planners and rules pure where possible. Add deterministic tests for:
 
-- Shared lifecycle: suspend/resume, terminal completion, retry/backoff,
-  reservation expiry, no queue advancement on failed action, delivery/return,
-  job switch cleanup, reload checkpoint restoration, Work-off inactivity,
-  Work-on checkpoint resumption, and restoration of Guard behavior for `NONE`.
-- Work sites/actions: future destination without remote LOS, action requires
-  actual stand proximity, hazards/headroom/range, protection denial, inventory
-  full result, correct drops/durability, and no direct world-edit bypass.
-- Tree planner: adjacent trees remain separate, full connected log retention,
-  bottom-up ordering, 2x2 footprint, interruption without early replant, and
-  compatible-sapling placement. Persist and deduplicate a missing-sapling
-  replant entry through unload and Work-off pause, then remove it only after a
-  later species-correct 1x1 or 2x2 planting succeeds.
-- Miner planner on a small synthetic grid: existing cave preferred, solid
-  tunnel, stable floor retained, staircase, bounded supplied-block crossing,
-  unsafe ravine rejected, falling block/fluid/lava/protected cell rejected, and
-  complete return route.
-- Fishing rules: surface-water/shore validation, reservation, compatible rod,
-  durable bite window, orphan-hook cleanup, and loot insertion/delivery result.
-- Hunter rules: full eligible-animal predicate, exclusions/tags, single target
-  authority, direct/projectile kill attribution, claimed-drop collection, and
-  competing Hunter behavior.
-- Cooking/delivery: recipe/tag lookup, workstation batch ownership, no unrelated
-  output theft, normal/soul campfire flow, Chef raw withdrawal/cooked deposit,
-  job-aware retention, capability container insertion, and full/missing chest
-  backoff.
+### Lifecycle and persistence
 
-Use NeoForge GameTests for world/navigation/block-entity flows if supported by
-the existing ModDevGradle setup; otherwise add a narrow server-side test harness
-for those cases. Do not claim pure planner tests validate live mob navigation or
-rendering.
+- Suspend/resume for combat, Work OFF/ON, delivery, recall, and unload.
+- Terminal completion versus suspended, retryable, and abandoned exits.
+- Retry/backoff and bounded stuck detection.
+- Reservation claim, typed ownership, expiry, release, job switch, death,
+  removal, dimension change, and competing workers.
+- No queue advancement after a failed action.
+- Serialization/reload restoration of phase, active unit, return checkpoint,
+  delivery target, and profession payload.
+- Guard restoration when the job becomes `NONE`.
+
+### Work sites and actions
+
+- Future destination can be planned without remote LOS.
+- Action requires actual stand proximity and current validation.
+- Floor/headroom/range/hazard/bounds/chunk checks.
+- Protection denial, `mobGriefing`, claim hooks, correct drops/durability,
+  inventory-full results, and no direct world-edit bypass.
+- Item-handler insertion with `Container` fallback and sided behavior.
+
+### Profession planners
+
+- Farmer cell confirmation and failed-action retention.
+- Tree separation, full connected-log retention, bottom-up order, 2x2
+  footprint, interruption without early replanting, species-correct planting,
+  and durable/deduplicated missing-sapling debt.
+- Miner cave preference, solid tunnel, stable floor, stairs, supplied bridge,
+  unsafe ravine, falling block/fluid/lava/protected rejection, and return route.
+- Fisher surface-water/shore validation, reservation, compatible rod, durable
+  bite window, hook cleanup, and loot insertion/delivery result.
+- Hunter full eligibility predicate, exclusions/tags, single target authority,
+  direct/projectile kill attribution, claimed-drop collection, and competing
+  Hunter behavior.
+- Chef recipe/tag lookup, workstation batch ownership, no unrelated output
+  theft, normal/soul campfire flow, Hunter deposit/Chef withdrawal, and
+  cooked-output delivery.
+
+Use NeoForge GameTests for world, navigation, block-entity, and entity flows
+where supported. Otherwise add a narrow server-side harness. Pure tests do not
+prove live navigation, rendering, multiplayer authority, or mod integrations.
 
 ## Manual dev-world acceptance
 
-- Run every per-job acceptance example above with one worker, then with two
-  workers sharing an area and chest.
-- Interrupt each job with hostile combat, manual Deposit, owner recall,
-  unload/reload, full inventory, broken tool, target removal, and blocked/full
-  chest; confirm the worker reports the reason and safely resumes or replans.
-- Verify visible facing, held tools, swings, block progress cadence, fishing
-  cast/line/bite/reel, animal pursuit/kill/loot, workstation food rendering, and
-  chest deposit/return.
-- For every job, verify Work OFF prevents profession execution without losing
-  the checkpoint, Work ON is visibly green and resumes it, and removing the job
-  restores the original Guard control and behavior.
-- Verify the inventory's bottom-left `Currently` panel shows the correct job and
-  live action/waiting state for every lifecycle phase, remains inside the panel
-  at all supported GUI scales, and does not redraw the baked-in label.
-- Test `mobGriefing` disabled and at least one protection/claim environment.
-- Test vanilla inventory plus the existing Sophisticated Backpacks path.
-- Separate automated evidence from remaining visual/runtime smoke gaps in the
-  handoff.
+Run every profession's acceptance examples with one worker and with two
+workers sharing an area and chest. For each job, interrupt work with:
+
+- Hostile combat and defensive combat.
+- Work OFF/ON.
+- Owner recall and manual Deposit.
+- Full inventory, broken/missing tool, target removal, protected target.
+- Unloaded/reloaded chunks or entity restart.
+- Blocked route and missing/full/protected/unreachable chest.
+
+Confirm the companion reports the reason and safely resumes, replans, waits,
+or completes without lost items or duplicate world actions.
+
+Also verify:
+
+- Navigation around walls, doors, foliage, slopes, caves, ravines, fluids,
+  unloaded chunks, and world borders.
+- Fishing cast/line/bite/reel visuals and hook cleanup.
+- Melee/ranged hunting, kill confirmation, and drop collection with Pickup
+  disabled.
+- Native furnace, smoker, normal campfire, and soul campfire behavior.
+- Multiplayer/server authority and client reconnect/reload behavior.
+- At least one protection/claim environment and `mobGriefing` disabled.
+- Vanilla inventory, double chests, item handlers, and Sophisticated Backpacks.
+- Work UI green pressed state, phase/status updates, `Currently` panel
+  clipping at supported GUI scales, and restoration of Guard for `NONE`.
+
+Separate automated evidence from remaining visual/runtime/protection smoke.
+Build and tests are necessary but are not sufficient proof of gameplay.
 
 ## Boundaries and non-goals
 
-- Edit only allowed project directories. Treat supplied Minecraft, NeoForge,
-  OriginalCompanions, ModDevGradle, and other upstream/reference sources as
-  read-only.
-- MineColonies may be consulted only as design research under its license; do
-  not copy its source or import its worker framework.
+- Edit only allowed project directories except this explicitly authorized
+  `TASK.md` deliverable. Treat Minecraft, NeoForge, OriginalCompanions,
+  ModDevGradle, and the supplied reference trees as read-only.
+- Village Workers is ARR/all-rights-reserved: infer behavior only.
+- MineColonies is GPLv3: use architecture as research; do not copy source or
+  import its framework without a separate licensing decision and compliance
+  plan.
+- SmartBrainLib is MPL-2.0: use narrow concepts as research; do not add it as
+  a dependency or copy its source into this mod without an explicit license
+  review and notice plan.
 - No arbitrary terrain destruction, teleport-to-target recovery, direct
-  `setBlock(AIR)`, infinite scan, permanent chunk forcing by default, generic
-  behavior tree, or speculative settlement economy.
+  `setBlock(AIR)` recovery, infinite scans, permanent chunk forcing by default,
+  generic behavior tree, speculative settlement economy, or wholesale rewrite
+  of existing combat/equipment/inventory behavior.
 - Do not make all jobs share identical discovery/action code. Share lifecycle,
-  safety, reservation, collection, and delivery contracts; keep each
-  profession's planner small and explicit.
-- Preserve existing combat safety, equipment/inventory, stamina/mana, potion,
-  patrol, optional-mod, and multiplayer behavior.
-- Build with Java 21 before committing. Update the version, `README.md`,
-  `TRACELOG.md`, and `SUGGESTIONS.md` with shipped facts and clearly list manual
-  validation still required.
+  safety, reservation, collection, delivery, status, and persistence contracts;
+  keep each profession's planner and action semantics explicit.
+- Preserve existing combat safety, owner protection, equipment restrictions,
+  food/stamina/mana behavior, patrol behavior, optional-mod compatibility, and
+  multiplayer/server authority.
+- Before implementation is considered complete, build with Java 21, update
+  relevant player-facing documentation/configuration, update `TRACELOG.md` and
+  `SUGGESTIONS.md` with shipped facts, and clearly list manual validation still
+  required.
+
+## Completion definition
+
+This task is complete only when:
+
+- Every listed job has the shared durable lifecycle and delivery contract.
+- A valid active work unit survives interruption, unload/reload, and delivery.
+- Failed/protected/unsafe actions preserve work and report a reason.
+- Competing workers cannot duplicate active targets or workstations.
+- Inventory pressure never silently loses job output or required supplies.
+- Lumberjack, Miner, Fisher, Hunter, Chef, and Farmer pass their automated
+  checks and manual acceptance examples.
+- Work OFF/ON and job removal have the specified authoritative UI and behavior.
+- Java 21 build/check succeeds, project changes remain within policy, and the
+  final handoff separates automated evidence from remaining runtime smoke.

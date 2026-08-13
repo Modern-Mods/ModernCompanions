@@ -3,11 +3,13 @@ package com.majorbonghits.moderncompanions.entity.job;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.BoneMealItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -64,6 +66,7 @@ public final class FarmerJobGoal extends ResumableJobGoal {
     private int swingCooldown;
     private int stallTicks;
     private Vec3 lastPosition = Vec3.ZERO;
+    private boolean restoredPlan;
 
     public FarmerJobGoal(AbstractHumanCompanionEntity companion, int searchRadius, boolean enabled) {
         super(companion, CompanionJob.FARMER);
@@ -86,6 +89,10 @@ public final class FarmerJobGoal extends ResumableJobGoal {
             if (!selectNextTarget()) return false;
         }
         if (target == null) return false;
+        if (isBackedOff(target)) {
+            waiting("job_status.modern_companions.farm_blocked");
+            return false;
+        }
         if (!reserve("farm:" + target.asLong())) {
             waiting("job_status.modern_companions.farm_reserved");
             return false;
@@ -186,6 +193,7 @@ public final class FarmerJobGoal extends ResumableJobGoal {
         swingCooldown = 0;
         action = Action.PLANTING;
         phase(JobPhase.COLLECTING, "job_status.modern_companions.planting", target);
+        savePlan();
     }
 
     private void plant() {
@@ -202,11 +210,11 @@ public final class FarmerJobGoal extends ResumableJobGoal {
             return;
         }
         phase(JobPhase.WORKING, "job_status.modern_companions.planting", target);
-        if (!WorkerBlockActions.place(companion, target, stand, plantState)) {
-            fail("job_status.modern_companions.farm_blocked");
+        WorkerActionResult result = WorkerBlockActions.placeResult(companion, target, stand, plantState);
+        if (result != WorkerActionResult.SUCCESS) {
+            fail(resultStatus(result));
             return;
         }
-        seed.shrink(1);
         preferredCrops.remove(target);
         companion.incrementFarmerPlantedSession();
         completeTarget();
@@ -226,8 +234,9 @@ public final class FarmerJobGoal extends ResumableJobGoal {
             return;
         }
         phase(JobPhase.WORKING, "job_status.modern_companions.growing", target);
-        if (!BoneMealItem.growCrop(meal, server, target)) {
-            fail("job_status.modern_companions.farm_blocked");
+        WorkerActionResult result = WorkerBlockActions.boneMealResult(companion, target, stand, meal);
+        if (result != WorkerActionResult.SUCCESS) {
+            fail(resultStatus(result));
             return;
         }
         if (isMatureCrop(server.getBlockState(target))) completeTarget();
@@ -296,6 +305,7 @@ public final class FarmerJobGoal extends ResumableJobGoal {
         stand = null;
         workTicks = 0;
         swingCooldown = 0;
+        savePlan();
         return true;
     }
 
@@ -334,6 +344,7 @@ public final class FarmerJobGoal extends ResumableJobGoal {
         stand = null;
         workTicks = 0;
         enqueueClassified(old);
+        savePlan();
     }
 
     private void completeTarget() {
@@ -344,19 +355,19 @@ public final class FarmerJobGoal extends ResumableJobGoal {
         workTicks = 0;
         swingCooldown = 0;
         blockedUntil.remove(completed);
+        release("farm:" + completed.asLong());
         companion.checkpointJob(JobPhase.SEARCHING, null);
+        savePlan();
     }
 
     private void fail(String status) {
         if (retry(status, MAX_ACTION_RETRIES)) return;
         BlockPos failed = target == null ? null : target.immutable();
         if (failed != null) blockedUntil.put(failed, companion.tickCount + 200);
-        target = null;
-        stand = null;
-        action = null;
         workTicks = 0;
         swingCooldown = 0;
         companion.checkpointJob(JobPhase.WAITING, failed);
+        savePlan();
     }
 
     private String resultStatus(WorkerActionResult result) {
@@ -365,7 +376,7 @@ public final class FarmerJobGoal extends ResumableJobGoal {
             case TOOL_MISSING -> "job_status.modern_companions.no_hoe";
             case PROTECTED -> "job_status.modern_companions.farm_protected";
             case INVALID_TARGET -> "job_status.modern_companions.farm_blocked";
-            case RETRYABLE_BLOCKED, SUCCESS -> "job_status.modern_companions.farm_blocked";
+            case RETRYABLE_BLOCKED, UNLOADED, UNSAFE, SUCCESS -> "job_status.modern_companions.farm_blocked";
         };
     }
 
@@ -391,6 +402,7 @@ public final class FarmerJobGoal extends ResumableJobGoal {
     }
 
     private boolean isActiveJob() {
+        restorePlan();
         if (!enabled || companion.getJob() != CompanionJob.FARMER || !workActive(enabled)) return false;
         if (!companion.isTame() || companion.isOrderedToSit()) return false;
         companion.ensureJobToolEquipped();
@@ -403,6 +415,48 @@ public final class FarmerJobGoal extends ResumableJobGoal {
             return false;
         }
         return true;
+    }
+
+    private void restorePlan() {
+        if (restoredPlan) return;
+        restoredPlan = true;
+        CompoundTag payload = companion.getJobPlanPayload();
+        BlockPos saved = payload.contains("FieldCell") ? BlockPos.of(payload.getLong("FieldCell")) : null;
+        if (saved == null) saved = companion.getJobCheckpointTarget().orElse(null);
+        if (saved == null || !companion.isInWorkArea(saved)) return;
+        try {
+            action = Action.valueOf(payload.getString("FieldAction"));
+        } catch (IllegalArgumentException ignored) {
+            action = companion.level().getBlockState(saved).isAir() ? Action.PLANTING : Action.HARVESTING;
+        }
+        target = saved.immutable();
+        if (payload.contains("FieldStand")) stand = BlockPos.of(payload.getLong("FieldStand"));
+        if (payload.contains("Crop", 8)) {
+            ResourceLocation id = ResourceLocation.tryParse(payload.getString("Crop"));
+            if (id != null && BuiltInRegistries.BLOCK.containsKey(id)) {
+                preferredCrops.put(target, BuiltInRegistries.BLOCK.get(id));
+            }
+        }
+    }
+
+    private void savePlan() {
+        CompoundTag payload = companion.getJobPlanPayload();
+        if (target == null) {
+            payload.remove("FieldCell");
+            payload.remove("FieldStand");
+            payload.remove("FieldAction");
+            payload.remove("Crop");
+        } else {
+            payload.putLong("FieldCell", target.asLong());
+            if (stand == null) payload.remove("FieldStand");
+            else payload.putLong("FieldStand", stand.asLong());
+            if (action == null) payload.remove("FieldAction");
+            else payload.putString("FieldAction", action.name());
+            Block crop = preferredCrops.get(target);
+            if (crop == null) payload.remove("Crop");
+            else payload.putString("Crop", BuiltInRegistries.BLOCK.getKey(crop).toString());
+        }
+        companion.setJobPlanPayload(payload);
     }
 
     private int effectiveRadius() {

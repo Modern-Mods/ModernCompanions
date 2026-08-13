@@ -42,7 +42,8 @@ public class CustomFollowOwnerGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (!companion.isFollowing() || companion.isOrderedToSit() || companion.isPassenger()) {
+        if (companion.isJobReturnPending()
+                || !companion.isFollowing() || companion.isOrderedToSit() || companion.isPassenger()) {
             return false;
         }
         LivingEntity livingentity = companion.getOwner();
@@ -59,6 +60,7 @@ public class CustomFollowOwnerGoal extends Goal {
     @Override
     public boolean canContinueToUse() {
         return owner != null
+                && !companion.isJobReturnPending()
                 && companion.isFollowing()
                 && !companion.isOrderedToSit()
                 && !companion.isPassenger()

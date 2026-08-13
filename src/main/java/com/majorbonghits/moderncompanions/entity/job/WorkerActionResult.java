@@ -7,5 +7,12 @@ public enum WorkerActionResult {
     INVALID_TARGET,
     PROTECTED,
     INVENTORY_FULL,
-    TOOL_MISSING
+    TOOL_MISSING,
+    UNLOADED,
+    UNSAFE;
+
+    /** A queue may advance only after the server confirmed the world change. */
+    public boolean advancesPlan() {
+        return this == SUCCESS;
+    }
 }

@@ -1,3 +1,35 @@
+## 2026-08-13 (Jobs deferred-return gate)
+
+- Prompt/task: Continue the Jobs runtime follow-up after Miner excavation and Lumberjack delivery-return fixes, with special attention to workers competing with a deferred physical return.
+- Steps:
+  - Added a shared `ResumableJobGoal` gate that keeps profession goals paused while the delivery coordinator owns a pending return checkpoint.
+  - Preserved the distinct Work OFF pause path and the durable return plan so a blocked courier retry cannot resume profession actions from the chest.
+  - Bumped the project version from 4.35 to 4.36.
+- Rationale: A deferred courier retry is still an active return phase, not permission for a lower-priority profession goal to start a new action. Centralizing the gate prevents Miner/Lumberjack and every sibling job from competing with return movement.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed, all wired checks/tests passed, `git diff --check` passed, and `build/libs/ModernCompanions-4.36.jar` was produced; in-world navigation, protection, multiplayer, and full acceptance-matrix smoke remain manual.
+
+## 2026-08-13 (Jobs runtime follow-up: buried Miner routes and Lumberjack return)
+
+- Prompt/task: Investigate live reports that Miners fail to excavate through solid ground and Lumberjacks remain on `Returning` after delivery.
+- Steps:
+  - Changed Miner route failures from permanent unreachable-ore claims to bounded retry backoff, so a temporary chest/path probe cannot discard a valid buried ore plan.
+  - Made the Miner return-route check test every safe reachable stand around the assigned chest instead of trusting one arbitrary chest-side tile.
+  - Added delivery-return progress detection, native path validation, nearby safe-checkpoint recovery, and a bounded `Route blocked` retry when the exact saved feet cell is no longer reachable.
+  - Bumped the version from 4.34 to 4.35.
+- Rationale: The reported behavior is a runtime navigation/state problem, not something a successful compile can prove. Valid work remains durable while temporary path failures become visible and retryable instead of looking complete or looping on `Returning` forever.
+- Build/Test: Java 21 `gradlew.bat jobContractCheck test --no-daemon --console=plain` and `compileJava` passed; full `check build`, locale validation, and the Minecraft buried-ore, delivery-return, protection, and navigation smoke matrix remain required before calling the overall `TASK.md` completion definition satisfied.
+
+## 2026-08-13 (Living Tribe jobs reliability completion)
+
+- Prompt/task: Complete `TASK.md`'s durable, resumable Farmer, Lumberjack, Miner, Fisher, Hunter, and Chef job contract while preserving the existing Goals, safety gate, Assignment Wand chest, equipment rules, and optional-mod boundaries.
+- Steps:
+  - Added the shared versioned `JobPlan`, typed expiring reservations, reasoned transactional worker actions, server-authoritative Work gating, profession payload persistence, and the deterministic `JobContractTest`/`jobContractCheck` coverage.
+  - Completed Farmer field-cell confirmation, Lumberjack connected-log and species/layout replant debt, Miner ore/route checkpoints, Fisher shoreline/cast/pending-catch recovery, Chef native recipe/workstation batch tracking, and Hunter target/drop ownership and Pickup-independent collection.
+  - Hardened the remaining runtime-sensitive seams: Hunter now waits a bounded window for post-kill drops; Chef attributes campfire output to a recorded cooking slot/ready time and inventory baseline; restored Miner routes are revalidated inside the work contract; delivery preserves an active context through pause/reload and physically returns to its saved checkpoint; completed reservations release promptly; occupied or unloaded replant sites remain pending.
+  - Updated player-facing job documentation, status localization, and the post-build suggestion record. Bumped the version from 4.33 to 4.34. No SmartBrainLib, MineColonies, or generic behavior-tree dependency was added.
+- Rationale: The smallest reliable implementation keeps profession discovery/action semantics local and shares only lifecycle, checkpoint, reservation, safety, collection, delivery, and status contracts. Durable facts survive interruption; native navigation and transient retry state are rebuilt instead of serialized as world state.
+  - Build/Test: Java 21 `gradlew.bat check build --no-daemon --console=plain` passed, all wired checks/tests passed, locale JSON validation passed, `jobContractCheck` passed, `git diff --check` passed, and `build/libs/ModernCompanions-4.34.jar` was produced; Minecraft navigation, protection, multiplayer, rendering, and full acceptance-matrix smoke tests remain manual.
+
 ## 2026-08-12 (Alchemist hostile line-of-sight throws)
 
 - Prompt/task: Restrict Alchemist offensive splash throws to enemies currently within direct line of sight so enemies in caves below or behind terrain are not targeted through the ground.

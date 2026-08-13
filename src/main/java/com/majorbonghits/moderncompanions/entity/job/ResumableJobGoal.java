@@ -24,6 +24,13 @@ abstract class ResumableJobGoal extends Goal {
             if (worker.getJob() == job) worker.setJobStatus("job_status.modern_companions.paused");
             return false;
         }
+        if (worker.isJobReturnPending()) {
+            // Delivery owns movement until the saved checkpoint is reached. A deferred
+            // courier retry must not let a profession goal resume work from the chest.
+            lifecycle.waitFor("job_status.modern_companions.returning");
+            worker.setJobStatus("job_status.modern_companions.returning");
+            return false;
+        }
         if (lifecycle.phase() == JobPhase.PAUSED || lifecycle.phase() == JobPhase.WAITING) lifecycle.resume();
         return true;
     }
@@ -42,12 +49,20 @@ abstract class ResumableJobGoal extends Goal {
 
     protected final void waiting(String status) {
         lifecycle.waitFor(status);
+        worker.checkpointJob(JobPhase.WAITING, worker.getJobCheckpointTarget().orElse(null));
         worker.setJobStatus(status);
     }
 
     protected final boolean reserve(String key) {
         return !(worker.level() instanceof ServerLevel level)
-                || JobReservations.claim(level, key, worker.getUUID(), level.getGameTime(), 20L * 60L * 10L);
+                || JobReservations.claim(level, reservationType(key), key, worker.getUUID(), job.id(),
+                level.getGameTime(), 20L * 60L * 10L);
+    }
+
+    protected final void release(String key) {
+        if (worker.level() instanceof ServerLevel level) {
+            JobReservations.release(level, reservationType(key), key, worker.getUUID());
+        }
     }
 
     protected final boolean retryReady() {
@@ -58,8 +73,27 @@ abstract class ResumableJobGoal extends Goal {
     protected final boolean retry(String status, int limit) {
         boolean allowed = lifecycle.retry(status, limit);
         worker.setJobStatus(status);
-        if (!allowed) lifecycle.waitFor(status);
+        if (!allowed) {
+            lifecycle.waitFor(status);
+            worker.checkpointJob(JobPhase.WAITING, worker.getJobCheckpointTarget().orElse(null));
+        }
         return allowed;
+    }
+
+    private ReservationType reservationType(String key) {
+        if (key == null) return ReservationType.BLOCK;
+        int separator = key.indexOf(':');
+        if (separator <= 0) return ReservationType.BLOCK;
+        return switch (key.substring(0, separator)) {
+            case "tree" -> ReservationType.COMPONENT;
+            case "animal" -> ReservationType.ENTITY;
+            case "drop" -> ReservationType.DROP;
+            case "workstation" -> ReservationType.WORKSTATION;
+            case "shore" -> ReservationType.SHORE;
+            case "chest" -> ReservationType.CHEST;
+            case "route" -> ReservationType.ROUTE;
+            default -> ReservationType.BLOCK;
+        };
     }
 
     private void tickLifecycle() {

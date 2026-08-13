@@ -1,3 +1,7 @@
+- 2026-08-13 (Jobs deferred-return gate): In a dev world, block a delivery return route and confirm every assigned job remains visibly `Returning`/`Route blocked` without starting profession actions; restore the route and verify the saved work unit resumes.
+
+- 2026-08-13 (Jobs runtime follow-up): Run a dev-world regression with a Miner starting above a solid stone/deepslate route to exposed and buried ores, then fill the delivery chest and interrupt a Lumberjack during return; verify bounded retry status, no lost ore/log work, return recovery, and resume after the route is restored.
+
 - 2026-08-12 (Alchemist hostile LOS): In a dev world, place enemies in clear view, behind a wall, and directly below in a cave; confirm only visible enemies receive splash throws, hidden enemies do not cause ground throws, and melee resumes when no visible throw exists.
 
 - 2026-08-12 (Alchemist targeted throws): In a dev world, verify the Alchemist turns body/head toward the selected ally or enemy before every throw and that zero-spread splash potions land on the selected target at short, medium, and maximum combat range.
@@ -688,3 +692,9 @@
 - In a fresh world, craft Blank Recipe from paper and a glass bottle, combine it with each supported vanilla potion tier, and confirm the configured item is cyan and retains its recipe after relogging.
 - Give an Alchemist one configured recipe plus its ingredients; verify brewing consumes only the ingredients, creates splash potions in inventory, throws at valid party/enemy targets, and uses melee when no useful throw exists or the target is too close.
 - Exercise Healing/Healing II percentage prioritization, clustered Harming, emergency Turtle Master/Slow Falling, owner splash protection, and Oozing/Infested minions beside the player and every same-owner companion.
+## 2026-08-13 (Living Tribe jobs reliability)
+
+- Run the full one-worker and two-worker acceptance matrix from `TASK.md`: shared targets/chests, combat, Work OFF/ON, owner recall, Deposit, full or missing tools/inventory/chests, protection claims, `mobGriefing=false`, unload/reload, native furnace/smoker/campfire behavior, fishing visuals, Hunter melee/ranged drops with Pickup OFF, item handlers/double chests, Sophisticated Backpacks, multiplayer authority, and GUI-scale status clipping.
+- Exercise a Chef campfire with an unrelated cooked item already nearby and another worker/player adding the same output; confirm the Chef only collects its recorded batch and never removes unrelated output.
+- Exercise a Hunter kill whose drops arrive several ticks after death and a kill with no drops; confirm the bounded wait collects late drops without leaving a dead target stuck forever.
+- Exercise a restored Miner route after changing a queued block, work radius, or supporting floor; confirm it replans or waits without mining outside the assigned contract.

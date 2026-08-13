@@ -116,6 +116,8 @@ import com.majorbonghits.moderncompanions.entity.job.ChefJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.FarmerJobGoal;
 import com.majorbonghits.moderncompanions.entity.job.JobReservations;
 import com.majorbonghits.moderncompanions.entity.job.JobPhase;
+import com.majorbonghits.moderncompanions.entity.job.JobPlan;
+import com.majorbonghits.moderncompanions.entity.job.JobDropClaims;
 import com.majorbonghits.moderncompanions.entity.job.JobToolPolicy;
 
 /**
@@ -360,11 +362,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private ResourceKey<Level> forcedChestDimension;
     private long lastCourierMessageTick = -200L;
     private boolean forceDeliverRequest;
+    private long deliveryRetryAt;
     private long lastDeliveryGameTime = -24000L;
     // Only durable job facts survive saves; goals rebuild paths and scan cursors on resume.
-    private JobPhase jobCheckpointPhase = JobPhase.SEARCHING;
-    @Nullable private BlockPos jobCheckpointTarget;
-    @Nullable private BlockPos jobCheckpointReturn;
+    private final JobPlan jobPlan = new JobPlan();
     private int committedSwimTicks;
     private net.minecraft.world.phys.Vec3 committedSwimDir = net.minecraft.world.phys.Vec3.ZERO;
 
@@ -603,13 +604,29 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public void setJob(CompanionJob job) {
         CompanionJob safeJob = job == null ? CompanionJob.NONE : job;
-        if (safeJob != getJob() && this.level() instanceof ServerLevel level) {
-            JobReservations.release(level, this.getUUID());
+        if (safeJob != getJob()) {
+            net.minecraft.nbt.Tag preservedReplantDebt = null;
+            CompoundTag existingPayload = jobPlan.payload();
+            if (existingPayload.contains("ReplantDebt", 9)) {
+                preservedReplantDebt = existingPayload.get("ReplantDebt").copy();
+            }
+            if (this.level() instanceof ServerLevel level) {
+                JobReservations.release(level, this.getUUID());
+            }
             this.entityData.set(WORK_ENABLED, false);
             restoreCachedWeapon();
+            jobPlan.setJob(safeJob);
             clearJobCheckpoint();
+            // Job changes clear incompatible active work, but a Lumberjack's
+            // confirmed replant debt remains a durable settlement obligation.
+            if (preservedReplantDebt != null) {
+                CompoundTag payload = jobPlan.payload();
+                payload.put("ReplantDebt", preservedReplantDebt);
+                jobPlan.setPayload(payload);
+            }
         }
         this.entityData.set(JOB_ID, safeJob.id());
+        jobPlan.setJob(safeJob);
         if (safeJob == CompanionJob.NONE) {
             this.entityData.set(WORK_ENABLED, false);
             this.entityData.set(JOB_STATUS, "job_status.modern_companions.idle");
@@ -635,7 +652,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         } else if (getJob() != CompanionJob.NONE) {
             this.getNavigation().stop();
             if (getJob() == CompanionJob.HUNTER) setHunting(false);
-            checkpointJob(JobPhase.PAUSED, jobCheckpointTarget);
+            checkpointJob(JobPhase.PAUSED, jobPlan.target());
             restoreCachedWeapon();
             setJobStatus("job_status.modern_companions.paused");
         }
@@ -653,23 +670,85 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     public JobPhase getJobCheckpointPhase() {
-        return jobCheckpointPhase;
+        return jobPlan.phase();
     }
 
     public Optional<BlockPos> getJobCheckpointTarget() {
-        return Optional.ofNullable(jobCheckpointTarget);
+        return Optional.ofNullable(jobPlan.target());
     }
 
     public void checkpointJob(JobPhase phase, @Nullable BlockPos target) {
-        jobCheckpointPhase = phase == null ? JobPhase.SEARCHING : phase;
-        jobCheckpointTarget = target == null ? null : target.immutable();
-        jobCheckpointReturn = this.blockPosition().immutable();
+        jobPlan.checkpoint(phase, target, null, null, this.blockPosition());
+    }
+
+    /** Updates the durable plan while retaining the caller's real return point. */
+    public void checkpointJob(JobPhase phase, @Nullable BlockPos target, @Nullable BlockPos stand,
+                              @Nullable String identity) {
+        jobPlan.checkpoint(phase, target, stand, identity, this.blockPosition());
+    }
+
+    public Optional<BlockPos> getJobCheckpointStand() {
+        return Optional.ofNullable(jobPlan.stand());
+    }
+
+    public Optional<BlockPos> getJobReturnPosition() {
+        return Optional.ofNullable(jobPlan.returnPosition());
+    }
+
+    /** Persists a nearby safe return stand selected after the original feet cell changes. */
+    public void setJobReturnPosition(@Nullable BlockPos position) {
+        jobPlan.setReturnPosition(position);
+    }
+
+    public JobPhase getJobPreDeliveryPhase() {
+        return jobPlan.preDeliveryPhase();
+    }
+
+    public Optional<BlockPos> getJobPreDeliveryTarget() {
+        return Optional.ofNullable(jobPlan.preDeliveryTarget());
+    }
+
+    public Optional<BlockPos> getJobPreDeliveryStand() {
+        return Optional.ofNullable(jobPlan.preDeliveryStand());
+    }
+
+    public boolean isJobReturnPending() {
+        return jobPlan.deliveryReturnPending();
+    }
+
+    public CompoundTag getJobPlanPayload() {
+        return jobPlan.payload();
+    }
+
+    public void setJobPlanPayload(CompoundTag payload) {
+        jobPlan.setPayload(payload);
+    }
+
+    /** Saves the pre-delivery work unit before the courier takes control. */
+    public void beginJobDelivery() {
+        jobPlan.beginDelivery(jobPlan.phase(), jobPlan.target(), jobPlan.stand(), jobPlan.identity(), this.blockPosition());
+    }
+
+    /** Moves the saved profession target into the explicit post-delivery return phase. */
+    public void finishJobDelivery() {
+        jobPlan.restoreAfterDelivery();
+        checkpointJob(JobPhase.RETURNING, jobPlan.target(), jobPlan.stand(), jobPlan.identity());
+    }
+
+    /** Marks the saved checkpoint reached so the profession can resume its prior phase. */
+    public void finishJobReturn() {
+        JobPhase restoredPhase = jobPlan.completeDeliveryReturn();
+        if (restoredPhase == JobPhase.SEARCHING && jobPlan.target() == null) {
+            // Do not route this through checkpointJob(SEARCHING, null): that
+            // terminal helper clears profession payloads such as replant debt.
+            return;
+        }
+        checkpointJob(restoredPhase, jobPlan.target(), jobPlan.stand(), jobPlan.identity());
     }
 
     private void clearJobCheckpoint() {
-        jobCheckpointPhase = JobPhase.SEARCHING;
-        jobCheckpointTarget = null;
-        jobCheckpointReturn = null;
+        jobPlan.clearWorkUnit();
+        jobPlan.checkpoint(JobPhase.SEARCHING, null, null, null, null);
     }
 
     public String getJobStatus() {
@@ -677,9 +756,13 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     public void setJobStatus(String status) {
-        this.entityData.set(JOB_STATUS, status == null || status.isBlank()
+        String safeStatus = status == null || status.isBlank()
                 ? "job_status.modern_companions.idle"
-                : status.substring(0, Math.min(128, status.length())));
+                : status.substring(0, Math.min(128, status.length()));
+        this.entityData.set(JOB_STATUS, safeStatus);
+        if (jobPlan.phase() == JobPhase.PAUSED || jobPlan.phase() == JobPhase.WAITING) {
+            jobPlan.setWaitingReason(safeStatus);
+        }
     }
 
     public Component getJobStatusComponent() {
@@ -769,10 +852,16 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public boolean hasDeliverableCargo() {
         List<ItemStack> reservedEquipment = collectEquippedStacks();
+        int foodRation = getJob().isWorker() ? 2 : Integer.MAX_VALUE;
         for (int i = 0; i < this.inventory.getContainerSize(); i++) {
             ItemStack stack = this.inventory.getItem(i);
             if (stack.isEmpty()) continue;
             if (reserveForEquippedCopy(stack, reservedEquipment)) continue;
+            if (CompanionData.isFood(stack)) {
+                if (stack.getCount() > foodRation) return true;
+                foodRation -= stack.getCount();
+                continue;
+            }
             if (shouldRetainForUse(stack) || getJob() == CompanionJob.LUMBERJACK && isSaplingItem(stack)) continue;
             return true;
         }
@@ -814,22 +903,25 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         List<ItemStack> reservedEquipment = collectEquippedStacks();
         boolean movedAny = false;
 
+        int foodRation = getJob().isWorker() ? 2 : Integer.MAX_VALUE;
         for (int i = 0; i < this.inventory.getContainerSize(); i++) {
             ItemStack stack = this.inventory.getItem(i);
             if (stack.isEmpty()) continue;
             if (reserveForEquippedCopy(stack, reservedEquipment)) continue;
 
-            if (shouldRetainForUse(stack)) continue;
+            int keep = retainedFoodCount(stack, foodRation);
+            if (keep > 0) foodRation -= keep;
+            if (keep >= stack.getCount() || shouldRetainForUse(stack)) continue;
             if (getJob() == CompanionJob.LUMBERJACK && isSaplingItem(stack)) continue;
 
-            ItemStack toMove = stack.copy();
+            ItemStack toMove = stack.copyWithCount(stack.getCount() - keep);
             ItemStack remainder = handler != null
                     ? net.neoforged.neoforge.items.ItemHandlerHelper.insertItemStacked(handler, toMove, false)
                     : insertIntoContainer(container, toMove);
             if (remainder.getCount() != toMove.getCount()) {
                 movedAny = true;
             }
-            this.inventory.setItem(i, remainder);
+            this.inventory.setItem(i, remainder.isEmpty() ? ItemStack.EMPTY : remainder.copyWithCount(remainder.getCount() + keep));
         }
 
         if (container instanceof net.minecraft.world.level.block.entity.BlockEntity blockEntity) {
@@ -838,9 +930,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.inventory.setChanged();
 
         this.lastDeliveryGameTime = level.getGameTime();
-        onDeliveryFinished(movedAny ? DeliveryResult.SUCCESS : DeliveryResult.FULL);
+        DeliveryResult result = movedAny
+                ? (hasDeliverableCargo() ? DeliveryResult.PARTIAL : DeliveryResult.SUCCESS)
+                : DeliveryResult.FULL;
+        onDeliveryFinished(result);
 
-        return movedAny ? DeliveryResult.SUCCESS : DeliveryResult.FULL;
+        return result;
     }
 
     /** Caller must already be at an approved chest stand; this only performs one safe inventory transfer. */
@@ -925,8 +1020,17 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return this.forceDeliverRequest;
     }
 
+    public long getDeliveryRetryAt() {
+        return deliveryRetryAt;
+    }
+
+    public void deferDelivery(long gameTime) {
+        deliveryRetryAt = Math.max(deliveryRetryAt, gameTime);
+    }
+
     public void clearForceDeliverRequest() {
         this.forceDeliverRequest = false;
+        this.deliveryRetryAt = 0L;
     }
 
     private void notifyCourierOwner(Component message, int cooldownTicks) {
@@ -987,6 +1091,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public enum DeliveryResult {
         SUCCESS,
+        PARTIAL,
         FULL,
         MISSING
     }
@@ -997,7 +1102,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     private boolean shouldRetainForUse(ItemStack stack) {
         if (stack.isEmpty()) return true;
-        if (CompanionData.isFood(stack) || stack.has(net.minecraft.core.component.DataComponents.POTION_CONTENTS)) return true;
+        if (CompanionData.isFood(stack)) return getJob() == CompanionJob.NONE;
+        if (stack.has(net.minecraft.core.component.DataComponents.POTION_CONTENTS)) return true;
         if (isMainHandWeapon(stack) || stack.getItem() instanceof BowItem || stack.getItem() instanceof CrossbowItem) {
             return true; // keep primary weapons
         }
@@ -1487,6 +1593,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             }
         }
         return false;
+    }
+
+    /** Workers retain only a tiny emergency ration; profession output is deliverable. */
+    private int retainedFoodCount(ItemStack stack, int remainingRation) {
+        if (!getJob().isWorker() || !CompanionData.isFood(stack)) return 0;
+        return Math.min(stack.getCount(), Math.max(0, remainingRation));
     }
 
     private boolean hasOnlyOwnerPassengers(Mob mount, Player owner) {
@@ -3139,10 +3251,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putBoolean("WorkEnabled", this.isWorkEnabled());
         tag.putString("JobStatus", this.getJobStatus());
         CompoundTag checkpoint = new CompoundTag();
-        checkpoint.putString("Phase", jobCheckpointPhase.name());
-        if (jobCheckpointTarget != null) checkpoint.putLong("Target", jobCheckpointTarget.asLong());
-        if (jobCheckpointReturn != null) checkpoint.putLong("Return", jobCheckpointReturn.asLong());
+        checkpoint.putString("Phase", jobPlan.phase().name());
+        if (jobPlan.target() != null) checkpoint.putLong("Target", jobPlan.target().asLong());
+        if (jobPlan.returnPosition() != null) checkpoint.putLong("Return", jobPlan.returnPosition().asLong());
         tag.put("JobCheckpoint", checkpoint);
+        tag.put("JobPlan", jobPlan.save(new CompoundTag()));
         tag.putInt("baseHealth", this.getBaseHealth());
         tag.putFloat("XpP", this.experienceProgress);
         tag.putInt("XpLevel", this.getExpLvl());
@@ -3278,15 +3391,20 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.setJob(CompanionJob.fromId(tag.getString("JobId")));
         this.setWorkEnabled(tag.getBoolean("WorkEnabled"));
         if (tag.contains("JobStatus")) this.setJobStatus(tag.getString("JobStatus"));
-        if (tag.contains("JobCheckpoint", 10)) {
+        if (tag.contains("JobPlan", 10)) {
+            JobPlan loadedPlan = JobPlan.load(tag.getCompound("JobPlan"));
+            jobPlan.copyFrom(loadedPlan);
+        } else if (tag.contains("JobCheckpoint", 10)) {
             CompoundTag checkpoint = tag.getCompound("JobCheckpoint");
+            JobPhase phase;
             try {
-                jobCheckpointPhase = JobPhase.valueOf(checkpoint.getString("Phase"));
+                phase = JobPhase.valueOf(checkpoint.getString("Phase"));
             } catch (IllegalArgumentException ignored) {
-                jobCheckpointPhase = JobPhase.SEARCHING;
+                phase = JobPhase.SEARCHING;
             }
-            jobCheckpointTarget = checkpoint.contains("Target") ? BlockPos.of(checkpoint.getLong("Target")) : null;
-            jobCheckpointReturn = checkpoint.contains("Return") ? BlockPos.of(checkpoint.getLong("Return")) : null;
+            BlockPos target = checkpoint.contains("Target") ? BlockPos.of(checkpoint.getLong("Target")) : null;
+            jobPlan.checkpoint(phase, target, null, null,
+                    checkpoint.contains("Return") ? BlockPos.of(checkpoint.getLong("Return")) : null);
         }
         this.onJobChanged(false);
         this.experienceProgress = tag.getFloat("XpP");
@@ -3527,7 +3645,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 CompanionVoice.play(this, ModSounds.Cue.IDLE);
             }
             checkArmor();
-            if (this.tickCount % 2 == 0 && isPickupEnabled() && this.isTame()) {
+            if (this.tickCount % 2 == 0 && this.isTame()
+                    && (isPickupEnabled() || getJob() == CompanionJob.HUNTER)) {
                 collectNearbyItems();
             }
             boostWaterMovement();
@@ -3906,6 +4025,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void die(DamageSource source) {
         clearHeldLight();
         if (!this.level().isClientSide()) {
+            if (this.level() instanceof ServerLevel server) JobReservations.release(server, this.getUUID());
+            com.majorbonghits.moderncompanions.entity.projectile.CompanionFishingHook.discardFor(this);
             CompanionVoice.play(this, ModSounds.Cue.DEATH);
             clearNegativeEffectsBeforeResurrectionSave();
             if (this instanceof Beastmaster beastmaster) {
@@ -3919,6 +4040,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Override
     public void remove(Entity.RemovalReason reason) {
         clearHeldLight();
+        if (!this.level().isClientSide()) {
+            if (this.level() instanceof ServerLevel server) JobReservations.release(server, this.getUUID());
+            com.majorbonghits.moderncompanions.entity.projectile.CompanionFishingHook.discardFor(this);
+        }
         super.remove(reason);
     }
 
@@ -3999,6 +4124,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public void onRemovedFromLevel() {
         clearHeldLight();
         if (!this.level().isClientSide() && this.level() instanceof ServerLevel server) {
+            com.majorbonghits.moderncompanions.entity.projectile.CompanionFishingHook.discardFor(this);
             releaseDeliveryChunkTicket(server);
         }
         super.onRemovedFromLevel();
@@ -4185,7 +4311,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         double range = 3.0D;
         var box = this.getBoundingBox().inflate(range);
         for (ItemEntity item : this.level().getEntitiesOfClass(ItemEntity.class, box,
-                e -> e.isAlive() && !e.hasPickUpDelay())) {
+                e -> e.isAlive() && !e.hasPickUpDelay()
+                        && !JobDropClaims.isOwnedByOther(e, getUUID())
+                        && (isPickupEnabled() || JobDropClaims.isOwnedBy(e, getUUID())))) {
             if (item.getItem().isEmpty())
                 continue;
             // Blacklist certain items from being auto-picked up (e.g., resurrection
@@ -4210,6 +4338,20 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 }
             }
         }
+    }
+
+    /** Hunter-owned drops use the same backpack/inventory insertion path even when Pickup is off. */
+    public boolean collectOwnedJobDrop(ItemEntity item) {
+        if (item == null || !item.isAlive() || !JobDropClaims.isOwnedBy(item, getUUID())) return false;
+        ItemStack leftover = tryInsertBackpackFirst(item.getItem().copy());
+        if (!leftover.isEmpty()) leftover = this.inventory.addItem(leftover);
+        this.inventory.setChanged();
+        if (leftover.isEmpty()) {
+            item.discard();
+            return true;
+        }
+        item.setItem(leftover);
+        return false;
     }
 
     /**

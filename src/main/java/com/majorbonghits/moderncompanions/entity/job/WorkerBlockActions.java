@@ -4,6 +4,8 @@ import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BoneMealItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Block;
@@ -51,7 +53,8 @@ public final class WorkerBlockActions {
         boolean validStand = ignoreSight
                 ? WorkerSite.canActFromStandIgnoringSight(companion, target, stand, interactRangeSqr)
                 : WorkerSite.canActFromStand(companion, target, stand, interactRangeSqr);
-        if (!level.hasChunkAt(target) || !validStand) return WorkerActionResult.RETRYABLE_BLOCKED;
+        if (!level.hasChunkAt(target)) return WorkerActionResult.UNLOADED;
+        if (!validStand) return WorkerActionResult.RETRYABLE_BLOCKED;
         ItemStack tool = companion.getMainHandItem();
         BlockState state = level.getBlockState(target);
         if (state.isAir()) return WorkerActionResult.INVALID_TARGET;
@@ -68,10 +71,59 @@ public final class WorkerBlockActions {
     }
 
     public static boolean place(AbstractHumanCompanionEntity companion, BlockPos target, BlockPos stand, net.minecraft.world.level.block.state.BlockState state) {
-        return companion.level() instanceof ServerLevel level
-                && level.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)
-                && WorkerSite.canActFromStand(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR)
-                && level.getBlockState(target).isAir() && level.setBlock(target, state, 3);
+        return placeResult(companion, target, stand, state) == WorkerActionResult.SUCCESS;
+    }
+
+    /** Validates, places, verifies, and consumes one matching block item atomically. */
+    public static WorkerActionResult placeResult(AbstractHumanCompanionEntity companion, BlockPos target,
+                                                 BlockPos stand, net.minecraft.world.level.block.state.BlockState state) {
+        if (!(companion.level() instanceof ServerLevel level)) return WorkerActionResult.RETRYABLE_BLOCKED;
+        if (!level.hasChunkAt(target)) return WorkerActionResult.UNLOADED;
+        if (!level.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)) return WorkerActionResult.PROTECTED;
+        if (!WorkerSite.canActFromStand(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR)) {
+            return WorkerActionResult.RETRYABLE_BLOCKED;
+        }
+        if (!level.getBlockState(target).isAir() || !state.canSurvive(level, target)) {
+            return WorkerActionResult.INVALID_TARGET;
+        }
+        ItemStack placement = findPlacementStack(companion, state.getBlock());
+        if (placement.isEmpty()) return WorkerActionResult.TOOL_MISSING;
+        if (!level.setBlock(target, state, 3)) return WorkerActionResult.PROTECTED;
+        if (!level.getBlockState(target).is(state.getBlock())) return WorkerActionResult.RETRYABLE_BLOCKED;
+        placement.shrink(1);
+        companion.getInventory().setChanged();
+        return WorkerActionResult.SUCCESS;
+    }
+
+    /** Applies one bone-meal action through the same server-side stand/protection gate. */
+    public static WorkerActionResult boneMealResult(AbstractHumanCompanionEntity companion, BlockPos target,
+                                                    BlockPos stand, ItemStack meal) {
+        if (!(companion.level() instanceof ServerLevel level)) return WorkerActionResult.RETRYABLE_BLOCKED;
+        if (!level.hasChunkAt(target)) return WorkerActionResult.UNLOADED;
+        if (!level.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)) return WorkerActionResult.PROTECTED;
+        if (!WorkerSite.canActFromStand(companion, target, stand, WorkerSite.INTERACT_RANGE_SQR)) {
+            return WorkerActionResult.RETRYABLE_BLOCKED;
+        }
+        BlockState before = level.getBlockState(target);
+        if (!(before.getBlock() instanceof net.minecraft.world.level.block.BonemealableBlock bonemealable)
+                || !bonemealable.isValidBonemealTarget(level, target, before)) {
+            return WorkerActionResult.INVALID_TARGET;
+        }
+        if (meal == null || meal.isEmpty()) return WorkerActionResult.TOOL_MISSING;
+        if (!BoneMealItem.growCrop(meal, level, target)) return WorkerActionResult.INVALID_TARGET;
+        return level.getBlockState(target).equals(before)
+                ? WorkerActionResult.RETRYABLE_BLOCKED
+                : WorkerActionResult.SUCCESS;
+    }
+
+    private static ItemStack findPlacementStack(AbstractHumanCompanionEntity companion, Block block) {
+        ItemStack mainHand = companion.getMainHandItem();
+        if (mainHand.getItem() instanceof BlockItem item && item.getBlock() == block) return mainHand;
+        for (int slot = 0; slot < companion.getInventory().getContainerSize(); slot++) {
+            ItemStack stack = companion.getInventory().getItem(slot);
+            if (stack.getItem() instanceof BlockItem item && item.getBlock() == block) return stack;
+        }
+        return ItemStack.EMPTY;
     }
 
     private static boolean canStoreAll(AbstractHumanCompanionEntity companion, List<ItemStack> drops) {

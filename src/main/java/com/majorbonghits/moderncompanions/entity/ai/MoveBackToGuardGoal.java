@@ -18,7 +18,8 @@ public class MoveBackToGuardGoal extends Goal {
 
     @Override
     public boolean canUse() {
-        if (this.companion.getPatrolPos().isEmpty() || !companion.isGuarding()) {
+        if (companion.isJobReturnPending()
+                || this.companion.getPatrolPos().isEmpty() || !companion.isGuarding()) {
             return false;
         }
         this.guardVec = Vec3.atBottomCenterOf(this.companion.getPatrolPos().orElse(companion.blockPosition()));

@@ -43,6 +43,16 @@ public class CompanionFishingHook extends Projectile {
         this.entityData.set(DATA_OWNER_ID, owner.getId());
     }
 
+    /** Remove transient hooks when their worker is removed or changes dimension. */
+    public static void discardFor(AbstractHumanCompanionEntity owner) {
+        if (owner.level().isClientSide()) return;
+        for (CompanionFishingHook hook : owner.level().getEntitiesOfClass(
+                CompanionFishingHook.class, owner.getBoundingBox().inflate(32.0D),
+                candidate -> candidate.getOwnerCompanion() == owner)) {
+            hook.discard();
+        }
+    }
+
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_OWNER_ID, 0);
@@ -56,7 +66,8 @@ public class CompanionFishingHook extends Projectile {
         // Hooks are transient work state. Discard one restored after an unload,
         // job switch, Work-off toggle, death, or dimension change instead of
         // letting it become an orphan that competes with a new cast.
-        if (owner == null || !owner.isAlive() || owner.getJob() != CompanionJob.FISHER || !owner.isWorkEnabled()) {
+        if (owner == null || owner.level() != this.level() || !owner.isAlive()
+                || owner.getJob() != CompanionJob.FISHER || !owner.isWorkEnabled()) {
             discard();
             return;
         }
@@ -70,6 +81,10 @@ public class CompanionFishingHook extends Projectile {
             this.setPos(bobberPos.x, bobberPos.y, bobberPos.z);
             this.setNoGravity(true);
             this.setDeltaMovement(Vec3.ZERO);
+            if (!isLineInWater()) {
+                discard();
+                return;
+            }
         }
         if (!this.level().isClientSide) {
             // A bite lasts long enough for the server goal to react instead of flickering for one tick.

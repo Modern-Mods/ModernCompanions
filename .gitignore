@@ -68,7 +68,8 @@ FarmersDelight-1.21/
 Minecraft_Client_Source_1.21.1/
 minecraft-comes-alive-1.21.1/
 workers-main/
-
+medieval_armory/
+SmartBrainLib-1.21.11/
 
 # 1.20.1 Libs
 Curios-1.20.x
@@ -92,3 +93,5 @@ build/
 # Keep the optional Mekanism compatibility source tracked; the support-library rule above is broad.
 !src/main/java/com/majorbonghits/moderncompanions/compat/mekanism/
 !src/main/java/com/majorbonghits/moderncompanions/compat/mekanism/**
+
+logs/

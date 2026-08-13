@@ -20,6 +20,9 @@ import net.neoforged.neoforge.event.entity.living.LivingDropsEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.minecraft.world.phys.AABB;
+import com.majorbonghits.moderncompanions.entity.job.CompanionJob;
+import com.majorbonghits.moderncompanions.entity.job.JobDropClaims;
+import com.majorbonghits.moderncompanions.entity.job.JobReservations;
 
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +39,12 @@ public final class CompanionEvents {
     /** Capture eligible companions before the player leaves the source level. */
     @SubscribeEvent
     public static void captureDimensionFollowers(EntityTravelToDimensionEvent event) {
+        if (event.getEntity() instanceof AbstractHumanCompanionEntity companion
+                && companion.level() instanceof ServerLevel source) {
+            JobReservations.release(source, companion.getUUID());
+            com.majorbonghits.moderncompanions.entity.projectile.CompanionFishingHook.discardFor(companion);
+            return;
+        }
         if (!(event.getEntity() instanceof ServerPlayer player)
                 || !(player.level() instanceof ServerLevel source)
                 || source.dimension().equals(event.getDimension())) {
@@ -164,8 +173,15 @@ public final class CompanionEvents {
 
     @SubscribeEvent
     public static void onDrops(LivingDropsEvent event) {
-        if (!(event.getSource().getEntity() instanceof AbstractHumanCompanionEntity companion)) return;
+        AbstractHumanCompanionEntity companion = CompanionProtectionEvents.companionAttacker(event.getSource().getDirectEntity());
+        if (companion == null) companion = CompanionProtectionEvents.companionAttacker(event.getSource().getEntity());
+        if (companion == null) return;
         if (!companion.isTame()) return;
+        if (companion.getJob() == CompanionJob.HUNTER) {
+            for (net.minecraft.world.entity.item.ItemEntity drop : event.getDrops()) {
+                JobDropClaims.claim(drop, companion);
+            }
+        }
         if (!companion.hasTrait("trait_lucky")) return;
         double chance = ModConfig.safeGet(ModConfig.LUCKY_EXTRA_DROP_CHANCE);
         if (companion.getRandom().nextDouble() >= chance) return;

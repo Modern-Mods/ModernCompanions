@@ -68,7 +68,8 @@ public class CompanionMenu extends AbstractContainerMenu {
         // Companion inventory slots
         for (int row = 0; row < COMPANION_ROWS; ++row) {
             for (int col = 0; col < 9; ++col) {
-                this.addSlot(new Slot(container, col + row * 9, CONTENT_X_OFFSET + 8 + col * 18, 24 + row * 18));
+                this.addSlot(new CompanionInventorySlot(container, col + row * 9,
+                        CONTENT_X_OFFSET + 8 + col * 18, 24 + row * 18));
             }
         }
 
@@ -121,6 +122,18 @@ public class CompanionMenu extends AbstractContainerMenu {
 
     public AbstractHumanCompanionEntity getCompanion() {
         return companion;
+    }
+
+    /** Uses the companion container's class-specific stack limit for direct cursor insertion. */
+    private static final class CompanionInventorySlot extends Slot {
+        private CompanionInventorySlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public int getMaxStackSize(ItemStack stack) {
+            return this.container.getMaxStackSize(stack);
+        }
     }
 
     public int getCosmeticArmorSlotIndex(int index) {

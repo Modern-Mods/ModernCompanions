@@ -190,7 +190,7 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
     }
 
     private void equipCasterWeapon() {
-        ItemStack hand = this.getItemBySlot(EquipmentSlot.MAINHAND);
+        ItemStack hand = this.getFunctionalEquipmentItem(EquipmentSlot.MAINHAND);
         ItemStack firearm = getEquippedOrInventoryFirearm();
         if (!firearm.isEmpty()) {
             if (!ItemStack.isSameItemSameComponents(hand, firearm)) this.setItemSlot(EquipmentSlot.MAINHAND, firearm);

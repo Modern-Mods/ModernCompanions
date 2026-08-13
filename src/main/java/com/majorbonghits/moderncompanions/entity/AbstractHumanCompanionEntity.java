@@ -300,7 +300,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private static final int SPRINT_RESUME_STAMINA = 15;
 
     // Seven visible rows in the companion menu; saved inventories keep their existing slot indices.
-    protected final SimpleContainer inventory = new SimpleContainer(63);
+    protected final SimpleContainer inventory = new SimpleContainer(63) {
+        @Override
+        public int getMaxStackSize(ItemStack stack) {
+            return AbstractHumanCompanionEntity.this.getInventoryStackLimit(stack, super.getMaxStackSize(stack));
+        }
+    };
     // Vanilla LivingEntity equipment is the single source of truth; only manual locks need extra state.
     private final boolean[] manuallyEquipped = new boolean[6];
     private ItemStack savedOffhand = ItemStack.EMPTY;
@@ -937,7 +942,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private List<ItemStack> collectEquippedStacks() {
         List<ItemStack> equipped = new ArrayList<>();
         for (EquipmentSlot slot : EquipmentSlot.values()) {
-            ItemStack stack = this.getItemBySlot(slot);
+            ItemStack stack = this.getFunctionalEquipmentItem(slot);
             if (!stack.isEmpty()) {
                 equipped.add(stack.copy());
             }
@@ -1772,6 +1777,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 .append(itemName);
     }
 
+    /** Allows a class to raise its own cargo limit without changing the global item stack limit. */
+    protected int getInventoryStackLimit(ItemStack stack, int vanillaLimit) {
+        return vanillaLimit;
+    }
+
     public SimpleContainer getInventory() {
         return inventory;
     }
@@ -1857,6 +1867,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         this.renderingEquipment = rendering;
     }
 
+    /**
+     * Renderer view: cosmetic armor may replace functional armor only while a renderer owns the context.
+     * Menu and gameplay code must use {@link #getFunctionalEquipmentItem(EquipmentSlot)} instead.
+     */
     @Override
     public ItemStack getItemBySlot(EquipmentSlot slot) {
         if (renderingEquipment) {
@@ -2057,7 +2071,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     /** Equips one valid defensive/light offhand item when no offhand is already occupied. */
     private void equipOffhandFromInventory() {
         if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP)
-                || !getItemBySlot(EquipmentSlot.OFFHAND).isEmpty()) return;
+                || !getFunctionalEquipmentItem(EquipmentSlot.OFFHAND).isEmpty()) return;
         ItemStack fallback = ItemStack.EMPTY;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack candidate = inventory.getItem(i);
@@ -2083,7 +2097,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         EquipmentSlot slot = equipmentSlotFor(stack);
         if (slot == null || hasDedicatedEquipment(slot)) return false;
-        ItemStack current = getItemBySlot(slot);
+        ItemStack current = getFunctionalEquipmentItem(slot);
         if (!isBetterEquipment(stack, current, slot)) return false;
         ItemStack equipped = stack.copyWithCount(1);
         if (!setAutomaticEquipment(slot, equipped)) return false;
@@ -3915,7 +3929,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
      */
     private void updateHeldLight() {
         if (!(this.level() instanceof ServerLevel server)) return;
-        ItemStack offhand = getItemBySlot(EquipmentSlot.OFFHAND);
+        ItemStack offhand = getFunctionalEquipmentItem(EquipmentSlot.OFFHAND);
         if (!isHandheldLight(offhand) || !isAlive()
                 || !server.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING)) {
             clearHeldLight();
@@ -4071,10 +4085,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public void checkArmor() {
         if (!ModConfig.safeGet(ModConfig.AUTO_EQUIP)) return;
-        ItemStack head = this.getItemBySlot(EquipmentSlot.HEAD);
-        ItemStack chest = this.getItemBySlot(EquipmentSlot.CHEST);
-        ItemStack legs = this.getItemBySlot(EquipmentSlot.LEGS);
-        ItemStack feet = this.getItemBySlot(EquipmentSlot.FEET);
+        ItemStack head = this.getFunctionalEquipmentItem(EquipmentSlot.HEAD);
+        ItemStack chest = this.getFunctionalEquipmentItem(EquipmentSlot.CHEST);
+        ItemStack legs = this.getFunctionalEquipmentItem(EquipmentSlot.LEGS);
+        ItemStack feet = this.getFunctionalEquipmentItem(EquipmentSlot.FEET);
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack itemstack = this.inventory.getItem(i);
             if (itemstack.getItem() instanceof ArmorItem armorItem) {

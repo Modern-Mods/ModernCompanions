@@ -116,7 +116,7 @@ public class Vanguard extends Knight {
 
     private void checkShield() {
         if (isEating()) return;
-        ItemStack offhand = this.getItemBySlot(EquipmentSlot.OFFHAND);
+        ItemStack offhand = this.getFunctionalEquipmentItem(EquipmentSlot.OFFHAND);
         // Vanguard's shield AI must not evict other valid offhand equipment.
         if (!offhand.isEmpty() && !isShield(offhand) && !canEquipInSlot(EquipmentSlot.OFFHAND, offhand)) {
             offhand = ItemStack.EMPTY;
@@ -132,7 +132,7 @@ public class Vanguard extends Knight {
             }
         }
         // Prevent mirror-wielding shields: clear main-hand shield if we just assigned offhand.
-        ItemStack main = this.getItemBySlot(EquipmentSlot.MAINHAND);
+        ItemStack main = this.getFunctionalEquipmentItem(EquipmentSlot.MAINHAND);
         if (isShield(main)) {
             this.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
         }
@@ -148,7 +148,7 @@ public class Vanguard extends Knight {
             return;
         }
 
-        if (!isShield(this.getItemBySlot(EquipmentSlot.OFFHAND))) {
+        if (!isShield(this.getFunctionalEquipmentItem(EquipmentSlot.OFFHAND))) {
             stopUsingShield();
             return;
         }

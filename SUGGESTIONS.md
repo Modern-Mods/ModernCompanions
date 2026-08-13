@@ -1,3 +1,17 @@
+- 2026-08-12 (Alchemist hostile LOS): In a dev world, place enemies in clear view, behind a wall, and directly below in a cave; confirm only visible enemies receive splash throws, hidden enemies do not cause ground throws, and melee resumes when no visible throw exists.
+
+- 2026-08-12 (Alchemist targeted throws): In a dev world, verify the Alchemist turns body/head toward the selected ally or enemy before every throw and that zero-spread splash potions land on the selected target at short, medium, and maximum combat range.
+
+- 2026-08-12 (Alchemist splash combat): Smoke-test a full-health and injured Alchemist with one Zombie, a cluster, Harming I/II, and a nearby enemy inside the melee threshold; confirm splash potions are thrown visibly, regular healing potions can still be consumed, and close threats use melee.
+
+- 2026-08-12 (Alchemist recipe-sync packet): Keep a focused multiplayer/integrated-server smoke test for joining a world with the Alchemist recipe serializer registered; confirm `update_recipes` completes and the client reaches the world before testing Blank Recipe crafting.
+
+- 2026-08-12 (Alchemist recipe brewing): Confirm a configured Recipe tooltip lists every consumed ingredient, the Alchemist can brew without glass bottles, output appears only after 200 ticks, and regular/splash potion stacks merge up to 64 in its inventory but remain normal elsewhere.
+
+- 2026-08-12 (cosmetic popup close): Keep a focused Testing-instance smoke check for closing the popup over the offhand area and with an item carried; verify no functional-slot transaction occurs and the closed panel shows only functional equipment.
+
+- 2026-08-12 (cosmetic/functional equipment): Keep a focused Testing-instance smoke check for cosmetic armor add/remove/replace while functional armor is equipped; verify the visible functional slot and cursor item remain correct without closing or reopening the companion screen.
+
 ## 2026-08-12
 
 - 2026-08-12 (Epic Fight equipped armor): Smoke-test wide Steve and slim Alex companions wearing head, chest, legs, and feet armor with Epic Fight installed; confirm each set follows the animated body without duplicate layers, then repeat with Epic Fight absent to confirm vanilla armor rendering and startup remain intact.
@@ -668,3 +682,9 @@
 ## 2026-08-12 (untinted summon gems)
 
 - In the creative tabs, inspect every fixed and optional spawn gem plus a captured Soul Gem in the GUI, held first-person, held third-person, and dropped-item views; confirm each uses the source `gem_*.png` colors without a runtime spawn-egg palette.
+
+## 2026-08-12 (Alchemist rework)
+
+- In a fresh world, craft Blank Recipe from paper and a glass bottle, combine it with each supported vanilla potion tier, and confirm the configured item is cyan and retains its recipe after relogging.
+- Give an Alchemist one configured recipe plus its ingredients; verify brewing consumes only the ingredients, creates splash potions in inventory, throws at valid party/enemy targets, and uses melee when no useful throw exists or the target is too close.
+- Exercise Healing/Healing II percentage prioritization, clustered Harming, emergency Turtle Master/Slow Falling, owner splash protection, and Oozing/Infested minions beside the player and every same-owner companion.

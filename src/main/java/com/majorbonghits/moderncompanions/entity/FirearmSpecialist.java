@@ -96,7 +96,7 @@ public class FirearmSpecialist extends AbstractHumanCompanionEntity {
     }
 
     private void normalizeSpecialtyWeapon() {
-        ItemStack hand = getItemBySlot(EquipmentSlot.MAINHAND);
+        ItemStack hand = getFunctionalEquipmentItem(EquipmentSlot.MAINHAND);
         if (hand.isEmpty()) return;
         if (!FirearmSupport.isTacZFirearm(hand)) {
             setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);

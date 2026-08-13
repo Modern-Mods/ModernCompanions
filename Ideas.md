@@ -2,11 +2,7 @@
 
 - We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 
 
-## Bugs
-- Armor is not displaying?
-
-
-
+# Alchemist Rework
 - Alchemist needs fixed;
     - Should be able to throw splash potions from their inventory
     - Should default to melee combat if no splash potions are in their inventory, or if their target is too close 
@@ -42,13 +38,14 @@
         | 🕸️ **Weaving**              | Fantastic choke-point potion. Apply to low-health enemies inside groups so their deaths create cobwebs and obstruct the remaining enemies.                                                                                      |
         | 🟢 **Oozing**               | I'd make this a deliberately chaotic offensive tool. Apply to dying enemies when extra Slimes would benefit the party, but avoid using it constantly because it creates additional mobs.                                        |
         | 🪲 **Infested**             | Use against durable enemies that are being hit repeatedly. Since damage can generate Silverfish, it turns one big enemy into battlefield chaos. Best used when enemies significantly outnumber allies or against tanky targets. |
+            * Silverfish created by the Alchemist's **Infested** potions are non-hostile to the alchemist that threw it, their owner or any of their owners other companions
+            * Slimes created by the Alchemist's **Oozing** potions are non-hostile to the alchemist that threw it, their owner or any of their owners other companions
     - The alchemist can brew potions in their inventories. The player can set their active recipe, and when the alchemist has the proper ingredients in their inventory - will create splash potions of the assigned recipe.
         - Create a paper 'recipe' item; combine this paper in a shapeless crafting window with a potion and it will become a new 'recipe' item that contains the potion's crafting recipe. Hand that recipe item to an alchemist and all the required ingredients, and they will brew splash potions right in their inventory.
             - `src\main\resources\assets\modern_companions\textures\item\recipe.png`
             - Item will be called; 'Blank Recipe' and have a white name
             - When combined with a potion, the subsequent item which will have a cyan name and be suffixed with the respective recipe, like; 'Recipe: Harming II'
             - Blank Recipe Item will have a not very difficult recipe including paper
-
 
 
 

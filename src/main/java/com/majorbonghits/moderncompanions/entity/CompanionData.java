@@ -665,7 +665,8 @@ public class CompanionData {
 
     /** Allow only regen/healing potions (no splash/harmful mixes) as valid consumables. */
     public static boolean isHealingPotion(ItemStack stack) {
-        if (!(stack.getItem() instanceof PotionItem)) return false;
+        // Splash and lingering potions inherit PotionItem, but they must be thrown rather than consumed.
+        if (!stack.is(Items.POTION)) return false;
 
         PotionContents contents = stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY);
         boolean hasHealingEffect = false;

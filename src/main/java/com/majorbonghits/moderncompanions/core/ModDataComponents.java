@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.currency.CardData;
+import com.majorbonghits.moderncompanions.item.AlchemistRecipeData;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
@@ -35,6 +36,12 @@ public final class ModDataComponents {
             COMPONENTS.register("credit_card", () -> DataComponentType.<CardData>builder()
                     .persistent(CARD_DATA_CODEC)
                     .networkSynchronized(CARD_DATA_STREAM_CODEC)
+                    .build());
+
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<AlchemistRecipeData>> ALCHEMIST_RECIPE =
+            COMPONENTS.register("alchemist_recipe", () -> DataComponentType.<AlchemistRecipeData>builder()
+                    .persistent(AlchemistRecipeData.CODEC)
+                    .networkSynchronized(AlchemistRecipeData.STREAM_CODEC)
                     .build());
 
     public static void register(IEventBus modBus) {

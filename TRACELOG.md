@@ -1,3 +1,76 @@
+## 2026-08-12 (Alchemist hostile line-of-sight throws)
+
+- Prompt/task: Restrict Alchemist offensive splash throws to enemies currently within direct line of sight so enemies in caves below or behind terrain are not targeted through the ground.
+- Steps:
+  - Added native `hasLineOfSight` filtering to hostile candidate discovery and the existing `getTarget()` fallback.
+  - Rechecked hostile visibility immediately before spawning a `ThrownPotion`, while leaving beneficial ally throws and melee fallback behavior unchanged.
+  - Bumped the project version from 4.32 to 4.33.
+- Rationale: Candidate selection alone can become stale before the projectile is spawned; filtering both discovery and launch closes the cave/occlusion path without restricting intentional ally support.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed with `BUILD SUCCESSFUL` and produced `build/libs/ModernCompanions-4.33.jar`; clear-view, wall, cave-below, and moving-target occlusion behavior remain manual smoke tests.
+
+## 2026-08-12 (Alchemist targeted potion throws)
+
+- Prompt/task: Make Alchemist splash throws explicitly target their selected entities and always face those targets before throwing.
+- Steps:
+  - Removed the 4.0F projectile inaccuracy and the extra arc offset from the Alchemist's `ThrownPotion` launch vector.
+  - Instantly rotated the Alchemist's body, head, and pitch toward the selected target before spawning the projectile, and stopped navigation for the throw.
+  - Bumped the project version from 4.31 to 4.32.
+- Rationale: The prior witch-style spread was the direct cause of wild throws; the selected action target now controls both visible facing and the zero-spread projectile direction.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` and `git diff --check` remain required after this change; visible target-facing and impact accuracy remain manual smoke tests.
+
+## 2026-08-12 (Alchemist splash combat consumption and targeting)
+
+- Prompt/task: The Alchemist appeared to drink beneficial splash potions instead of throwing them and did not throw harmful potions at enemies.
+- Steps:
+  - Traced the shared `EatGoal` path through `CompanionData.isHealingPotion`; splash and lingering potions inherit `PotionItem`, so the old `instanceof PotionItem` check incorrectly made them drinkable healing items.
+  - Restricted shared healing consumption to regular `Items.POTION`, leaving splash and lingering potions available only to their throwing paths.
+  - Removed the unnecessary enemy-cluster/owner-distance gates from Harming I and Harming II so either potion can target any nearby valid hostile threat while retaining the close-range melee safety gate.
+  - Bumped the project version from 4.30 to 4.31.
+- Rationale: Fix the shared consumable classification at its source, then make the two direct damage splash potions useful against ordinary single enemies without weakening ally protection or emergency healing priority.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed with `BUILD SUCCESSFUL` and produced `build/libs/ModernCompanions-4.31.jar`; live one-enemy, clustered-enemy, and visible projectile smoke tests remain manual.
+
+## 2026-08-12 (Alchemist recipe brewing and virtual potion stacks)
+
+- Prompt/task: Show configured recipe ingredients, remove glass bottles from Alchemist brewing, use half a Brewing Stand's brew time, and allow potions/splash potions to stack to 64 inside an Alchemist's inventory.
+- Steps:
+  - Added grouped ingredient lines to the configured Recipe item tooltip using the persisted recipe payload and live item names.
+  - Kept the Alchemist's direct splash-output path bottle-free and explicitly filtered any accidental glass-bottle ingredient from the recipe table.
+  - Changed brewing from immediate output plus a short cooldown to a 200-tick in-progress brew with final ingredient/output validation.
+  - Added a class-specific inventory stack-limit hook and companion menu slot override so only Alchemist cargo accepts 64 regular or splash potions; `hasInventorySpace` now uses that virtual limit.
+  - Bumped the project version from 4.29 to 4.30.
+- Rationale: The tooltip should expose the exact configured inputs, the Alchemist is an internal brewer rather than a Brewing Stand container, and the stack exception must remain local to its inventory instead of changing vanilla potion behavior.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed with `BUILD SUCCESSFUL` and produced `build/libs/ModernCompanions-4.30.jar`; tooltip, timed brewing, stacking, and relog smoke tests remain manual.
+
+## 2026-08-12 (Alchemist recipe-sync packet)
+
+- Prompt/task: Fix the Testing instance disconnect while sending `clientbound/minecraft:update_recipes` after the Alchemist rework.
+- Steps:
+  - Traced the nested encoder failure to `AlchemistRecipe.Serializer.STREAM_CODEC`; `StreamCodec.unit(new AlchemistRecipe())` only accepts that one identity instance, while the recipe manager sends a different `AlchemistRecipe` object.
+  - Replaced the identity codec with a no-payload codec that accepts any `AlchemistRecipe` on encode and constructs a fresh instance on decode.
+  - Bumped the project version from 4.28 to 4.29.
+- Rationale: The dynamic Alchemist recipe has no network fields, so recipe synchronization needs an empty encoder and a fresh decoder rather than identity validation.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed with `BUILD SUCCESSFUL` and produced `build/libs/ModernCompanions-4.29.jar`; joining the reported Testing instance remains the manual smoke test.
+
+## 2026-08-12 (Cosmetic popup close transaction isolation)
+
+- Prompt/task: Closing the cosmetic armor popup must not leave cosmetic armor drawn over functional equipment or let the overlapping close control operate the underlying slot.
+- Steps:
+  - Traced the popup close coordinates against the functional equipment layout and confirmed the close control overlaps the offhand slot.
+  - Added a one-release consume guard when the popup closes so vanilla container release handling cannot run a second transaction against that functional slot.
+  - Bumped the project version from 4.26 to 4.27.
+- Rationale: The popup owns its custom click, so it must also own the matching release even after its open flag is cleared; this preserves the separate cosmetic display and functional equipment transaction paths.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.27.jar`. Manual popup close and cosmetic-versus-functional GUI smoke remains required.
+
+## 2026-08-12 (Cosmetic and functional equipment separation)
+
+- Prompt/task: Keep cosmetic armor slots, functional equipment slots, and rendered equipment display independent when armor is placed, replaced, or removed.
+- Steps:
+  - Verified the existing popup transaction and menu views already route cosmetic and functional slots to separate entity data.
+  - Routed delivery reservation, auto-equip, armor scanning, held-light maintenance, and every concrete companion weapon/shield check through `getFunctionalEquipmentItem(...)` instead of the renderer-aware `getItemBySlot(...)`.
+  - Documented the accessor boundary and bumped the project version from 4.25 to 4.26.
+- Rationale: `getItemBySlot(...)` intentionally substitutes cosmetic armor while a renderer owns its context. Gameplay and menu reads must bypass that temporary view so cosmetic stacks cannot become stale UI values, equipment decisions, or cursor transactions.
+- Build: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.26.jar`. The exact cosmetic/functional replacement and popup cursor sequence still needs manual Testing-instance confirmation.
+
 ## 2026-08-12 (Epic Fight equipped armor rendering)
 
 - Prompt/task: Make companion equipped armor visible when Epic Fight replaces the normal companion renderer.

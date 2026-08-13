@@ -72,6 +72,7 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
     private static final int TEXT_COLOR = 0xFF000000;
 
     private boolean cosmeticArmorOpen;
+    private boolean consumeCosmeticCloseRelease;
 
     public CompanionScreen(CompanionMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -303,6 +304,8 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
             int panelY = topPos + EQUIPMENT_PANEL_Y;
             if (isInside(mouseX, mouseY, panelX + COSMETIC_CLOSE_X, panelY + COSMETIC_CLOSE_Y, 16, 16)) {
                 cosmeticArmorOpen = false;
+                // The close control overlaps the functional offhand slot; own its release too.
+                consumeCosmeticCloseRelease = true;
                 return true;
             }
             if (isInside(mouseX, mouseY, panelX, panelY, COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT)) {
@@ -324,6 +327,10 @@ public class CompanionScreen extends AbstractContainerScreen<CompanionMenu> {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (consumeCosmeticCloseRelease) {
+            consumeCosmeticCloseRelease = false;
+            return true;
+        }
         if (cosmeticArmorOpen && isInside(mouseX, mouseY,
                 leftPos + EQUIPMENT_PANEL_X, topPos + EQUIPMENT_PANEL_Y,
                 COSMETIC_PANEL_WIDTH, COSMETIC_PANEL_HEIGHT)) {

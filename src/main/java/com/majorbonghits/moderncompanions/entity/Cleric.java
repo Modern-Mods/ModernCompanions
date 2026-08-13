@@ -245,7 +245,7 @@ public class Cleric extends IntegratedMageCompanion {
     }
 
     private void checkStaff() {
-        ItemStack hand = this.getItemBySlot(EquipmentSlot.MAINHAND);
+        ItemStack hand = this.getFunctionalEquipmentItem(EquipmentSlot.MAINHAND);
         ItemStack firearm = getEquippedOrInventoryFirearm();
         if (!firearm.isEmpty()) {
             if (!ItemStack.isSameItemSameComponents(hand, firearm)) this.setItemSlot(EquipmentSlot.MAINHAND, firearm);
@@ -264,7 +264,7 @@ public class Cleric extends IntegratedMageCompanion {
         ItemStack desired = !preferred.isEmpty() ? preferred : fallback;
         if (!ItemStack.isSameItemSameComponents(hand, desired)) this.setItemSlot(EquipmentSlot.MAINHAND, desired);
         setPreferredWeaponBonus(!preferred.isEmpty() && ItemStack.isSameItemSameComponents(desired, preferred));
-        ItemStack offhand = this.getItemBySlot(EquipmentSlot.OFFHAND);
+        ItemStack offhand = this.getFunctionalEquipmentItem(EquipmentSlot.OFFHAND);
         for (int i = 0; i < this.inventory.getContainerSize(); ++i) {
             ItemStack stack = this.inventory.getItem(i);
             if (stack.is(Items.TOTEM_OF_UNDYING) && offhand.isEmpty()) {

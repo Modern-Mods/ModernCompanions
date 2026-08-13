@@ -64,7 +64,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 - **Arbalist:** Crossbow specialist using 1.21 charge, cooldown, and line-of-sight behavior.
 - **Beastmaster:** Ranged fighter with a scaling animal companion.
 - **Cleric:** Uses strong, mana-costing single-target owner/ally/self heals with a cast wind-up, mana-costing holy sparks, and a mana-gated nearby blessing before falling back to melee.
-- **Alchemist:** Uses beneficial potions on allies and harmful effects against enemies.
+- **Alchemist:** Throws useful beneficial splash potions at allies and harmful splash potions only at visible valid enemies, with melee fallback at close range.
 - **Stormcaller:** Trident fighter who calls lightning and gains strength after striking.
 - **Fire Mage:** Uses Iron's/Ars spells when available, otherwise precise non-igniting fireballs and heavier blast attacks.
 - **Lightning Mage:** Uses Iron's/Ars spells when available, otherwise single-target lightning and storm-enhanced chain attacks.
@@ -182,6 +182,10 @@ Craft one of the five reusable empty vessels, fill it with a Water Bottle, and b
 ![Complete companion potion guide](https://i.imgur.com/5AGBSZR.gif)
 
 Each potion returns its matching empty vessel after use. Health restores immediately, Regeneration heals over time, Stamina and Mana restore their matching companion resource, Rejuvenation restores all three over time, and Shield grants temporary armor.
+
+### Alchemist Recipes
+
+Craft a Blank Recipe from paper and a glass bottle, then combine it shapelessly with a supported vanilla potion. The cyan Recipe item records that potion's vanilla ingredients and displays them in its tooltip. The Alchemist itself does not consume glass bottles: it creates splash potions directly, taking 200 ticks (half a Brewing Stand's normal time) per brew. Potions and splash potions stack to 64 only inside the Alchemist's inventory. The first configured recipe in the inventory is active; the Alchemist brews splash potions automatically and uses them for emergency healing, party buffs, crowd control, and offensive support before falling back to melee range.
 
 ### Stamina Configuration
 

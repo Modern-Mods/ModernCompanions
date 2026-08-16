@@ -18,6 +18,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /** Calls loaded magic-mod APIs without linking Modern Companions to either optional jar. */
@@ -60,10 +61,10 @@ public final class MagicCastingCompat {
         if (arsLoaded()) {
             // Ars uses zero as the player attribute base. Companions already own a
             // 100-point mana pool, so a 100 base preserves ADD_VALUE and percentage gear.
-            addAttribute(builder, ARS, "perk.max_mana", 100.0D);
-            addAttribute(builder, ARS, "perk.mana_regen", 0.0D);
-            addAttribute(builder, ARS, "perk.spell_damage", 0.0D);
-            addAttribute(builder, ARS, "perk.warding", 0.0D);
+            addAttribute(builder, ARS, "ars_nouveau.perk.max_mana", 100.0D);
+            addAttribute(builder, ARS, "ars_nouveau.perk.mana_regen", 0.0D);
+            addAttribute(builder, ARS, "ars_nouveau.perk.spell_damage", 0.0D);
+            addAttribute(builder, ARS, "ars_nouveau.perk.warding", 0.0D);
         }
     }
 
@@ -114,13 +115,13 @@ public final class MagicCastingCompat {
 
     public static int maxMana(LivingEntity entity, int fallback) {
         int ironMax = (int) Math.round(attributeValue(entity, IRONS, "max_mana", fallback));
-        int arsBonus = (int) Math.round(attributeValue(entity, ARS, "perk.max_mana", 100.0D) - 100.0D);
+        int arsBonus = (int) Math.round(attributeValue(entity, ARS, "ars_nouveau.perk.max_mana", 100.0D) - 100.0D);
         return Math.max(1, Math.max(fallback, ironMax) + arsBonus);
     }
 
     public static int manaRegenInterval(LivingEntity entity, int fallback) {
         double iron = Math.max(0.01D, attributeValue(entity, IRONS, "mana_regen", 1.0D));
-        double ars = Math.max(0.01D, 1.0D + attributeValue(entity, ARS, "perk.mana_regen", 0.0D));
+        double ars = Math.max(0.01D, 1.0D + attributeValue(entity, ARS, "ars_nouveau.perk.mana_regen", 0.0D));
         return Math.max(1, (int) Math.ceil(fallback / (iron * ars)));
     }
 
@@ -147,6 +148,30 @@ public final class MagicCastingCompat {
         return adjustedInterval(entity, safeFallback, "cast_time_reduction");
     }
 
+    /** Use the selected Iron's spellbook spell's native cast time before its shared wind-up starts. */
+    public static int spellbookCastTimeTicks(LivingEntity entity, ItemStack stack, int fallback) {
+        int safeFallback = Math.max(2, fallback);
+        if (!ironsLoaded() || !isSpellbook(stack)) return safeFallback;
+        try {
+            IronSpellProfile profile = findIronSpell(entity, stack);
+            return profile == null ? safeFallback
+                    : Math.max(2, (Integer) call(profile.spell(), "getEffectiveCastTime", profile.level(), entity));
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+            return safeFallback;
+        }
+    }
+
+    /** Iron's MagicManager ticks players only, so companions must tick their own native cooldowns. */
+    public static void tickNativeCooldowns(LivingEntity entity) {
+        if (!ironsLoaded()) return;
+        try {
+            Object data = ironMagicData(entity);
+            call(call(data, "getPlayerCooldowns"), "tick", 1);
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+            // Optional API drift must not stop companion AI.
+        }
+    }
+
     public static int cooldownTicks(LivingEntity entity, int fallback) {
         // Cooldown controls the next attempt; the mage goal owns the separate cast wind-up.
         return adjustedInterval(entity, fallback, "cooldown_reduction", "cast_time_reduction");
@@ -166,7 +191,7 @@ public final class MagicCastingCompat {
 
     /** Ars spell damage is additive, matching Ars' own damage resolver. */
     public static float arsSpellDamage(LivingEntity entity) {
-        return (float) Math.max(0.0D, attributeValue(entity, ARS, "perk.spell_damage", 0.0D));
+        return (float) Math.max(0.0D, attributeValue(entity, ARS, "ars_nouveau.perk.spell_damage", 0.0D));
     }
 
     public static float reduceSpellDamage(LivingEntity entity, DamageSource source, float amount) {
@@ -213,36 +238,72 @@ public final class MagicCastingCompat {
 
     private static boolean castIronItem(LivingEntity caster, ItemStack stack) {
         try {
-            if (!hasIronSpellContainer(stack)) return false;
-            Object container = IRON_SPELL_CONTAINER.getMethod("get", ItemStack.class).invoke(null, stack);
-            if (container == null) return false;
-            List<?> spells = (List<?>) call(container, "getActiveSpells");
-            if (spells == null || spells.isEmpty()) return false;
-            Object data = Class.forName("io.redspace.ironsspellbooks.api.magic.MagicData")
-                    .getMethod("getPlayerMagicData", LivingEntity.class).invoke(null, caster);
+            IronSpellProfile profile = findIronSpell(caster, stack);
+            if (profile == null) return false;
             Class<?> sourceType = Class.forName("io.redspace.ironsspellbooks.api.spells.CastSource");
-            @SuppressWarnings({"unchecked", "rawtypes"}) Object mob = Enum.valueOf((Class) sourceType, "MOB");
-            int first = caster.getRandom().nextInt(spells.size());
-            for (int offset = 0; offset < spells.size(); offset++) {
-                Object slot = spells.get((first + offset) % spells.size());
-                if (slot == null || isLockedSpellSlot(slot)) continue;
-                try {
-                    Object spell = call(slot, "getSpell");
-                    int level = (Integer) call(slot, "getLevel");
-                    if (!Boolean.TRUE.equals(call(spell, "checkPreCastConditions",
-                            caster.level(), level, caster, data))) continue;
-                    call(spell, "onCast", caster.level(), level, caster, mob, data);
-                    call(spell, "onServerCastComplete", caster.level(), level, caster, data, false);
-                    if (hasType(stack.getItem(), IRON_SCROLL)) stack.shrink(1);
-                    return true;
-                } catch (ReflectiveOperationException | RuntimeException ignored) {
-                    // One unusable spell must not prevent the next active spell from being tried.
-                }
-            }
+            @SuppressWarnings({"unchecked", "rawtypes"}) Object source = Enum.valueOf(
+                    (Class) sourceType, isSpellbook(stack) ? "SPELLBOOK" : "MOB");
+            call(profile.spell(), "onCast", caster.level(), profile.level(), caster, source, profile.data());
+            if (isSpellbook(stack)) addIronSpellCooldown(caster, profile);
+            call(profile.spell(), "onServerCastComplete", caster.level(), profile.level(), caster, profile.data(), false);
+            if (hasType(stack.getItem(), IRON_SCROLL)) stack.shrink(1);
+            return true;
         } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
         }
         return false;
     }
+
+    private static IronSpellProfile findIronSpell(LivingEntity caster, ItemStack stack) throws ReflectiveOperationException {
+        if (!hasIronSpellContainer(stack)) return null;
+        Object container = IRON_SPELL_CONTAINER.getMethod("get", ItemStack.class).invoke(null, stack);
+        if (container == null) return null;
+        List<?> spells = (List<?>) call(container, "getActiveSpells");
+        if (spells == null || spells.isEmpty()) return null;
+        Object data = ironMagicData(caster);
+        for (Object slot : spells) {
+            if (slot == null || isLockedSpellSlot(slot)) continue;
+            Object spell = call(slot, "getSpell");
+            int level = (Integer) call(slot, "getLevel");
+            if (isSpellbook(stack) && ironSpellOnCooldown(data, spell)) continue;
+            if (Boolean.TRUE.equals(call(spell, "checkPreCastConditions", caster.level(), level, caster, data))) {
+                return new IronSpellProfile(spell, level, data);
+            }
+        }
+        return null;
+    }
+
+    private static Object ironMagicData(LivingEntity caster) throws ReflectiveOperationException {
+        return Class.forName("io.redspace.ironsspellbooks.api.magic.MagicData")
+                .getMethod("getPlayerMagicData", LivingEntity.class).invoke(null, caster);
+    }
+
+    private static boolean ironSpellOnCooldown(Object data, Object spell) throws ReflectiveOperationException {
+        Object cooldowns = call(data, "getPlayerCooldowns");
+        try {
+            return Boolean.TRUE.equals(call(cooldowns, "isOnCooldown", spell));
+        } catch (NoSuchMethodException ignored) {
+            Object entries = call(cooldowns, "getSpellCooldowns");
+            return entries instanceof Map<?, ?> map && map.containsKey(call(spell, "getSpellId"));
+        }
+    }
+
+    private static void addIronSpellCooldown(LivingEntity caster, IronSpellProfile profile)
+            throws ReflectiveOperationException {
+        int base = (Integer) call(profile.spell(), "getSpellCooldown");
+        if (base <= 0) return;
+        int duration = base;
+        try {
+            Class<?> utils = Class.forName("io.redspace.ironsspellbooks.api.util.Utils");
+            duration = (Integer) utils.getMethod("applyCooldownReduction", int.class, LivingEntity.class)
+                    .invoke(null, base, caster);
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            duration = adjustedInterval(caster, base, "cooldown_reduction");
+        }
+        call(call(profile.data(), "getPlayerCooldowns"), "addCooldown",
+                call(profile.spell(), "getSpellId"), Math.max(1, duration));
+    }
+
+    private record IronSpellProfile(Object spell, int level, Object data) {}
 
     /** Older Iron's Spellbooks builds may omit the lock accessor; active slots remain usable then. */
     private static boolean isLockedSpellSlot(Object slot) {

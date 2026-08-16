@@ -702,3 +702,18 @@
 - Exercise a Chef campfire with an unrelated cooked item already nearby and another worker/player adding the same output; confirm the Chef only collects its recorded batch and never removes unrelated output.
 - Exercise a Hunter kill whose drops arrive several ticks after death and a kill with no drops; confirm the bounded wait collects late drops without leaving a dead target stuck forever.
 - Exercise a restored Miner route after changing a queued block, work radius, or supporting floor; confirm it replans or waits without mining outside the assigned contract.
+
+## 2026-08-16 (companion magic and model fixes)
+
+- With Iron's Spellbooks, Ars Nouveau, and Hazen N Stuff installed separately and together, equip attribute-bearing armor/accessories and confirm companion max mana, regeneration, spell power, resistances, and movement stats change in-world and survive relogging.
+- Equip an Iron's spellbook with a long-cast and a cooldown spell; confirm the companion visibly winds up, cannot recast while its native cooldown is active, and resumes after cooldown. Confirm Sorcerer acquires a nearby hostile monster and casts without harming owners or companions.
+- Cycle Steve/Alex on the Bio screen and verify the slim arms, slim armor layers, and saved model visibly change after relogging; craft the Beastmaster's Wand from the shipped Echo Shard, Amethyst Shard, and Stick recipe and confirm it appears in JEI.
+
+## 2026-08-16 (Ars Nouveau attribute-key follow-up)
+
+- With Ars Nouveau installed, equip max-mana and mana-regeneration armor/accessories on a companion; confirm the mana pool and regeneration change immediately and remain correct after relogging.
+
+## 2026-08-16 (GitHub Actions release workflow)
+
+- Push the `4.42` version bump to `main` and confirm the Ubuntu job publishes only `ModernCompanions-4.42.jar`, skips an existing `v4.42` release, and excludes the sources JAR.
+- Run one manual-dispatch build and verify the downloaded release JAR starts cleanly in the Prism test instance.

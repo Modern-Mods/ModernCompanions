@@ -47,6 +47,8 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
@@ -418,7 +420,14 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public static AttributeSupplier.Builder createAttributes() {
         double baseHealth = ModConfig.BASE_HEALTH != null ? ModConfig.safeGet(ModConfig.BASE_HEALTH).doubleValue()
                 : 20.0D;
-        return TamableAnimal.createMobAttributes()
+        // Give every loaded attribute an instance so equipment from optional mods can modify companions.
+        AttributeSupplier.Builder builder = AttributeSupplier.builder();
+        for (var entry : BuiltInRegistries.ATTRIBUTE.entrySet()) {
+            ResourceKey<net.minecraft.world.entity.ai.attributes.Attribute> key = entry.getKey();
+            BuiltInRegistries.ATTRIBUTE.getHolder(key)
+                    .ifPresent(holder -> builder.add(holder, entry.getValue().getDefaultValue()));
+        }
+        return builder
                 .add(Attributes.FOLLOW_RANGE, 20.0D)
                 .add(Attributes.MAX_HEALTH, baseHealth)
                 .add(Attributes.ATTACK_DAMAGE, 1.0D)

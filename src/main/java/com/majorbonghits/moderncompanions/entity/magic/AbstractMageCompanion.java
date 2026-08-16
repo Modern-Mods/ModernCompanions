@@ -57,6 +57,7 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
         }
         super.tick();
         if (!this.level().isClientSide()) {
+            MagicCastingCompat.tickNativeCooldowns(this);
             tickSpellCast();
         }
     }

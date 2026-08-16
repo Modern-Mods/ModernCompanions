@@ -59,7 +59,10 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
     public void performRangedAttack(LivingEntity target, float distanceFactor) {
         if (!MagicCastingCompat.available() || !canSpendMana(basicManaCost())
                 || target == null || !safeTarget(target, 2.5F)) return;
-        beginSpellCast(target, spellCastTimeTicks(kit().ironBasic, 10),
+        ItemStack spellbook = getSpellbookItem();
+        int fallbackCastTime = spellCastTimeTicks(kit().ironBasic, 10);
+        int castTime = MagicCastingCompat.spellbookCastTimeTicks(this, spellbook, fallbackCastTime);
+        beginSpellCast(target, castTime,
                 () -> castBasicSpellAt(target));
     }
 
@@ -70,21 +73,13 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
         aimAt(target);
         MagicCompanionKit kit = kit();
         ItemStack spellbook = getSpellbookItem();
-        // A dedicated book supplements the class kit: mix successful light casts so
-        // both the book's native active spell and the companion's learned repertoire are used.
-        boolean trySpellbookFirst = !spellbook.isEmpty() && getRandom().nextBoolean();
-        if (trySpellbookFirst && MagicCastingCompat.castItem(this, target, spellbook)) {
+        // A dedicated spellbook uses its own selected spell timing and native cooldown path.
+        if (!spellbook.isEmpty() && MagicCastingCompat.castItem(this, target, spellbook)) {
             spendMana(manaCost);
             swingCast();
             return true;
         }
         if (MagicCastingCompat.castHeldItem(this, target)) {
-            spendMana(manaCost);
-            swingCast();
-            return true;
-        }
-        if (!trySpellbookFirst && !spellbook.isEmpty()
-                && MagicCastingCompat.castItem(this, target, spellbook)) {
             spendMana(manaCost);
             swingCast();
             return true;

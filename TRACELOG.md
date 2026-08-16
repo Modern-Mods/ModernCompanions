@@ -3272,3 +3272,25 @@
   - Required Lumberjack 2x2 footprints to use adjacent coordinates, added missing English status/stat translations, updated the job documentation and post-build smoke suggestions, and bumped the version from 4.38 to 4.39.
 - Rationale: Reusing the existing synced-statistics, NBT, job-change, and server kill/delivery seams keeps the fix small while making player-visible progress durable and testable. The contiguous-footprint guard prevents malformed replant debt from silently producing an invalid 2x2 layout.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed, all wired checks/tests including `jobContractCheck` passed, and `build/libs/ModernCompanions-4.39.jar` was produced; Minecraft navigation, protection, multiplayer, rendering, and the full acceptance matrix remain manual smoke tests.
+
+## 2026-08-16 (companion magic and model fixes)
+
+- Prompt/task: Fix companion equipment attributes and mana, native spellbook cast timing/cooldowns, Sorcerer targeting/casting, Steve/Alex model cycling, and the Beast Master's Wand recipe.
+- Steps:
+  - Added every loaded attribute to the shared companion supplier before restoring companion-specific bases, so Iron's, Ars, Hazen N Stuff, and other equipment modifiers have live instances to update.
+  - Selected the active Iron's spellbook spell before the shared cast wind-up, used its effective cast time, registered its native cooldown, and ticked companion cooldown data because Iron's manager only ticks players.
+  - Added Sorcerer's hostile-monster target goal and corrected the Alex renderer to bake `ModelLayers.PLAYER_SLIM`.
+  - Verified `src/main/resources/data/modern_companions/recipes/animal_wand.json` and the matching JEI recipe are already packaged as the Beast Master's Wand recipe.
+  - Bumped the version from 4.39 to 4.40.
+- Rationale: The shared attribute supplier, mage cast seam, target selector, and renderer are the runtime points all affected companions use; fixing those seams avoids per-item or per-class patches while preserving optional-mod isolation.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed with the repository checks and produced `build/libs/ModernCompanions-4.40.jar`; optional-mod gameplay, model cycling, equipment-stat, spellbook timing/cooldown, Sorcerer combat, and JEI/crafting smoke tests remain manual.
+
+## 2026-08-16 (Ars Nouveau attribute-key follow-up)
+
+- Prompt/task: Fix Ars Nouveau equipment that adds mana not increasing companion mana.
+- Steps:
+  - Matched the Ars max-mana, mana-regeneration, spell-damage, and warding lookups to the fully qualified `ars_nouveau:ars_nouveau.perk.*` registry paths.
+  - Kept the fix in the shared magic compatibility layer so worn armor and accessories use the same live companion attributes.
+  - Bumped the version from 4.40 to 4.41.
+- Rationale: Ars registers these attributes with the `ars_nouveau.perk.` path segment; the old `perk.*` keys resolved no attribute instance, so equipment modifiers could not affect companions.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.41.jar`; installed Ars equipment and relog mana smoke tests remain manual.

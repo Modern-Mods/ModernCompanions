@@ -2,6 +2,15 @@
 
 - We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 
 
+
+## Idea
+
+- Upgrade beastmaster wand with ancient debris in order to convert it to an empowered version that allows the capture and transfer of hostile mobs
+    - Using this wand, the player should be able to capture any hostile mob (except; wither, end dragon, other bosses) and apply it to a beastmaster
+    - the targeted beast master must be at least level 20 
+    - capturing hostile mobs costs exp
+
+
 ## Maybe
 - I want to add a new option to the mod; Companions show chat bubbles show over their heard when speaking, instead of chat.
     - This should be a toggle between chat speak and bubble speak, or both so the player can choose.

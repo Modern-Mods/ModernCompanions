@@ -5,14 +5,24 @@ import com.majorbonghits.moderncompanions.entity.magic.IntegratedMageCompanion;
 import com.majorbonghits.moderncompanions.entity.magic.MagicCompanionKit;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 /** Elemental caster, deliberately distinct from Wizard control. */
 public class Sorcerer extends IntegratedMageCompanion {
     public Sorcerer(EntityType<? extends TamableAnimal> type, Level level) { super(type, level); }
+
+    @Override
+    protected void registerGoals() {
+        super.registerGoals();
+        this.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 10, true, false,
+                target -> target.getType().getCategory() == MobCategory.MONSTER
+                        && canHarm(target) && !isAlliedTo(target)));
+    }
 
     /** Chain Lightning must never choose players or friendly entities as a chained victim. */
     @Override

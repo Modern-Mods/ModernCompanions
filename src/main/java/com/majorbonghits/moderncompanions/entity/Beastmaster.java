@@ -128,6 +128,10 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         }
 
         ItemStack oldPetOrb = SoulOrbItem.createFromAnimal(currentMob, orbItem);
+        CompoundTag oldPetData = SoulOrbItem.getAnimalData(oldPetOrb);
+        net.minecraft.world.phys.Vec3 oldPetPosition = current.position();
+        float oldPetYRot = current.getYRot();
+        float oldPetXRot = current.getXRot();
         replacement.load(replacementData);
         replacement.moveTo(this.getX(), this.getY(), this.getZ(), this.getYRot(), this.getXRot());
         replacement.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
@@ -137,17 +141,50 @@ public class Beastmaster extends AbstractHumanCompanionEntity implements RangedA
         // Keep stored names; only nameless replacements use the stock Beastmaster pool.
         assignRandomPetName(replacement);
         setupPetGoalsIfNeeded(replacement);
+        // The replacement keeps its stored UUID, so free the old registry entry first.
+        current.discard();
         if (!server.addFreshEntity(replacement)) {
             replacement.discard();
+            restoreFailedSwap(server, oldPetData, oldPetPosition, oldPetYRot, oldPetXRot);
             return null;
         }
-        current.discard();
         petId = replacement.getUUID();
         petTypeId = BuiltInRegistries.ENTITY_TYPE.getKey(replacement.getType());
         pendingPetData = null;
         petRespawnTimer = 0;
         missingPetGrace = 0;
         return oldPetOrb;
+    }
+
+    /** Keeps a failed UUID-preserving swap from losing the Beastmaster's current pet. */
+    private void restoreFailedSwap(ServerLevel server, CompoundTag oldPetData,
+            net.minecraft.world.phys.Vec3 position, float yRot, float xRot) {
+        Mob restored = SoulOrbItem.createEntity(server, oldPetData);
+        if (restored != null) {
+            restored.load(oldPetData);
+            restored.moveTo(position.x(), position.y(), position.z(), yRot, xRot);
+            restored.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+            restored.setOnGround(true);
+            restored.setPersistenceRequired();
+            ensurePetOwnership(restored);
+            assignRandomPetName(restored);
+            setupPetGoalsIfNeeded(restored);
+            if (server.addFreshEntity(restored)) {
+                petId = restored.getUUID();
+                petTypeId = BuiltInRegistries.ENTITY_TYPE.getKey(restored.getType());
+                pendingPetData = null;
+                petRespawnTimer = 0;
+                missingPetGrace = 0;
+                return;
+            }
+            restored.discard();
+        }
+
+        petId = null;
+        petTypeId = ResourceLocation.tryParse(oldPetData.getString("id"));
+        pendingPetData = oldPetData.copy();
+        petRespawnTimer = 0;
+        missingPetGrace = 0;
     }
 
     public Beastmaster(EntityType<? extends TamableAnimal> type, Level level) {

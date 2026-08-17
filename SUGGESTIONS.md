@@ -717,3 +717,13 @@
 
 - Push the `4.42` version bump to `main` and confirm the Ubuntu job publishes only `ModernCompanions-4.42.jar`, skips an existing `v4.42` release, and excludes the sources JAR.
 - Run one manual-dispatch build and verify the downloaded release JAR starts cleanly in the Prism test instance.
+## 2026-08-16 (Empowered Beastmaster's Wand)
+
+- In a dev world, smith the Beastmaster's Wand with a Netherite Upgrade Smithing Template and Ancient Debris; confirm the Empowered Beastmaster's Wand appears, glints, retains durability, and the original wand remains non-hostile-only.
+- Capture a Zombie, Skeleton, Creeper, ranged hostile, variant hostile, and a mob carrying equipment or inventory; verify the correct vanilla XP cost, empty-slot requirement, no-XP/no-removal failure path, and hostile Soul Orb contents.
+- Apply each orb to an owned Beastmaster below and at level 20; confirm the level gate, owner gate, atomic swap, returned old pet, same hostile UUID, full NBT/equipment/name/inventory, relog persistence, and no duplicate entity.
+- Confirm hostile Soul Orbs cannot be released into the world and that Wither, Ender Dragon, and entities in NeoForge/pack boss tags are rejected, including a future/custom boss added through the tag.
+
+## 2026-08-16 (companion mana minimum)
+
+- In a live world, relog and capture/redeploy a magical companion with a legacy or deliberately low saved mana capacity; confirm it loads at least 100 max mana, provider bonuses above 100 still apply, and normal spell casts can still drain current mana.

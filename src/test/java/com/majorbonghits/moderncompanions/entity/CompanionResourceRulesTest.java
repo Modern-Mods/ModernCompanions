@@ -8,6 +8,9 @@ public final class CompanionResourceRulesTest {
         assert CompanionResourceRules.spend(100, 8, 100) == 92;
         assert CompanionResourceRules.spend(4, 8, 100) == 0;
         assert CompanionResourceRules.spend(100, 0, 100) == 100;
+        assert CompanionResourceRules.manaMaxAtLeastDefault(1, 100) == 100;
+        assert CompanionResourceRules.manaMaxAtLeastDefault(100, 100) == 100;
+        assert CompanionResourceRules.manaMaxAtLeastDefault(150, 100) == 150;
         assert CompanionResourceRules.regenInterval(true, 0, false) == 40;
         assert CompanionResourceRules.regenInterval(false, 100, false) == 10;
         assert CompanionResourceRules.regenInterval(false, 100, true) == 5;

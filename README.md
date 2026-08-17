@@ -290,6 +290,8 @@ Soul Gems preserve a companion’s soul through the Companion Mover and allow la
 
 Craft the Beastmaster's Wand to capture any non-hostile mob. Captured mobs retain their entity data and UUID in a cyan-named Soul Orb. Use an orb on its owner's Beastmaster to swap pets—the replaced pet becomes the returned Soul Orb—or right-click the ground to release the stored mob. Soul Orbs are consumed when used. Beastmasters also preserve their pet's full state through Companion Mover storage and Resurrection Scroll revival.
 
+Upgrade the Beastmaster's Wand in a smithing table with a Netherite Upgrade Smithing Template and Ancient Debris to create the Empowered Beastmaster's Wand. It captures any hostile `Enemy` mob except entities in NeoForge's boss tag, including future tagged bosses. The capture uses the mob's vanilla XP reward as its difficulty-scaled cost, requires an empty inventory slot, and removes neither the mob nor XP when the capture cannot complete. Apply the resulting hostile Soul Orb to the owner's Beastmaster at level 20 or higher; the transfer is atomic and preserves the hostile mob's UUID, full NBT, variant, equipment, custom name, and inventory. Hostile Soul Orbs cannot be released as free-world mobs.
+
 ### Soul Reforging
 
 Reforge an owned companion's traits without losing its bond, backstory, equipment, or memories:

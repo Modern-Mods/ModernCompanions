@@ -20,6 +20,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -32,14 +34,17 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-/** A consumed, data-bearing Soul Orb for one captured non-hostile mob. */
+/** A consumed, data-bearing Soul Orb for one captured mob. */
 public class SoulOrbItem extends Item {
     private static final String ENTITY_NAME_TAG = "AnimalName";
     private static final String ENTITY_TYPE_TAG = "id";
+    private static final String CAPTURE_KIND_TAG = "CaptureKind";
+    private static final String HOSTILE_CAPTURE_KIND = "hostile";
 
     public SoulOrbItem(Properties properties) {
         super(properties.stacksTo(1));
@@ -49,28 +54,60 @@ public class SoulOrbItem extends Item {
     public static boolean isEligibleAnimal(Entity entity) {
         return entity instanceof Mob mob && mob.isAlive()
                 && !(mob instanceof AbstractHumanCompanionEntity)
-                && mob.getType().getCategory() != net.minecraft.world.entity.MobCategory.MONSTER;
+                && mob.getType().getCategory() != MobCategory.MONSTER;
+    }
+
+    /** Hostile capture uses the Enemy contract plus NeoForge's data-driven boss tag. */
+    public static boolean isEligibleHostile(Entity entity) {
+        return entity instanceof Mob mob && mob.isAlive()
+                && !(mob instanceof AbstractHumanCompanionEntity)
+                && (mob instanceof Enemy || mob.getType().getCategory() == MobCategory.MONSTER)
+                && !mob.getType().is(Tags.EntityTypes.BOSSES);
     }
 
     public static ItemStack createFromAnimal(Mob animal, Item orbItem) {
+        return createFromMob(animal, orbItem,
+                animal instanceof Enemy || animal.getType().getCategory() == MobCategory.MONSTER
+                        ? HOSTILE_CAPTURE_KIND : "animal");
+    }
+
+    public static ItemStack createFromHostile(Mob hostile, Item orbItem) {
+        return createFromMob(hostile, orbItem, HOSTILE_CAPTURE_KIND);
+    }
+
+    private static ItemStack createFromMob(Mob mob, Item orbItem, String captureKind) {
         ItemStack stack = new ItemStack(orbItem);
         CompoundTag entityData = new CompoundTag();
-        animal.saveWithoutId(entityData);
-        ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(animal.getType());
+        // saveWithoutId includes UUID, equipment, inventories, variants, names, and mod NBT.
+        mob.saveWithoutId(entityData);
+        ResourceLocation typeId = BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType());
         entityData.putString(ENTITY_TYPE_TAG, typeId.toString());
+        entityData.putString(CAPTURE_KIND_TAG, captureKind);
         entityData.remove("Pos");
         entityData.remove("Motion");
         entityData.remove("Rotation");
         CustomData.set(DataComponents.ENTITY_DATA, stack, entityData);
         CustomData.update(DataComponents.CUSTOM_DATA, stack,
-                tag -> tag.putString(ENTITY_NAME_TAG, animal.getName().getString()));
-        stack.set(DataComponents.ITEM_NAME, orbName(animal.getName()));
+                tag -> tag.putString(ENTITY_NAME_TAG, mob.getName().getString()));
+        stack.set(DataComponents.ITEM_NAME, orbName(mob.getName()));
         return stack;
     }
 
-    public static boolean hasAnimalData(ItemStack stack) {
+    public static boolean hasSoulData(ItemStack stack) {
         CompoundTag data = getAnimalData(stack);
         return data.contains(ENTITY_TYPE_TAG) && !data.getString(ENTITY_TYPE_TAG).isEmpty();
+    }
+
+    public static boolean hasAnimalData(ItemStack stack) {
+        return hasSoulData(stack);
+    }
+
+    public static boolean isHostileCapture(ItemStack stack) {
+        return isHostileCapture(getAnimalData(stack));
+    }
+
+    private static boolean isHostileCapture(CompoundTag data) {
+        return HOSTILE_CAPTURE_KIND.equals(data.getString(CAPTURE_KIND_TAG));
     }
 
     public static CompoundTag getAnimalData(ItemStack stack) {
@@ -88,6 +125,9 @@ public class SoulOrbItem extends Item {
             return null;
         }
         Entity entity = type.create(level);
+        if (isHostileCapture(data)) {
+            return isEligibleHostile(entity) ? (Mob) entity : null;
+        }
         return isEligibleAnimal(entity) ? (Mob) entity : null;
     }
 
@@ -97,12 +137,16 @@ public class SoulOrbItem extends Item {
         if (!(entity instanceof Beastmaster beastmaster)) {
             return InteractionResult.PASS;
         }
-        if (!hasAnimalData(stack)) {
+        if (!hasSoulData(stack)) {
             notifyPlayer(player, "tooltip.modern_companions.soul_orb.empty");
             return InteractionResult.sidedSuccess(entity.level().isClientSide());
         }
         if (!beastmaster.isTame() || !player.getUUID().equals(beastmaster.getOwnerUUID())) {
             notifyPlayer(player, "message.modern_companions.soul_orb.not_owner");
+            return InteractionResult.sidedSuccess(entity.level().isClientSide());
+        }
+        if (isHostileCapture(stack) && beastmaster.getExpLvl() < 20) {
+            notifyPlayer(player, "message.modern_companions.soul_orb.needs_level");
             return InteractionResult.sidedSuccess(entity.level().isClientSide());
         }
         if (entity.level().isClientSide()) {
@@ -151,8 +195,12 @@ public class SoulOrbItem extends Item {
     }
 
     private InteractionResult spawn(@Nullable Player player, ItemStack stack, ServerLevel level, Vec3 position) {
-        if (!hasAnimalData(stack)) {
+        if (!hasSoulData(stack)) {
             notifyPlayer(player, "tooltip.modern_companions.soul_orb.empty");
+            return InteractionResult.FAIL;
+        }
+        if (isHostileCapture(stack)) {
+            notifyPlayer(player, "message.modern_companions.soul_orb.hostile_requires_beastmaster");
             return InteractionResult.FAIL;
         }
         CompoundTag data = getAnimalData(stack);
@@ -167,7 +215,11 @@ public class SoulOrbItem extends Item {
         animal.setDeltaMovement(Vec3.ZERO);
         animal.setOnGround(true);
         animal.setPersistenceRequired();
-        level.addFreshEntity(animal);
+        if (!level.addFreshEntity(animal)) {
+            animal.discard();
+            notifyPlayer(player, "message.modern_companions.soul_orb.invalid");
+            return InteractionResult.FAIL;
+        }
         stack.consume(1, player);
         level.playSound(null, BlockPos.containing(position), SoundEvents.ENDER_CHEST_CLOSE, SoundSource.NEUTRAL,
                 0.8F, 1.2F);

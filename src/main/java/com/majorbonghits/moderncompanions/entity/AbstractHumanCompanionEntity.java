@@ -3290,8 +3290,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     private int meleeStaminaCost() { return ModConfig.safeGet(ModConfig.STAMINA_MELEE_COST); }
     public int getMana() { return this.entityData.get(MANA); }
     public int getManaMax() {
-        int fallback = this.entityData.get(MANA_MAX);
-        return hasMana() ? MagicCastingCompat.maxMana(this, fallback) : fallback;
+        int fallback = CompanionResourceRules.manaMaxAtLeastDefault(this.entityData.get(MANA_MAX), MANA_MAX_DEFAULT);
+        // Optional-provider attributes and their negative modifiers cannot remove the intrinsic pool.
+        return hasMana()
+                ? CompanionResourceRules.manaMaxAtLeastDefault(MagicCastingCompat.maxMana(this, fallback), MANA_MAX_DEFAULT)
+                : fallback;
     }
     public boolean hasMana() { return this instanceof AbstractMageCompanion; }
     public boolean canSpendMana(int amount) { return hasMana() && getMana() >= amount; }
@@ -3417,7 +3420,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         tag.putInt("Mana", getMana());
         // Curios/armor bonuses are live attributes; persist only the intrinsic pool or
         // an Ars max-mana bonus would be applied again after a relog.
-        tag.putInt("ManaMax", this.entityData.get(MANA_MAX));
+        tag.putInt("ManaMax", CompanionResourceRules.manaMaxAtLeastDefault(this.entityData.get(MANA_MAX), MANA_MAX_DEFAULT));
         SimpleContainer spellbook = new SimpleContainer(1);
         spellbook.setItem(0, getSpellbookItem().copy());
         tag.put("Spellbook", spellbook.createTag(this.registryAccess()));
@@ -3639,8 +3642,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         this.entityData.set(STAMINA_MAX, Math.max(1, tag.contains("StaminaMax") ? tag.getInt("StaminaMax") : STAMINA_MAX_DEFAULT));
         this.entityData.set(STAMINA, bounded(tag.contains("Stamina") ? tag.getInt("Stamina") : getStaminaMax(), getStaminaMax()));
-        this.entityData.set(MANA_MAX, Math.max(1, tag.contains("ManaMax") ? tag.getInt("ManaMax") : MANA_MAX_DEFAULT));
-        this.entityData.set(MANA, bounded(tag.contains("Mana") ? tag.getInt("Mana") : getManaMax(), getManaMax()));
+        int savedManaMax = tag.contains("ManaMax") ? tag.getInt("ManaMax") : MANA_MAX_DEFAULT;
+        int manaMax = CompanionResourceRules.manaMaxAtLeastDefault(savedManaMax, MANA_MAX_DEFAULT);
+        this.entityData.set(MANA_MAX, manaMax);
+        int savedMana = tag.contains("Mana") ? tag.getInt("Mana") : getManaMax();
+        if (savedManaMax < MANA_MAX_DEFAULT) {
+            // A below-default capacity was invalid data; restore the original pool instead of preserving 1/1.
+            savedMana = Math.max(savedMana, MANA_MAX_DEFAULT);
+        }
+        this.entityData.set(MANA, bounded(savedMana, getManaMax()));
         this.entityData.set(SPELLBOOK, ItemStack.EMPTY);
         if (tag.contains("Spellbook", 9)) {
             SimpleContainer spellbook = new SimpleContainer(1);

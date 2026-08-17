@@ -5,6 +5,7 @@ import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import com.majorbonghits.moderncompanions.item.AssignmentWandItem;
 import com.majorbonghits.moderncompanions.item.AnimalWandItem;
 import com.majorbonghits.moderncompanions.item.CompanionMoverItem;
+import com.majorbonghits.moderncompanions.item.EmpoweredAnimalWandItem;
 import com.majorbonghits.moderncompanions.item.PlacementWandItem;
 import com.majorbonghits.moderncompanions.item.ResurrectionScrollItem;
 import com.majorbonghits.moderncompanions.item.SoulOrbItem;
@@ -54,6 +55,8 @@ public final class ModItems {
             () -> new PlacementWandItem(new Item.Properties().rarity(Rarity.UNCOMMON)));
     public static final DeferredHolder<Item, Item> ANIMAL_WAND = ITEMS.register("animal_wand",
             () -> new AnimalWandItem(new Item.Properties().rarity(Rarity.UNCOMMON)));
+    public static final DeferredHolder<Item, Item> EMPOWERED_ANIMAL_WAND = ITEMS.register("empowered_animal_wand",
+            () -> new EmpoweredAnimalWandItem(new Item.Properties()));
     public static final DeferredHolder<Item, Item> SOUL_ORB = ITEMS.register("soul_orb",
             () -> new SoulOrbItem(new Item.Properties().rarity(Rarity.RARE)));
     public static final DeferredHolder<Item, Item> TIN = currency("tin", "tin");

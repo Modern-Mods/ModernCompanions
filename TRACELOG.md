@@ -3294,3 +3294,24 @@
   - Bumped the version from 4.40 to 4.41.
 - Rationale: Ars registers these attributes with the `ars_nouveau.perk.` path segment; the old `perk.*` keys resolved no attribute instance, so equipment modifiers could not affect companions.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.41.jar`; installed Ars equipment and relog mana smoke tests remain manual.
+## 2026-08-16 (Empowered Beastmaster's Wand)
+
+- Prompt/task: Upgrade the Beastmaster's Wand with Ancient Debris so it can capture and atomically transfer hostile mobs to an owned level-20+ Beastmaster while preserving UUID, NBT, variants, equipment, names, and inventories.
+- Steps:
+  - Added the `empowered_animal_wand` item, EPIC foil presentation, creative-tab entry, model, English localization, and smithing-transform recipe using the Netherite Upgrade Smithing Template plus Ancient Debris.
+  - Reused `SoulOrbItem` and `Beastmaster.swapPet(...)` as the persistence boundary; hostile capture stores `saveWithoutId` data, including UUID, and marks the orb as hostile without changing the existing non-hostile wand flow.
+  - Made UUID-preserving pet swaps release the old entity registry entry before replacement insertion, with rollback to the saved pet data if insertion fails.
+  - Used each mob's vanilla experience reward as the difficulty-scaled capture cost, secured the Soul Orb in an empty player slot before XP/entity mutation, excluded NeoForge's data-driven boss tag, and gated hostile transfer at Beastmaster level 20.
+  - Bumped the project version from 4.43 to 4.44 and updated the player-facing README.
+- Rationale: Extending the existing wand/orb/pet seams keeps capture, replacement, UUID restoration, and legacy Soul Orb behavior in one path while using NeoForge's boss tag so future tagged bosses are excluded automatically.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.44.jar`; packaged-JAR inspection and `git diff --check` passed. Hostile variants/equipment/inventory persistence, boss-tag coverage, and multiplayer/world smoke remain manual.
+
+## 2026-08-16 (companion mana minimum)
+
+- Prompt/task: Ensure companions never lose their starting mana pool, including the reported tamed Sorcerer showing `1/1 Mana`.
+- Steps:
+  - Added a shared resource-rule floor so optional magic-provider attributes and persisted `ManaMax` data cannot reduce the intrinsic 100-point companion pool.
+  - Migrated below-default saved mana capacity/current values in `AbstractHumanCompanionEntity`, persisted the repaired intrinsic maximum, and added regression assertions.
+  - Bumped the project version from 4.44 to 4.45.
+- Rationale: The shared resource getter and NBT load/save boundary cover every magical companion and repair corrupted or provider-derived one-point capacity without changing normal spell spending.
+- Build/Test: `companionResourcesCheck` and Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `build/libs/ModernCompanions-4.45.jar` (8,181,330 bytes) contains the updated resource classes; live provider/relog and gameplay smoke testing remains manual.

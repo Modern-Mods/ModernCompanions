@@ -72,6 +72,7 @@ public final class ModCreativeTabs {
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.SUMMONING_WAND.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.PLACEMENT_WAND.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.ANIMAL_WAND.get());
+                        output.accept(com.majorbonghits.moderncompanions.core.ModItems.EMPOWERED_ANIMAL_WAND.get());
                         output.accept(com.majorbonghits.moderncompanions.core.ModItems.COMPANION_TABLE.get());
                         if (ModConfig.safeGet(ModConfig.CURRENCIES_ENABLED)) {
                             com.majorbonghits.moderncompanions.core.ModItems.getCurrencies()

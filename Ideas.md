@@ -2,14 +2,12 @@
 
 - We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 
 
-
-## Idea
-
-- Upgrade beastmaster wand with ancient debris in order to convert it to an empowered version that allows the capture and transfer of hostile mobs
-    - Using this wand, the player should be able to capture any hostile mob (except; wither, end dragon, other bosses) and apply it to a beastmaster
-    - the targeted beast master must be at least level 20 
-    - capturing hostile mobs costs exp
-
+- Hostile Beastmaster Pet Notes;
+    - Monsters that might burn in the sun, will not once tamed.
+        - Skeleton, Zombie, Phantom, etc
+    - Tamed Enderman should not attempt to randomly teleport
+    - Tamed Creepers explode to attack but do not destroy blocks/entities and will respawn 
+    - Companions should never call out "Enemy Spotted" for a tamed hostile mob (beastmaster pet)
 
 ## Maybe
 - I want to add a new option to the mod; Companions show chat bubbles show over their heard when speaking, instead of chat.

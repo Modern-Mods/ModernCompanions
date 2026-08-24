@@ -1,3 +1,7 @@
+- 2026-08-24 (Boot recipe schema): In a fresh NeoForge dev world, confirm all six repaired boot recipes load in JEI and craft with their two-row layouts; static JSON and JAR checks do not replace recipe-manager smoke testing.
+
+- 2026-08-22 (Recruitment item names): In a dev world with resource packs enabled, verify vanilla and modded recruitment items, including Create Confectionery Ruby Chocolate Candy, render their localized names or a readable registry-path fallback; a pack that intentionally sets a valid item translation to an empty string still needs to be corrected or disabled.
+
 - 2026-08-13 (Jobs contract follow-up): In a dev world, verify the Jobs screen counters reset when switching professions, survive relog, and display correctly for Hunter/Chef; verify a dark-oak 2x2 tree records four adjacent replant positions and never accepts a separated footprint.
 
 - 2026-08-13 (Imported armor): In a fresh dev world with and without Epic Fight, inspect every imported armor set on Steve/Alex companions and in JEI; verify the custom 128x128 Medieval Armory atlases align with the player-shaped armor layer, partial Cloth Mail/Copper Scale sets never occupy invalid slots, and the independent vanilla-rework sets do not alter vanilla item names or recipes.

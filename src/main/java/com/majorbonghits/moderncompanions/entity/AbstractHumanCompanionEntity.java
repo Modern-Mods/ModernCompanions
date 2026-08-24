@@ -1934,10 +1934,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             return Component.translatable("food.modern_companions.done");
 
         ResourceLocation resource = ResourceLocation.tryParse(id);
-        Component itemName = resource == null
+        Item item = resource == null ? Items.AIR : BuiltInRegistries.ITEM.get(resource);
+        Component itemName = item == Items.AIR
                 ? Component.literal(id)
-                : BuiltInRegistries.ITEM.get(resource).getDescription();
-        // Keep item names as client-resolved Components; server-side getString() is empty before locale resolution.
+                : Component.translatableWithFallback(
+                        item.getDescriptionId(), resource.getPath().replace('_', ' '));
+        // Keep names client-resolved; the fallback covers missing item translations without hard-coding addons.
         return Component.translatable("food.modern_companions.item_amount", amount)
                 .append(Component.literal(" "))
                 .append(itemName);

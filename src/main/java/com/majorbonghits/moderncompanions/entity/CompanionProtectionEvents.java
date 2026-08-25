@@ -10,11 +10,14 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.level.Explosion;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingChangeTargetEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
+import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 
 import java.lang.reflect.Method;
@@ -36,6 +39,21 @@ public final class CompanionProtectionEvents {
         } else if (companion instanceof AbstractMageCompanion mage) {
             event.setNewDamage(mage.magicDamage(event.getNewDamage()));
         }
+    }
+
+    /** Let pet Creepers hit hostile mobs without moving or damaging blocks and allies. */
+    @SubscribeEvent
+    public static void limitBeastmasterPetExplosion(ExplosionEvent.Detonate event) {
+        Explosion explosion = event.getExplosion();
+        if (!(explosion.getDirectSourceEntity() instanceof Creeper creeper)
+                || !Beastmaster.isBeastmasterPet(creeper)) {
+            return;
+        }
+
+        event.getAffectedBlocks().clear();
+        event.getAffectedEntities().removeIf(entity -> !(entity instanceof LivingEntity living)
+                || living.getType().getCategory() != MobCategory.MONSTER
+                || Beastmaster.isBeastmasterPet(entity));
     }
 
     /** Keep upstream summons limited to safe hostile targets with a visible attack path. */

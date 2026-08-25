@@ -3325,3 +3325,13 @@
   - Bumped the project version from 4.44 to 4.45.
 - Rationale: The shared resource getter and NBT load/save boundary cover every magical companion and repair corrupted or provider-derived one-point capacity without changing normal spell spending.
 - Build/Test: `companionResourcesCheck` and Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; `build/libs/ModernCompanions-4.45.jar` (8,181,330 bytes) contains the updated resource classes; live provider/relog and gameplay smoke testing remains manual.
+
+## 2026-08-25 (Hostile Beastmaster pet safety)
+
+- Prompt/task: Prevent captured hostile Beastmaster pets from burning in sunlight, randomly teleporting, griefing with Creeper explosions, or triggering the `Enemy Spotted` callout.
+- Steps:
+  - Added common Mob, Enderman, and Creeper mixins keyed to the existing `BeastmasterOwner` marker; captured sun-sensitive mobs skip sunburn, captured Endermen skip the vanilla random-teleport entry point, and captured Creepers use `ExplosionInteraction.NONE` before entering the existing Beastmaster respawn lifecycle.
+  - Limited pet Creeper detonation to hostile living mobs and removed blocks, allies, players, and non-hostile entities from the affected list through NeoForge's explosion event.
+  - Suppressed shared enemy callouts for every Beastmaster pet target and bumped the version from 4.48 to 4.49 with matching README coverage.
+- Rationale: The mixins intercept the vanilla behavior owners once for every captured hostile type, while the existing pet marker, callout helper, and respawn state remain the single ownership boundaries.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.49.jar`; hostile variants, Creeper blast behavior, Enderman movement, relog/respawn, and multiplayer smoke remain manual dev-world checks.

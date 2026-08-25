@@ -2,12 +2,6 @@
 
 - We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 
 
-- Hostile Beastmaster Pet Notes;
-    - Monsters that might burn in the sun, will not once tamed.
-        - Skeleton, Zombie, Phantom, etc
-    - Tamed Enderman should not attempt to randomly teleport
-    - Tamed Creepers explode to attack but do not destroy blocks/entities and will respawn 
-    - Companions should never call out "Enemy Spotted" for a tamed hostile mob (beastmaster pet)
 
 ## Maybe
 - I want to add a new option to the mod; Companions show chat bubbles show over their heard when speaking, instead of chat.

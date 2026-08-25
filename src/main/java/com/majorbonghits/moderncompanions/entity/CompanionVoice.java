@@ -59,6 +59,7 @@ public final class CompanionVoice {
 
     /** Lets the closest owned, loaded companion announce a shared enemy target. */
     public static void playEnemySpotted(AbstractHumanCompanionEntity companion, LivingEntity target) {
+        if (Beastmaster.isBeastmasterPet(target)) return;
         var ownerId = companion.getOwnerUUID();
         if (ownerId != null && companion.level() instanceof ServerLevel serverLevel) {
             // ponytail: full loaded-level scan keeps "present" exact; use an owner registry if this becomes frequent.

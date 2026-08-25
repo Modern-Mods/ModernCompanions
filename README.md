@@ -292,6 +292,8 @@ Craft the Beastmaster's Wand to capture any non-hostile mob. Captured mobs retai
 
 Upgrade the Beastmaster's Wand in a smithing table with a Netherite Upgrade Smithing Template and Ancient Debris to create the Empowered Beastmaster's Wand. It captures any hostile `Enemy` mob except entities in NeoForge's boss tag, including future tagged bosses. The capture uses the mob's vanilla XP reward as its difficulty-scaled cost, requires an empty inventory slot, and removes neither the mob nor XP when the capture cannot complete. Apply the resulting hostile Soul Orb to the owner's Beastmaster at level 20 or higher; the transfer is atomic and preserves the hostile mob's UUID, full NBT, variant, equipment, custom name, and inventory. Hostile Soul Orbs cannot be released as free-world mobs.
 
+Hostile Beastmaster pets keep their hostile abilities without their vanilla hazards: sun-sensitive mobs do not burn, Endermen do not randomly teleport, and Creepers damage nearby hostile mobs without griefing blocks or allies before the normal pet respawn path restores them.
+
 ### Soul Reforging
 
 Reforge an owned companion's traits without losing its bond, backstory, equipment, or memories:

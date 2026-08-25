@@ -733,3 +733,9 @@
 ## 2026-08-16 (companion mana minimum)
 
 - In a live world, relog and capture/redeploy a magical companion with a legacy or deliberately low saved mana capacity; confirm it loads at least 100 max mana, provider bonuses above 100 still apply, and normal spell casts can still drain current mana.
+
+## 2026-08-25 (Hostile Beastmaster pet safety)
+
+- Apply hostile Soul Orbs for Zombie, Skeleton, Phantom, Enderman, and Creeper pets; verify daytime survival, no random Enderman relocation, Creeper hostile-only non-griefing blasts, and pet respawn after detonation.
+- Put a tamed hostile Beastmaster pet beside one or more companions and force target acquisition; confirm no `Enemy Spotted` voice plays for the pet while ordinary hostile callouts still work.
+- Repeat the Creeper and callout checks with `friendlyFireCompanions` enabled and disabled, after relogging, and with another player nearby; confirm blocks, owners, companions, and other non-hostile entities stay safe.

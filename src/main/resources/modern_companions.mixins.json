@@ -4,7 +4,10 @@
   "package": "com.majorbonghits.moderncompanions.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "CurrencyContainerMenuMixin"
+    "CurrencyContainerMenuMixin",
+    "HostilePetMobMixin",
+    "HostilePetEndermanMixin",
+    "HostilePetCreeperMixin"
   ],
   "client": [
     "TacZEpicFightCompanionModelMixin",

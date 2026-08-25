@@ -1,3 +1,5 @@
+- 2026-08-24 (Vanilla-only taming): In a fresh dev world, verify `includeAutomaticModdedFoods = false` prevents safe foods from other mods from appearing in new recruitment requirements and being accepted for taming/healing, while the default `true` behavior still discovers them.
+
 - 2026-08-24 (Boot recipe schema): In a fresh NeoForge dev world, confirm all six repaired boot recipes load in JEI and craft with their two-row layouts; static JSON and JAR checks do not replace recipe-manager smoke testing.
 
 - 2026-08-22 (Recruitment item names): In a dev world with resource packs enabled, verify vanilla and modded recruitment items, including Create Confectionery Ruby Chocolate Candy, render their localized names or a readable registry-path fallback; a pack that intentionally sets a valid item translation to an empty string still needs to be corrected or disabled.

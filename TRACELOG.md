@@ -1,3 +1,13 @@
+## 2026-08-24 (Explicit vanilla-only taming food control)
+
+- Prompt/task: Investigate a report that companions still request food from other mods when the player configured vanilla taming foods only.
+- Steps:
+  - Added the common `taming.includeAutomaticModdedFoods` toggle, defaulting to the existing compatibility behavior and disabling automatic safe modded-food discovery when false.
+  - Routed the toggle through the shared `CompanionData` food predicate and random recruitment/favorite selector, then updated the shipped config example, native-config localization, README, and configuration guide.
+  - Bumped the project version from 4.47 to 4.48 and recorded the remaining fresh-world smoke check.
+- Rationale: The shipped vanilla `allFoods` list was also the implicit signal to add every safe modded food, so an unchanged vanilla list could not express vanilla-only intent. An explicit opt-out preserves existing packs while making the player-facing setting unambiguous.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed; locale JSON parsed, the 4.48 JAR was produced, and `git diff --check` passed. New-companion, existing-save, multiplayer, and modded-food runtime smoke remain manual.
+
 ## 2026-08-13 (Jobs deferred-return gate)
 
 - Prompt/task: Continue the Jobs runtime follow-up after Miner excavation and Lumberjack delivery-return fixes, with special attention to workers competing with a deferred physical return.

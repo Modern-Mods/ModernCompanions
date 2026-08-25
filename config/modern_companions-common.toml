@@ -20,7 +20,8 @@ voiceMode = "FULL"
 voiceVolume = 80
 
 [taming]
-# Safe modded foods are included automatically while this remains unchanged.
+# Safe modded foods are included automatically only while allFoods remains unchanged and this is true.
+includeAutomaticModdedFoods = true
 # Once edited, this list becomes authoritative.
 allFoods = [
   "minecraft:cookie",

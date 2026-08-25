@@ -647,7 +647,7 @@ public class CompanionData {
         return food;
     }
 
-    /** Accept configured foods plus safe standard foods supplied by other mods. */
+    /** Accept configured foods plus safe standard foods supplied by other mods when enabled. */
     public static boolean isFood(ItemStack stack) {
         if (stack.isEmpty()) return false;
         Item item = stack.getItem();
@@ -687,7 +687,7 @@ public class CompanionData {
         return hasHealingEffect;
     }
 
-    /** Chooses configured foods, expanding to safe standard foods only for the untouched default list. */
+    /** Chooses configured foods, expanding to safe standard foods only when automatic discovery is enabled. */
     public static Item pickConfiguredFood(Random random) {
         return pickConfiguredFood(random::nextInt);
     }

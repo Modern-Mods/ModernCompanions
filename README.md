@@ -409,7 +409,8 @@ Lists use registry IDs. Item lists accept IDs such as `minecraft:bread`; entity 
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `allFoods` | See defaults below | Configured foods companions may request, select as favorites, and eat for healing. Safe standard foods from other mods are included automatically until this list is changed; then this list is authoritative. |
+| `includeAutomaticModdedFoods` | `true` | Adds safe standard foods from other mods only while `allFoods` still matches the shipped vanilla list. Set `false` for vanilla/configured foods only. |
+| `allFoods` | See defaults below | Foods companions may request, select as favorites, and eat for healing. Once changed, this list is authoritative. |
 | `recruitmentRequirements` | Empty | Optional exact rows formatted `companion_id\|item_id\|count`; add multiple rows for multiple required items. `*` applies to every companion without an exact row. |
 | `extraHealConsumables` | See defaults below | Healing items companions may eat but never request for taming; may be empty. |
 | `commonResourceItems` | See defaults below | Common taming-resource pool. |
@@ -423,6 +424,7 @@ Lists use registry IDs. Item lists accept IDs such as `minecraft:bread`; entity 
 Default lists:
 
 ```text
+includeAutomaticModdedFoods = true
 allFoods = minecraft:cookie, minecraft:bread, minecraft:melon_slice, minecraft:apple, minecraft:sweet_berries, minecraft:carrot, minecraft:baked_potato, minecraft:cooked_salmon, minecraft:cooked_cod, minecraft:cooked_mutton, minecraft:cooked_porkchop, minecraft:cooked_beef, minecraft:cooked_chicken, minecraft:pumpkin_pie, minecraft:glow_berries, minecraft:potato, minecraft:beetroot, minecraft:dried_kelp, minecraft:cooked_rabbit
 recruitmentRequirements = "modern_companions:archer|minecraft:bread|3", "modern_companions:archer|minecraft:iron_ingot|2"
 extraHealConsumables = minecraft:golden_apple, minecraft:enchanted_golden_apple, minecraft:golden_carrot, minecraft:honey_bottle, minecraft:mushroom_stew, minecraft:beetroot_soup, minecraft:rabbit_stew

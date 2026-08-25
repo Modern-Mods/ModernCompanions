@@ -60,6 +60,7 @@ public final class ModConfig {
     public static ModConfigSpec.BooleanValue CREEPER_WARNING;
     public static ModConfigSpec.EnumValue<CompanionVoiceMode> COMPANION_VOICE_MODE;
     public static ModConfigSpec.IntValue COMPANION_VOICE_VOLUME;
+    public static ModConfigSpec.BooleanValue INCLUDE_AUTOMATIC_MODDED_FOODS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> ALL_FOODS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> RECRUITMENT_REQUIREMENTS;
     public static ModConfigSpec.ConfigValue<List<? extends String>> EXTRA_HEAL_CONSUMABLES;
@@ -130,7 +131,7 @@ public final class ModConfig {
 
     /** Automatic safe modded foods are the compatibility default, not an override of player config. */
     public static boolean usesAutomaticModdedFoods() {
-        return DEFAULT_ALL_FOODS.equals(safeGet(ALL_FOODS));
+        return safeGet(INCLUDE_AUTOMATIC_MODDED_FOODS) && DEFAULT_ALL_FOODS.equals(safeGet(ALL_FOODS));
     }
 
     public static void register() {
@@ -201,8 +202,11 @@ public final class ModConfig {
         builder.pop();
 
         builder.translation("modern_companions.configuration.taming").push("taming");
+        INCLUDE_AUTOMATIC_MODDED_FOODS = builder.translation("modern_companions.configuration.taming.include_automatic_modded_foods")
+                .comment("When true, safe standard foods from other mods are added only while allFoods remains the shipped default list. Set false for vanilla/configured foods only.")
+                .define("includeAutomaticModdedFoods", true);
         ALL_FOODS = builder.translation("modern_companions.configuration.taming.all_foods")
-                .comment("Configured item registry ids companions may request, choose as favorites, and eat for healing. Safe standard foods from other mods are detected automatically.")
+                .comment("Configured item registry ids companions may request, choose as favorites, and eat for healing. Safe standard foods from other mods are detected automatically only when enabled and allFoods remains unchanged.")
                 .defineList("allFoods", DEFAULT_ALL_FOODS, () -> "minecraft:bread", ModConfig::isKnownItemId);
         RECRUITMENT_REQUIREMENTS = builder.translation("modern_companions.configuration.taming.recruitment_requirements")
                 .comment("Optional exact recruitment rows: companion registry id|item registry id|count. Add multiple rows for multiple required items; an omitted companion keeps the random default.")

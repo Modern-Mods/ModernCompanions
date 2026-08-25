@@ -19,14 +19,12 @@ class names are not valid registry IDs.
 
 ### Food acceptance and the allFoods list
 
-allFoods has two modes:
+Automatic discovery is controlled by `includeAutomaticModdedFoods`:
 
-1. While it exactly matches the shipped default list, the mod keeps its normal
-   compatibility behavior and automatically discovers safe food items supplied
-   by other mods.
-2. After the list is changed, it becomes authoritative. Only listed items are
-   added by the configured food pool; automatically discovered safe modded foods
-   are no longer added.
+1. When it is true and `allFoods` exactly matches the shipped default list, the
+   mod automatically discovers safe food items supplied by other mods.
+2. Set it to false for vanilla-only behavior. After `allFoods` is changed, the
+   list is authoritative regardless of this setting.
 
 This same pool is used for random recruitment food, favorite-food selection,
 and ordinary companion healing. The hardcoded unsafe-food blacklist still wins
@@ -130,6 +128,16 @@ Exact recruitmentRequirements entries bypass this random selection and gate.
 | voiceVolume | 80 | 0 to 100 | Custom companion sound volume as a percentage. 80 means 80%, not a raw game-volume multiplier. |
 
 ## Taming and supplies
+
+### includeAutomaticModdedFoods
+
+This is enabled by default for compatibility with safe standard foods supplied
+by other mods. Set it to `false` when companions must request and accept only
+the vanilla items listed in `allFoods`:
+
+~~~toml
+includeAutomaticModdedFoods = false
+~~~
 
 ### allFoods
 

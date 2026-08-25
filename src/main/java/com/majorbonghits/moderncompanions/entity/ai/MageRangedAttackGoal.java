@@ -32,13 +32,18 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
 
     @Override
     public boolean canUse() {
-        return !this.caster.isSpellCasting()
-                && this.caster.getTarget() != null && this.caster.canUseRangedAttack();
+        // Alert is the explicit combat permission; a stale target alone is not enough to cast.
+        return this.caster.isAlert() && !this.caster.isSpellCasting()
+                && this.caster.getTarget() != null && this.caster.getTarget().isAlive()
+                && this.caster.canHarm(this.caster.getTarget()) && this.caster.canUseRangedAttack();
     }
 
     @Override
     public boolean canContinueToUse() {
-        return this.caster.canUseRangedAttack() && (this.canUse() || !this.caster.getNavigation().isDone());
+        LivingEntity target = this.caster.getTarget();
+        return this.caster.isAlert() && this.caster.canUseRangedAttack()
+                && target != null && target.isAlive() && this.caster.canHarm(target)
+                && (this.canUse() || !this.caster.getNavigation().isDone());
     }
 
     @Override
@@ -58,7 +63,11 @@ public class MageRangedAttackGoal<T extends AbstractMageCompanion> extends Goal 
     @Override
     public void tick() {
         LivingEntity target = this.caster.getTarget();
-        if (target == null) return;
+        if (!this.caster.isAlert() || target == null || !target.isAlive() || !this.caster.canHarm(target)) {
+            this.caster.setTarget(null);
+            this.caster.getNavigation().stop();
+            return;
+        }
 
         if (this.caster.isSpellCasting()) {
             this.caster.getNavigation().stop();

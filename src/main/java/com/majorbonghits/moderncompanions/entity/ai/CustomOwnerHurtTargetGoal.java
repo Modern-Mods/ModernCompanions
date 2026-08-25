@@ -1,6 +1,7 @@
 package com.majorbonghits.moderncompanions.entity.ai;
 
 import com.majorbonghits.moderncompanions.core.ModConfig;
+import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -27,6 +28,7 @@ public class CustomOwnerHurtTargetGoal extends TargetGoal {
 
     @Override
     public boolean canUse() {
+        if (this.companion instanceof AbstractHumanCompanionEntity human && !human.isAlert()) return false;
         if (this.companion.isTame() && !this.companion.isOrderedToSit()) {
             LivingEntity owner = this.companion.getOwner();
             if (owner == null) return false;

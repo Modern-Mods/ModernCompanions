@@ -33,6 +33,7 @@ Recruit human followers, equip them, shape their personalities, and take your ow
 ## Recent Updates
 
 - Added configurable Alert exclusions, taming food/resource lists, manual Hunt targets, low-health food thresholds, Stamina costs, voice mode/volume, automatic equipment, and Radius-based teleport leashes.
+- Mage combat now treats Alert as a hard gate for ordinary target acquisition and casting; disabling it clears retained targets, while companion-owned spell impacts protect owners, tamed pets, and same-owner companions.
 - Added Epic Fight combat/rendering compatibility, including companion weapon capabilities and TacZ gun pose handoff.
 - Added TacZ firearm specialists with native gun, ammunition, reload, and category-specific equipment behavior.
 - Fixed spawn loadouts so class weapons enter the live hand slots, expanded offhand support to Totems of Undying and carried lights, and added rare standard-size randomly dyed Sophisticated Backpacks when the optional integration is present.
@@ -386,7 +387,7 @@ Open **Mods → Modern Companions → Config** for the player-facing settings. D
 
 | Key | Default | Description |
 | --- | ---: | --- |
-| `friendlyFireCompanions` | `false` | Allow companions and Beastmaster pets to damage each other. |
+| `friendlyFireCompanions` | `false` | Allow companion attacks against other companions, Beastmaster pets, and tamed pets. |
 | `friendlyFirePlayer` | `true` | Allow a companion to damage its owner. |
 | `fallDamage` | `true` | Allow fall damage. |
 | `spawnArmor` | `true` | Give newly spawned companions random armor. |
@@ -408,6 +409,8 @@ Open **Mods → Modern Companions → Config** for the player-facing settings. D
 ### Taming, hunting, and Alert
 
 Lists use registry IDs. Item lists accept IDs such as `minecraft:bread`; entity lists accept IDs such as `minecraft:goat`. Java class names are not valid.
+
+Alert controls ordinary automatic combat target acquisition and mage casting; turning it off also clears a retained combat target. The explicit Hunt control remains a separate manual behavior.
 
 | Key | Default | Description |
 | --- | --- | --- |

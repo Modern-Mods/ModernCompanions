@@ -23,7 +23,7 @@ public class FireMage extends IntegratedMageCompanion {
             return;
         }
         if (!(this.level() instanceof ServerLevel server) || target == null
-                || !canSpendMana(BASIC_MANA_COST) || isOwnerInDanger(target, 2.5F)) return;
+                || !safeTarget(target, 2.5F) || !canSpendMana(BASIC_MANA_COST)) return;
         aimAt(target);
         Vec3 dir = new Vec3(target.getX() - this.getX(), target.getY(0.5D) - this.getEyeY(),
                 target.getZ() - this.getZ()).normalize();
@@ -42,7 +42,7 @@ public class FireMage extends IntegratedMageCompanion {
         if (MagicCastingCompat.available()) return super.tryHeavyAttack(target, distanceFactor);
         if (heavyCooldown > 0 || !(this.level() instanceof ServerLevel server)
                 || target == null || !canSpendMana(HEAVY_MANA_COST)
-                || isOwnerInDanger(target, 4.0F) || this.random.nextBoolean()) return false;
+                || !safeTarget(target, 4.0F) || this.random.nextBoolean()) return false;
         aimAt(target);
         Vec3 dir = new Vec3(target.getX() - this.getX(), target.getY(0.35F) - this.getEyeY(),
                 target.getZ() - this.getZ()).normalize();

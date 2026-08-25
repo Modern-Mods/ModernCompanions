@@ -762,3 +762,9 @@
 
 - In dev worlds with neither provider, Iron's Spellbooks only, and Ars Nouveau only, verify Lightning Mage basic/heavy casts hit only the selected hostile target, never the owner or same-owner companion/pet, and grant XP/kill credit when the target later dies to fire or another source.
 - Repeat with a configured Lightning Mage spellbook and both providers installed; confirm upstream splash/chain behavior cannot damage a non-target and that nearby hostile kills are not incorrectly credited.
+
+## 2026-08-25 (Mage Alert and fireball safety)
+
+- In dev worlds with neither provider, Iron's Spellbooks only, Ars Nouveau only, and both providers, toggle Alert off during combat; confirm mages stop casting, clear retained targets, and do not retaliate through owner/revenge target paths.
+- Place the owner, same-owner companions, tamed pets, and the Fire Mage beside a hostile target; verify basic and heavy fallback fireballs damage only accepted hostile targets, do not ignite protected entities or the caster, and do not apply explosion splash damage.
+- Confirm Knight remains melee-only and Cleric continues using its holy/support path; repeat with `friendlyFireCompanions` enabled and disabled and with the exact 4.60 JAR.

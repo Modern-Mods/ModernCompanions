@@ -1391,6 +1391,8 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     public void setAlert(boolean value) {
         this.entityData.set(ALERT, value);
+        // Disabling combat must also stop any target selected before the toggle changed.
+        if (!value) this.setTarget(null);
     }
 
     public boolean isHunting() {
@@ -4118,6 +4120,10 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     /** Shared PvE/PvP and villager safety gate for every target source. */
     public boolean canHarm(Entity entity) {
+        // A companion-owned projectile or explosion must never damage its caster.
+        if (entity == this) {
+            return false;
+        }
         // Owner and same-owner companions stay allies even when PvP is enabled.
         if (entity == this.getOwner()) {
             return false;
@@ -4136,7 +4142,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (this.getOwnerUUID() != null && this.getOwnerUUID().equals(tame.getOwnerUUID())) {
                 return false;
             }
-            return canHarmPlayers();
+            return ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_COMPANIONS);
         }
         return true;
     }

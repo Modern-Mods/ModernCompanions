@@ -1,5 +1,7 @@
 package com.majorbonghits.moderncompanions.entity.projectile;
 
+import com.majorbonghits.moderncompanions.entity.AbstractHumanCompanionEntity;
+import com.majorbonghits.moderncompanions.entity.CompanionProtectionEvents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -26,11 +28,12 @@ public class NonExplodingLargeFireball extends LargeFireball {
     @Override
     protected void onHitEntity(EntityHitResult result) {
         Entity hit = result.getEntity();
-        if (this.level() instanceof ServerLevel) {
-            Entity owner = this.getOwner();
-            DamageSource source = this.damageSources().fireball(this, owner);
-            hit.hurt(source, 20.0F);
-            hit.setRemainingFireTicks(100);
+        if (this.level() instanceof ServerLevel
+                && this.getOwner() instanceof AbstractHumanCompanionEntity companion
+                && hit instanceof LivingEntity living
+                && CompanionProtectionEvents.canDamage(companion, living)) {
+            DamageSource source = this.damageSources().fireball(this, companion);
+            if (living.hurt(source, 20.0F)) living.setRemainingFireTicks(100);
         }
         if (!this.level().isClientSide) explodeEffect();
     }
@@ -46,7 +49,7 @@ public class NonExplodingLargeFireball extends LargeFireball {
     }
 
     private void explodeEffect() {
-        this.level().explode(null, this.getX(), this.getY(), this.getZ(), 1.4F, false, ExplosionInteraction.NONE);
+        this.level().explode(this, this.getX(), this.getY(), this.getZ(), 1.4F, false, ExplosionInteraction.NONE);
         this.discard();
     }
 }

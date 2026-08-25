@@ -10,6 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -55,6 +56,15 @@ public final class CompanionProtectionEvents {
         event.getAffectedEntities().removeIf(entity -> !(entity instanceof LivingEntity living)
                 || living.getType().getCategory() != MobCategory.MONSTER
                 || Beastmaster.isBeastmasterPet(entity));
+    }
+
+    /** Keep companion-owned spell explosions from applying splash damage to allies or pets. */
+    @SubscribeEvent
+    public static void limitCompanionExplosion(ExplosionEvent.Detonate event) {
+        AbstractHumanCompanionEntity companion = companionAttacker(event.getExplosion().getDirectSourceEntity());
+        if (companion == null) return;
+        event.getAffectedEntities().removeIf(entity -> entity instanceof LivingEntity living
+                && !canDamage(companion, living));
     }
 
     /** Keep upstream summons limited to safe hostile targets with a visible attack path. */
@@ -117,6 +127,10 @@ public final class CompanionProtectionEvents {
         if (Beastmaster.isBeastmasterPet(victim)) {
             return ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_COMPANIONS);
         }
+        // Treat owned/tamed animals like companion pets for splash and projectile protection.
+        if (victim instanceof TamableAnimal tame && tame.isTame()) {
+            return ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_COMPANIONS);
+        }
         if (victimOwner instanceof AbstractHumanCompanionEntity other) {
             return other.getOwnerUUID() == null || !other.getOwnerUUID().equals(companion.getOwnerUUID())
                     ? companion.canHarmPlayers() : false;
@@ -125,7 +139,11 @@ public final class CompanionProtectionEvents {
     }
 
     /** Lightning Mage casts are target-locked even when an upstream spell produces splash hits. */
-    static boolean canDamage(AbstractHumanCompanionEntity companion, LivingEntity victim) {
+    public static boolean canDamage(AbstractHumanCompanionEntity companion, LivingEntity victim) {
+        // Delayed spell impacts must obey the current Alert state and never include players.
+        if (victim == companion) return false;
+        if (companion instanceof AbstractMageCompanion && !companion.isAlert()) return false;
+        if (companion instanceof AbstractMageCompanion && victim instanceof Player) return false;
         if (companion instanceof LightningMage lightning
                 && (lightning.getTarget() != victim || victim.getType().getCategory() != MobCategory.MONSTER)) return false;
         return canHarm(companion, victim);

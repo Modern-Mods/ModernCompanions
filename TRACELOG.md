@@ -3378,3 +3378,13 @@
   - Bumped the project version from 4.58 to 4.59.
 - Rationale: The shared target and damage seams now cover optional Ars/Iron projectiles and vanilla fallback bolts, while engagement lookup keeps delayed fire/environment deaths attached to the companion without a parallel kill tracker.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.59.jar`; live provider, spellbook, friendly-fire, and delayed-death smoke remain manual.
+
+## 2026-08-25 (Mage Alert and fireball safety)
+
+- Prompt/task: Apply the reported fixes for mages attacking with Alert off, damaging owners/companions with spells, allies catching fire, and the apparent Knight fireball behavior.
+- Steps:
+  - Cleared retained targets when Alert is disabled, gated ordinary owner/revenge target goals and mage ranged casting, and stopped revenge propagation into companions whose Alert is off; explicit Hunt remains separate.
+  - Reused the shared mage target predicate for both fallback Fire Mage casts, added self/tamed-pet protection to the shared harm gate, and filtered companion-owned explosion splash victims through the existing damage boundary.
+  - Attributed fallback fireball impacts and explosions to the Fire Mage, applied large-fireball burn only after accepted damage, added `MageCombatSafetyTest`, and bumped the version from 4.59 to 4.60.
+- Rationale: The shared Alert, target, damage, and explosion seams cover stale AI targets, direct fallback projectiles, delayed fire, and anonymous splash damage without adding per-companion protection code. Knight remains melee-only in the current source; a Knight-looking fireball still points to misidentification, another caster/mod, or a stale JAR.
+- Build/Test: The new check failed before the fix and passed after it; Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.60.jar` (8,185,949 bytes), with the updated mage/protection classes present. Live provider, multi-companion, fire, and exact-artifact gameplay smoke remain manual.

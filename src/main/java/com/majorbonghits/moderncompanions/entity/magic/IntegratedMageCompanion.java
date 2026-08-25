@@ -158,7 +158,7 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
     }
 
     protected final boolean safeTarget(LivingEntity target, float radius) {
-        if (!target.isAlive() || !getSensing().hasLineOfSight(target) || target instanceof net.minecraft.world.entity.player.Player
+        if (!isAlert() || !target.isAlive() || !getSensing().hasLineOfSight(target) || target instanceof net.minecraft.world.entity.player.Player
                 || !canHarm(target) || (requiresHostileTargets() && target.getType().getCategory() != MobCategory.MONSTER)
                 || isAlliedTo(target) || isOwnerInDanger(target, radius)) return false;
         return level().getEntitiesOfClass(LivingEntity.class, target.getBoundingBox().inflate(radius), this::isAllyNearTarget).isEmpty();

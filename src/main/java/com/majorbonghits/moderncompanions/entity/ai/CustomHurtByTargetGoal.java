@@ -35,6 +35,7 @@ public class CustomHurtByTargetGoal extends TargetGoal {
 
     @Override
     public boolean canUse() {
+        if (this.mob instanceof AbstractHumanCompanionEntity companion && !companion.isAlert()) return false;
         int i = this.mob.getLastHurtByMobTimestamp();
         LivingEntity attacker = this.mob.getLastHurtByMob();
         if (i != this.timestamp && attacker != null) {
@@ -75,6 +76,7 @@ public class CustomHurtByTargetGoal extends TargetGoal {
         while (iterator.hasNext()) {
             Mob mob = iterator.next();
             if (this.mob != mob && mob.getTarget() == null) {
+                if (mob instanceof AbstractHumanCompanionEntity companion && !companion.isAlert()) continue;
                 if (this.mob instanceof TamableAnimal tame && mob instanceof TamableAnimal other) {
                     if (tame.getOwner() != other.getOwner()) {
                         continue;

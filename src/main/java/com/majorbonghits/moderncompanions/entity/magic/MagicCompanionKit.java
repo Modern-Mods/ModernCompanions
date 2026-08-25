@@ -3,7 +3,9 @@ package com.majorbonghits.moderncompanions.entity.magic;
 /** Approved, intentionally small real-spell kits. Part names resolve to Ars Nouveau glyph classes. */
 public enum MagicCompanionKit {
     FIRE_MAGE("firebolt", "flaming_barrage", parts("MethodProjectile", "EffectIgnite"), parts("MethodProjectile", "EffectIgnite", "AugmentAmplify"), "evasion", parts("MethodSelf", "EffectBubble")),
-    LIGHTNING_MAGE("lightning_bolt", "chain_lightning", parts("MethodProjectile", "EffectLightning"), parts("MethodProjectile", "EffectLightning", "AugmentSplit"), "charge", parts("MethodSelf", "EffectLaunch")),
+    // Lightning Mage uses direct-target spell forms; chain/split variants can hit bystanders.
+    LIGHTNING_MAGE("lightning_bolt", "lightning_bolt", parts("MethodProjectile", "EffectLightning"),
+            parts("MethodProjectile", "EffectLightning", "AugmentAmplify"), "charge", parts("MethodSelf", "EffectLaunch"), true),
     NECROMANCER("wither_skull", "raise_dead", parts("MethodProjectile", "EffectWither"), parts("MethodProjectile", "EffectSummonUndead"), "ray_of_siphoning", parts("MethodSelf", "EffectHeal")),
     CLERIC("heal", "greater_heal", parts("MethodProjectile", "EffectHeal"),
             parts("MethodProjectile", "EffectHeal", "AugmentAmplify"), "cleanse",

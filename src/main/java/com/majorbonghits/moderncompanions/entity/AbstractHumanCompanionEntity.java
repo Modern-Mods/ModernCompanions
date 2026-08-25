@@ -2692,6 +2692,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         syncPersonalityToData();
     }
 
+    /** Keeps delayed fire, fall, and environmental deaths tied to a live combat engagement. */
+    public boolean isEngagedWith(LivingEntity victim) {
+        return victim != null && (getTarget() == victim || getLastHurtMob() == victim || getLastHurtByMob() == victim);
+    }
+
     private boolean isMajorKill(LivingEntity victim) {
         var type = victim.getType();
         return type == EntityType.ENDER_DRAGON
@@ -3439,6 +3444,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
+        // Entity.load has already deserialized attachments; Curios' capability constructor
+        // consumes its deferred inventory exactly once on this first lookup.
+        if (net.neoforged.fml.ModList.get().isLoaded("curios")) {
+            top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(this);
+        }
         heldLightPos = null;
         if (tag.contains("HeldLightPos") && this.level() instanceof ServerLevel server) {
             BlockPos savedLight = BlockPos.of(tag.getLong("HeldLightPos"));

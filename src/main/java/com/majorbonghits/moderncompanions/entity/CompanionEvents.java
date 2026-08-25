@@ -25,8 +25,10 @@ import com.majorbonghits.moderncompanions.entity.job.JobDropClaims;
 import com.majorbonghits.moderncompanions.entity.job.JobReservations;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = ModernCompanions.MOD_ID)
@@ -156,11 +158,25 @@ public final class CompanionEvents {
     @SubscribeEvent
     public static void giveExperience(LivingDeathEvent event) {
         if (!(event.getEntity().level() instanceof ServerLevel serverLevel)) return;
+        var victim = event.getEntity();
+        Set<UUID> credited = new HashSet<>();
         AbstractHumanCompanionEntity companion = CompanionProtectionEvents.companionAttacker(event.getSource().getDirectEntity());
         if (companion == null) companion = CompanionProtectionEvents.companionAttacker(event.getSource().getEntity());
-        if (companion == null) return;
-        companion.recordKill(event.getEntity());
-        companion.giveExperiencePoints(event.getEntity().getExperienceReward(serverLevel, companion));
+        if (companion == null) companion = CompanionProtectionEvents.companionAttacker(victim.getKillCredit());
+        if (companion != null && credited.add(companion.getUUID())) {
+            companion.recordKill(victim);
+            companion.giveExperiencePoints(victim.getExperienceReward(serverLevel, companion));
+        }
+        // ponytail: scan loaded entities only on death; index by target UUID if death volume proves hot.
+        for (Entity loaded : serverLevel.getAllEntities()) {
+            if (loaded instanceof AbstractHumanCompanionEntity candidate
+                    && credited.add(candidate.getUUID())
+                    && candidate.isEngagedWith(victim)
+                    && candidate.canHarm(victim)) {
+                candidate.recordKill(victim);
+                candidate.giveExperiencePoints(victim.getExperienceReward(serverLevel, candidate));
+            }
+        }
     }
 
     @SubscribeEvent
@@ -168,7 +184,7 @@ public final class CompanionEvents {
         var source = event.getSource();
         AbstractHumanCompanionEntity companion = CompanionProtectionEvents.companionAttacker(source.getDirectEntity());
         if (companion == null) companion = CompanionProtectionEvents.companionAttacker(source.getEntity());
-        if (companion != null && !CompanionProtectionEvents.canHarm(companion, event.getEntity())) event.setCanceled(true);
+        if (companion != null && !CompanionProtectionEvents.canDamage(companion, event.getEntity())) event.setCanceled(true);
     }
 
     @SubscribeEvent

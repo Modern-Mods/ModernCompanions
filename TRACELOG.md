@@ -3335,3 +3335,46 @@
   - Suppressed shared enemy callouts for every Beastmaster pet target and bumped the version from 4.48 to 4.49 with matching README coverage.
 - Rationale: The mixins intercept the vanilla behavior owners once for every captured hostile type, while the existing pet marker, callout helper, and respawn state remain the single ownership boundaries.
 - Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.49.jar`; hostile variants, Creeper blast behavior, Enderman movement, relog/respawn, and multiplayer smoke remain manual dev-world checks.
+
+## 2026-08-25 (Lightning Mage kill and XP attribution)
+
+- Prompt/task: Fix Lightning Mage lightning kills not counting toward kills or granting companion experience.
+- Steps:
+  - Traced the fallback basic and heavy attacks through `LightningMage`, `CompanionEvents.giveExperience`, and vanilla `DamageSource` kill credit; the fallback used the entity-free lightning source.
+  - Added an attributed vanilla lightning source with the bolt as the direct entity and the Lightning Mage as the causing entity, then kept both calls at base damage so the shared mage scaling hook applies only once.
+  - Added a focused red-green regression check, wired it into `check`, and bumped the version from 4.55 to 4.56.
+- Rationale: Fixing attribution at the shared damage source preserves vanilla lightning behavior while allowing the existing kill-count and XP event to resolve the caster without adding a parallel kill tracker.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.56.jar`; live basic/heavy Lightning Mage combat and optional-provider smoke remain manual.
+
+## 2026-08-25 (Curios companion persistence)
+
+- Prompt/task: Preserve items equipped in companion Curios slots through Soul Gem capture/redeployment and logout/world reload.
+- Steps:
+  - Traced `StoredCompanionItem`, `ResurrectionScrollItem`, and `CompanionMoverItem` through the shared `saveWithoutId`/`Entity.load` path and confirmed normal inventory restoration did not cover Curios' attachment-backed inventory.
+  - Verified Curios 9.5.1 defers attachment NBT until its capability is initialized; added a red-green `CuriosPersistenceTest` for the required pre-load lookup and post-load reset ordering.
+  - Initialized the shared Curios handler before `super.load`, then consumed deferred attachment data once after `super.readAdditionalSaveData`.
+  - Bumped the version from 4.56 to 4.57.
+- Rationale: Fixing the shared entity load seam covers soul gems, resurrection, mover capture, and normal saved-entity reload without duplicating Curios serialization in each item path.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed, including `curiosPersistenceCheck`, and produced `build/libs/ModernCompanions-4.57.jar`; live Curios slot, Soul Gem, logout/reload, and pre-existing-save smoke remain manual.
+
+## 2026-08-25 (Curios deferred attachment lifecycle follow-up)
+
+- Prompt/task: Fix Curios-equipped companion items still disappearing after Soul Gem deployment and relogging following the 4.57 persistence attempt.
+- Steps:
+  - Audited the exact Curios 9.5.1 and NeoForge 21.1.219 lifecycle: `Entity.load` deserializes `neoforge:attachments` before `readAdditionalSaveData`, and `CurioInventoryCapability` consumes a deferred attachment once in its constructor.
+  - Replaced the source-order check with a red-green contract requiring no pre-load Curios lookup, no explicit `handler.reset()`, and one post-`super.readAdditionalSaveData` lookup.
+  - Removed the `load` override and explicit reset from `AbstractHumanCompanionEntity`; the first post-load capability lookup now consumes the saved Curios attachment without rebuilding it.
+  - Bumped the version from 4.57 to 4.58.
+- Rationale: The previous patch reset Curios a second time after its constructor had already consumed the saved data, so the reset rebuilt default empty slots and erased the restored items. Fixing the shared entity load seam keeps Soul Gem, mover, resurrection, and normal entity reload paths consistent.
+- Build/Test: The focused check failed on the old pre-load lookup, passed after the fix, and Java 21 `gradlew.bat check build --console=plain --no-daemon` passed with `curiosPersistenceCheck`; `build/libs/ModernCompanions-4.58.jar` was produced. Live Curios slot, Soul Gem, relog, existing-save, and actual-installed-artifact smoke remain manual.
+
+## 2026-08-25 (Lightning Mage target safety and engagement XP)
+
+- Prompt/task: Stop Lightning Mage lightning and Ars casts from damaging non-targets or friendly units, and award companion XP when an engaged enemy dies from any source.
+- Steps:
+  - Traced fallback and provider casts through `LightningMage`, `MagicCompanionKit`, `IntegratedMageCompanion.safeTarget`, `CompanionProtectionEvents`, and `CompanionEvents.giveExperience`.
+  - Replaced Lightning Mage chain/split spell forms with direct-target forms, applied the shared hostile-target gate to both fallback attacks, and target-locked actual damage with owner/companion/pet protection before the hostile-kit bypass.
+  - Added vanilla kill-credit and loaded-engagement fallback XP attribution with duplicate-credit suppression, plus red-green focused checks.
+  - Bumped the project version from 4.58 to 4.59.
+- Rationale: The shared target and damage seams now cover optional Ars/Iron projectiles and vanilla fallback bolts, while engagement lookup keeps delayed fire/environment deaths attached to the companion without a parallel kill tracker.
+- Build/Test: Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.59.jar`; live provider, spellbook, friendly-fire, and delayed-death smoke remain manual.

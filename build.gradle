@@ -176,6 +176,18 @@ tasks.register("magicCompanionKitCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("lightningMageKillCreditCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.magic.LightningMageKillCreditTest"
+    jvmArgs "-ea"
+}
+
+tasks.register("curiosPersistenceCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.CuriosPersistenceTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("placementWandCheck", JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.majorbonghits.moderncompanions.item.PlacementWandItemTest"
@@ -231,6 +243,8 @@ tasks.named("check") {
     dependsOn tasks.named("currencyTradeCheck")
     dependsOn tasks.named("epicFightCombatAiCheck")
     dependsOn tasks.named("magicCompanionKitCheck")
+    dependsOn tasks.named("lightningMageKillCreditCheck")
+    dependsOn tasks.named("curiosPersistenceCheck")
     dependsOn tasks.named("placementWandCheck")
 }
 

@@ -743,3 +743,22 @@
 - Apply hostile Soul Orbs for Zombie, Skeleton, Phantom, Enderman, and Creeper pets; verify daytime survival, no random Enderman relocation, Creeper hostile-only non-griefing blasts, and pet respawn after detonation.
 - Put a tamed hostile Beastmaster pet beside one or more companions and force target acquisition; confirm no `Enemy Spotted` voice plays for the pet while ordinary hostile callouts still work.
 - Repeat the Creeper and callout checks with `friendlyFireCompanions` enabled and disabled, after relogging, and with another player nearby; confirm blocks, owners, companions, and other non-hostile entities stay safe.
+
+## 2026-08-25 (Lightning Mage kill credit)
+
+- In a live dev world without Iron's Spellbooks or Ars Nouveau, have a Lightning Mage kill targets with basic and heavy lightning; confirm kill count, companion XP/level progress, drops, and the no-double-damage result with increased Intelligence.
+
+## 2026-08-25 (Curios companion persistence)
+
+- In a live world with Curios, equip representative items in companion Curios slots, capture/redeploy the companion with a Soul Gem, then log out and reload the world; confirm every item and its components remain present.
+- Repeat with an existing companion saved before 4.57 and with Curios absent to confirm the migration path and optional-mod boundary.
+
+## 2026-08-25 (Curios persistence follow-up)
+
+- Run the smoke matrix against the exact `build/libs/ModernCompanions-4.59.jar`; verify the launcher is not loading an older Modern Companions artifact.
+- If this lifecycle needs automated runtime coverage later, promote the focused source contract to a NeoForge integration/GameTest that creates a real Curios attachment and verifies stack components through save/load; keep the shared entity load boundary as the only production seam.
+
+## 2026-08-25 (Lightning Mage target safety and engagement XP)
+
+- In dev worlds with neither provider, Iron's Spellbooks only, and Ars Nouveau only, verify Lightning Mage basic/heavy casts hit only the selected hostile target, never the owner or same-owner companion/pet, and grant XP/kill credit when the target later dies to fire or another source.
+- Repeat with a configured Lightning Mage spellbook and both providers installed; confirm upstream splash/chain behavior cannot damage a non-target and that nearby hostile kills are not incorrectly credited.

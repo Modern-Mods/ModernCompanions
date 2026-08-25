@@ -7,6 +7,11 @@ public final class MagicCompanionKitTest {
     public static void main(String[] args) {
         assert MagicCompanionKit.SORCERER.hostileTargetsOnly;
         assert "chain_lightning".equals(MagicCompanionKit.SORCERER.ironHeavy);
+        assert MagicCompanionKit.LIGHTNING_MAGE.hostileTargetsOnly;
+        assert "lightning_bolt".equals(MagicCompanionKit.LIGHTNING_MAGE.ironHeavy);
+        for (String part : MagicCompanionKit.LIGHTNING_MAGE.arsHeavy) {
+            assert !"AugmentSplit".equals(part) : "Lightning Mage heavy Ars cast must stay single-target";
+        }
         assert "firebolt".equals(MagicCompanionKit.BATTLEMAGE.ironBasic);
         assert "fang_strike".equals(MagicCompanionKit.BATTLEMAGE.ironHeavy);
         assert !"spectral_hammer".equals(MagicCompanionKit.BATTLEMAGE.ironBasic);

@@ -4,6 +4,7 @@ import com.majorbonghits.moderncompanions.ModernCompanions;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import com.majorbonghits.moderncompanions.entity.magic.IntegratedMageCompanion;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -34,7 +35,7 @@ public final class CompanionProtectionEvents {
         AbstractHumanCompanionEntity companion = companionAttacker(event.getSource().getDirectEntity());
         if (companion == null) companion = companionAttacker(event.getSource().getEntity());
         LivingEntity victim = event.getEntity();
-        if (companion != null && !canHarm(companion, victim)) {
+        if (companion != null && !canDamage(companion, victim)) {
             event.setNewDamage(0.0F);
         } else if (companion instanceof AbstractMageCompanion mage) {
             event.setNewDamage(mage.magicDamage(event.getNewDamage()));
@@ -102,6 +103,12 @@ public final class CompanionProtectionEvents {
 
     static boolean canHarm(AbstractHumanCompanionEntity companion, Entity victim) {
         if (!companion.canHarm(victim)) return false;
+        if (companion.isAlliedTo(victim)) return false;
+        Entity victimOwner = ownerOf(victim);
+        if (victimOwner == companion || victimOwner == companion.getOwner()) return false;
+        if (victimOwner instanceof AbstractHumanCompanionEntity other
+                && other.getOwnerUUID() != null
+                && other.getOwnerUUID().equals(companion.getOwnerUUID())) return false;
         // Hostile-only integrated kits already resolved their companion/pet policy;
         // do not let the generic owner check undo friendlyFireCompanions for them.
         if (companion instanceof IntegratedMageCompanion mage && mage.requiresHostileTargets()) return true;
@@ -110,13 +117,18 @@ public final class CompanionProtectionEvents {
         if (Beastmaster.isBeastmasterPet(victim)) {
             return ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_COMPANIONS);
         }
-        Entity victimOwner = ownerOf(victim);
-        if (victimOwner == companion || victimOwner == companion.getOwner()) return false;
         if (victimOwner instanceof AbstractHumanCompanionEntity other) {
             return other.getOwnerUUID() == null || !other.getOwnerUUID().equals(companion.getOwnerUUID())
                     ? companion.canHarmPlayers() : false;
         }
         return !(victimOwner instanceof Player) || companion.canHarmPlayers();
+    }
+
+    /** Lightning Mage casts are target-locked even when an upstream spell produces splash hits. */
+    static boolean canDamage(AbstractHumanCompanionEntity companion, LivingEntity victim) {
+        if (companion instanceof LightningMage lightning
+                && (lightning.getTarget() != victim || victim.getType().getCategory() != MobCategory.MONSTER)) return false;
+        return canHarm(companion, victim);
     }
 
     static AbstractHumanCompanionEntity companionAttacker(Entity entity) {
@@ -193,6 +205,11 @@ public final class CompanionProtectionEvents {
     private static Entity ownerOf(Entity entity) {
         if (entity instanceof Projectile projectile) return projectile.getOwner();
         if (entity instanceof OwnableEntity ownable) return ownable.getOwner();
+        if (Beastmaster.isBeastmasterPet(entity)
+                && entity.level() instanceof ServerLevel server
+                && entity.getPersistentData().hasUUID(Beastmaster.BEASTMASTER_OWNER_TAG)) {
+            return server.getEntity(entity.getPersistentData().getUUID(Beastmaster.BEASTMASTER_OWNER_TAG));
+        }
         return summonerOf(entity);
     }
 }

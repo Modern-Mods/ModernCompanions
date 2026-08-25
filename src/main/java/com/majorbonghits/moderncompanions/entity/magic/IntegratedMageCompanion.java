@@ -1,13 +1,22 @@
 package com.majorbonghits.moderncompanions.entity.magic;
 
+import com.majorbonghits.moderncompanions.Constants;
 import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
+import com.majorbonghits.moderncompanions.core.ModConfig;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
+import org.jetbrains.annotations.Nullable;
 
 /** Shared AI bridge: one basic cast, one guarded signature cast, and one self utility per kit. */
 public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
@@ -29,6 +38,36 @@ public abstract class IntegratedMageCompanion extends AbstractMageCompanion {
     }
 
     protected int basicManaCost() { return BASIC_MANA_COST; }
+
+    protected final ItemStack createKitSpawnWeapon() {
+        return BuiltInRegistries.ITEM.get(Constants.id(kit().spawnWeaponId())).getDefaultInstance();
+    }
+
+    /** Installs the kit's one physical starter in the live hand after all base spawn setup is complete. */
+    private void equipKitSpawnWeapon() {
+        if (!ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) return;
+        ItemStack starter = createKitSpawnWeapon();
+        if (starter.isEmpty()) return;
+
+        ItemStack hand = getFunctionalEquipmentItem(EquipmentSlot.MAINHAND);
+        if (!hand.isEmpty() && !ItemStack.isSameItemSameComponents(hand, starter)) return;
+
+        // A previous loadout path could leave the same starter in cargo; keep exactly one live copy.
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (ItemStack.isSameItemSameComponents(inventory.getItem(slot), starter)) {
+                inventory.setItem(slot, ItemStack.EMPTY);
+            }
+        }
+        if (hand.isEmpty()) setItemSlot(EquipmentSlot.MAINHAND, starter);
+    }
+
+    @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
+                                        MobSpawnType reason, @Nullable SpawnGroupData data) {
+        SpawnGroupData result = super.finalizeSpawn(level, difficulty, reason, data);
+        equipKitSpawnWeapon();
+        return result;
+    }
 
     @Override
     public boolean canUseRangedAttack() {

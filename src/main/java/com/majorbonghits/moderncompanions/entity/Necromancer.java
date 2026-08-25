@@ -1,21 +1,17 @@
 package com.majorbonghits.moderncompanions.entity;
 
-import com.majorbonghits.moderncompanions.Constants;
 import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
 import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.magic.IntegratedMageCompanion;
 import com.majorbonghits.moderncompanions.entity.magic.MagicCompanionKit;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
@@ -99,13 +95,12 @@ public class Necromancer extends IntegratedMageCompanion {
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
                                         MobSpawnType reason, @Nullable SpawnGroupData data) {
+        SpawnGroupData result = super.finalizeSpawn(level, difficulty, reason, data);
         if (!MagicCastingCompat.available() && ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            // The dagger is visible immediately; the bone remains a summon component in cargo.
-            this.setItemSlot(EquipmentSlot.MAINHAND,
-                    new ItemStack(BuiltInRegistries.ITEM.get(Constants.id("stone_dagger"))));
+            // The bone remains a summon component in cargo; the shared superclass owns the live dagger.
             this.inventory.setItem(5, Items.BONE.getDefaultInstance());
         }
-        return super.finalizeSpawn(level, difficulty, reason, data);
+        return result;
     }
 
     @Override

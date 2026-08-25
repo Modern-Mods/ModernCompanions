@@ -164,13 +164,13 @@ public class Cleric extends IntegratedMageCompanion {
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
                                         MobSpawnType reason, @Nullable SpawnGroupData data) {
+        SpawnGroupData result = super.finalizeSpawn(level, difficulty, reason, data);
         if (!MagicCastingCompat.available() && ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            // Spawn gear must enter the live vanilla slots so it renders and the totem can trigger.
-            this.setItemSlot(EquipmentSlot.MAINHAND, Items.GOLDEN_SWORD.getDefaultInstance());
+            // The shared superclass owns the live sword; only the fallback totem is class-specific.
             this.setItemSlot(EquipmentSlot.OFFHAND, Items.TOTEM_OF_UNDYING.getDefaultInstance());
             checkStaff();
         }
-        return super.finalizeSpawn(level, difficulty, reason, data);
+        return result;
     }
 
     private boolean healOwner(LivingEntity owner) {

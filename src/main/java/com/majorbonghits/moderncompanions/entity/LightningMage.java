@@ -1,25 +1,14 @@
 package com.majorbonghits.moderncompanions.entity;
 
-import com.majorbonghits.moderncompanions.Constants;
 import com.majorbonghits.moderncompanions.compat.magic.MagicCastingCompat;
-import com.majorbonghits.moderncompanions.core.ModConfig;
 import com.majorbonghits.moderncompanions.entity.magic.IntegratedMageCompanion;
 import com.majorbonghits.moderncompanions.entity.magic.MagicCompanionKit;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.LightningBolt;
-import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.TamableAnimal;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.ServerLevelAccessor;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -89,17 +78,6 @@ public class LightningMage extends IntegratedMageCompanion {
     @Override
     public int getHeavyRecoveryTicks() {
         return MagicCastingCompat.available() ? super.getHeavyRecoveryTicks() : LEGACY_HEAVY_COOLDOWN_TICKS;
-    }
-
-    @Override
-    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty,
-                                        MobSpawnType reason, @Nullable SpawnGroupData data) {
-        if (!MagicCastingCompat.available() && ModConfig.safeGet(ModConfig.SPAWN_WEAPON)) {
-            // Keep the primary wand in the live hand; the alternate dagger remains cargo.
-            this.setItemSlot(EquipmentSlot.MAINHAND, Items.STICK.getDefaultInstance());
-            this.inventory.setItem(5, new ItemStack(BuiltInRegistries.ITEM.get(Constants.id("iron_dagger"))));
-        }
-        return super.finalizeSpawn(level, difficulty, reason, data);
     }
 
     @Override protected MagicCompanionKit kit() { return MagicCompanionKit.LIGHTNING_MAGE; }

@@ -228,6 +228,7 @@ public abstract class AbstractMageCompanion extends AbstractHumanCompanionEntity
                 || stack.getItem() instanceof DaggerItem
                 || stack.is(Items.STICK) // visual placeholder wand
                 || stack.is(Items.BLAZE_ROD)
+                || stack.is(Items.GOLDEN_SWORD)
                 || MagicCastingCompat.isMagicItem(stack));
     }
 }

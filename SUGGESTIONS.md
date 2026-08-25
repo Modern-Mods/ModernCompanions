@@ -1,3 +1,7 @@
+- 2026-08-25 (mage birth equipment deduplication): In a fresh dev world with Spawn Weapon enabled, verify every mage has exactly one mapped weapon in the live main hand while untamed; repeat provider-absent and provider-backed legacy mages and confirm Necromancer bone/totem support cargo remains intentional.
+
+- 2026-08-25 (mage spawn weapons): In a fresh dev world with Spawn Weapon enabled, verify every provider-backed mage renders its mapped quarterstaff, dagger, or sword in the live hand; repeat Fire Mage, Lightning Mage, Necromancer, and Cleric with neither provider, Iron's only, Ars only, and both installed, then relog to confirm persistence.
+
 - 2026-08-24 (Vanilla-only taming): In a fresh dev world, verify `includeAutomaticModdedFoods = false` prevents safe foods from other mods from appearing in new recruitment requirements and being accepted for taming/healing, while the default `true` behavior still discovers them.
 
 - 2026-08-24 (Boot recipe schema): In a fresh NeoForge dev world, confirm all six repaired boot recipes load in JEI and craft with their two-row layouts; static JSON and JAR checks do not replace recipe-manager smoke testing.

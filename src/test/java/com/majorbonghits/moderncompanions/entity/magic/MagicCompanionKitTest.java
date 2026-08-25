@@ -1,6 +1,6 @@
 package com.majorbonghits.moderncompanions.entity.magic;
 
-/** No-world regression check for the safe spell repertoire and hostile-only Sorcerer kit. */
+/** No-world regression check for safe spell repertoires and physical mage starter weapons. */
 public final class MagicCompanionKitTest {
     private MagicCompanionKitTest() {}
 
@@ -14,5 +14,19 @@ public final class MagicCompanionKitTest {
         assert "greater_heal".equals(MagicCompanionKit.CLERIC.ironHeavy);
         assert !"healing_circle".equals(MagicCompanionKit.CLERIC.ironHeavy);
         assert !"regeneration".equals(MagicCompanionKit.CLERIC.ironUtility);
+
+        assert MagicCompanionKit.FIRE_MAGE.spawnWeaponId().equals("wooden_quarterstaff");
+        assert MagicCompanionKit.LIGHTNING_MAGE.spawnWeaponId().equals("iron_dagger");
+        assert MagicCompanionKit.NECROMANCER.spawnWeaponId().equals("stone_dagger");
+        assert MagicCompanionKit.CLERIC.spawnWeaponId().equals("golden_sword");
+        assert MagicCompanionKit.WIZARD.spawnWeaponId().equals("wooden_quarterstaff");
+        assert MagicCompanionKit.SORCERER.spawnWeaponId().equals("iron_dagger");
+        assert MagicCompanionKit.WARLOCK.spawnWeaponId().equals("iron_dagger");
+        assert MagicCompanionKit.WITCH.spawnWeaponId().equals("wooden_quarterstaff");
+        assert MagicCompanionKit.HAG.spawnWeaponId().equals("iron_dagger");
+        assert MagicCompanionKit.CRYOMANCER.spawnWeaponId().equals("wooden_quarterstaff");
+        assert MagicCompanionKit.DRUID.spawnWeaponId().equals("wooden_quarterstaff");
+        assert MagicCompanionKit.ILLUSIONIST.spawnWeaponId().equals("iron_dagger");
+        assert MagicCompanionKit.BATTLEMAGE.spawnWeaponId().equals("iron_dagger");
     }
 }

@@ -24,6 +24,16 @@ public enum MagicCompanionKit {
     final String[] arsBasic, arsHeavy, arsUtility;
     final boolean hostileTargetsOnly;
 
+    /** Physical starter kept in the live main hand while the kit uses native spell APIs. */
+    String spawnWeaponId() {
+        return switch (this) {
+            case FIRE_MAGE, WIZARD, WITCH, CRYOMANCER, DRUID -> "wooden_quarterstaff";
+            case LIGHTNING_MAGE, SORCERER, WARLOCK, HAG, ILLUSIONIST, BATTLEMAGE -> "iron_dagger";
+            case NECROMANCER -> "stone_dagger";
+            case CLERIC -> "golden_sword";
+        };
+    }
+
     MagicCompanionKit(String ironBasic, String ironHeavy, String[] arsBasic, String[] arsHeavy, String ironUtility, String[] arsUtility) {
         this(ironBasic, ironHeavy, arsBasic, arsHeavy, ironUtility, arsUtility, false);
     }

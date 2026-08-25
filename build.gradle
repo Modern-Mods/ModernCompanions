@@ -128,6 +128,12 @@ tasks.register("alertConfigMigrationCheck", JavaExec) {
     jvmArgs "-ea"
 }
 
+tasks.register("mageSpawnWeaponCheck", JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.majorbonghits.moderncompanions.entity.magic.MagicCompanionKitTest"
+    jvmArgs "-ea"
+}
+
 tasks.register("followLeashCheck", JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = "com.majorbonghits.moderncompanions.entity.ai.FollowLeashRulesTest"

@@ -75,5 +75,9 @@ public final class MageCombatSafetyTest {
                 : "caster equipment must be restricted to magical companions";
         assert magicCompat.contains("caster instanceof AbstractMageCompanion")
                 : "the native spell bridge must reject non-mage casters";
+        assert companion.contains("migrateStaleCasterEquipment();")
+                : "loaded non-mages must migrate stale caster equipment";
+        assert companion.contains("storeOrDrop(staleMainHand);")
+                : "stale caster equipment must be preserved during migration";
     }
 }

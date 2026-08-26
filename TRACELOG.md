@@ -1,3 +1,14 @@
+## 2026-08-26 (Stale caster equipment migration)
+
+- Prompt/task: Multiple reports say ordinary companions keep using a fire spell and stop using melee after the magic integration update.
+- Steps:
+  - Traced Minecraft's `Mob.readAdditionalSaveData` path and confirmed `HandItems` is loaded directly into the raw hand list, bypassing companion `setItemSlot` validation.
+  - Added a server-side migration that moves a stale caster item out of a non-mage main hand, preserves it in companion inventory or drops the remainder, and reruns normal weapon selection.
+  - Ran the new regression assertion red before the migration and green afterward.
+  - Bumped the project version from 4.63 to 4.64.
+- Rationale: The earlier role guard stopped future native casts but did not repair already-saved caster items, leaving non-mages holding a non-melee spellbook after reload. The shared load/tick migration repairs that persisted state without deleting the player's item.
+- Build/Test: Java 21 `mageCombatSafetyCheck` passed after the red-green migration check, and the full `check build` passed with `build/libs/ModernCompanions-4.64.jar`. Fresh/reloaded provider-matrix gameplay smoke remains required.
+
 ## 2026-08-26 (Mage-only native spell bridge)
 
 - Prompt/task: Multiple reports say non-mage companions use an Iron's Spellbooks fire spell instead of melee, and Cleric can lose its expected holy offense.

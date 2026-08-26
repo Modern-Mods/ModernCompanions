@@ -2220,6 +2220,18 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         return hasMana() && MagicCastingCompat.isMagicItem(stack);
     }
 
+    /** Move caster items loaded through Mob's raw HandItems list out of non-mage hands. */
+    private void migrateStaleCasterEquipment() {
+        if (hasMana()) return;
+        ItemStack staleMainHand = getFunctionalEquipmentItem(EquipmentSlot.MAINHAND);
+        if (staleMainHand.isEmpty() || !MagicCastingCompat.isMagicItem(staleMainHand)) return;
+
+        manuallyEquipped[dedicatedEquipmentIndex(EquipmentSlot.MAINHAND)] = false;
+        super.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+        storeOrDrop(staleMainHand);
+        setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+    }
+
     private boolean isMainHandWeapon(ItemStack stack) {
         return isMainHandEquipment(stack) && !(stack.getItem() instanceof DiggerItem)
                 && !(stack.getItem() instanceof FishingRodItem);
@@ -3676,6 +3688,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             spellbook.fromTag(tag.getList("Spellbook", 10), this.registryAccess());
             setSpellbookItem(spellbook.getItem(0));
         }
+        migrateStaleCasterEquipment();
         if (tag.contains("CosmeticArmor", 10)) {
             NonNullList<ItemStack> cosmeticArmor = NonNullList.withSize(4, ItemStack.EMPTY);
             ContainerHelper.loadAllItems(tag.getCompound("CosmeticArmor"), cosmeticArmor, this.registryAccess());
@@ -3776,6 +3789,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         if (!this.level().isClientSide()) {
             CompanionVoice.ensureActor(this);
+            migrateStaleCasterEquipment();
             if (isTame() && getTarget() == null && this.tickCount % 200 == 0 && this.random.nextInt(5) == 0) {
                 CompanionVoice.play(this, ModSounds.Cue.IDLE);
             }

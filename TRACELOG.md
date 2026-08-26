@@ -3388,3 +3388,23 @@
   - Attributed fallback fireball impacts and explosions to the Fire Mage, applied large-fireball burn only after accepted damage, added `MageCombatSafetyTest`, and bumped the version from 4.59 to 4.60.
 - Rationale: The shared Alert, target, damage, and explosion seams cover stale AI targets, direct fallback projectiles, delayed fire, and anonymous splash damage without adding per-companion protection code. Knight remains melee-only in the current source; a Knight-looking fireball still points to misidentification, another caster/mod, or a stale JAR.
 - Build/Test: The new check failed before the fix and passed after it; Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.60.jar` (8,185,949 bytes), with the updated mage/protection classes present. Live provider, multi-companion, fire, and exact-artifact gameplay smoke remain manual.
+
+## 2026-08-25 (Companion Table recipe load)
+
+- Prompt/task: Fix the Companion Table recipe appearing in JEI but producing no output at a crafting table.
+- Steps:
+  - Traced the JSON resource against the separate JEI registration and found the datapack recipe under obsolete plural `data/modern_companions/recipes/`; 1.21.1 loads shaped recipes from singular `recipe/`.
+  - Moved only `companion_table.json` to the active recipe path and preserved its documented `DBD`/`OEO`/`OOO` pattern.
+  - Bumped the project version from 4.60 to 4.61.
+- Rationale: The recipe manager can now discover the shipped recipe at the crafting table, while JEI's separate display entry no longer masks a missing runtime recipe resource.
+- Build/Test: The focused path/pattern check failed before the move and passed after it; Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.61.jar`; the packaged JAR contains the singular recipe path. Fresh-world crafting and JEI duplicate/display smoke remain manual.
+
+## 2026-08-25 (Companion Table recipe ingredient schema)
+
+- Prompt/task: Fix the Companion Table recipe still producing no output after its resource path was corrected.
+- Steps:
+  - Compared the recipe with the checked-in Minecraft 1.21.1 `ShapedRecipePattern` source and traced `key` decoding through `Ingredient.CODEC_NONEMPTY`, which requires ingredient objects.
+  - Added `CompanionTableRecipeTest`; it failed on the old bare-string values with `JsonPrimitive cannot be cast to JsonObject`.
+  - Changed the four keys to `{ "item": "..." }` objects and bumped the project version from 4.61 to 4.62.
+- Rationale: The server recipe serializer now receives the same ingredient shape used by vanilla and every other shipped shaped recipe; JEI's separate display entry can no longer hide a malformed runtime recipe.
+- Build/Test: `companionTableRecipeCheck` failed before the JSON fix and passed after it; full Java 21 `gradlew.bat check build --console=plain --no-daemon` and packaged-JAR inspection remain required. Fresh-world crafting/JEI smoke remains manual.

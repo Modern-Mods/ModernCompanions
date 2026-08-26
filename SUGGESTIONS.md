@@ -1,3 +1,7 @@
+- 2026-08-25 (Companion Table recipe path): In a fresh NeoForge dev world, confirm the relocated `recipe/companion_table.json` appears once in JEI and crafts the Companion Table from the documented Diamond–Book–Diamond, Obsidian–Echo Shard–Obsidian, Obsidian–Obsidian–Obsidian pattern.
+
+- 2026-08-25 (Companion Table recipe ingredient schema): In a fresh NeoForge dev world with the exact 4.62 JAR, confirm the table recipe loads from the server recipe manager and crafts with the four item ingredients; confirm JEI's display and the actual crafting-table output agree.
+
 - 2026-08-25 (mage birth equipment deduplication): In a fresh dev world with Spawn Weapon enabled, verify every mage has exactly one mapped weapon in the live main hand while untamed; repeat provider-absent and provider-backed legacy mages and confirm Necromancer bone/totem support cargo remains intentional.
 
 - 2026-08-25 (mage spawn weapons): In a fresh dev world with Spawn Weapon enabled, verify every provider-backed mage renders its mapped quarterstaff, dagger, or sword in the live hand; repeat Fire Mage, Lightning Mage, Necromancer, and Cleric with neither provider, Iron's only, Ars only, and both installed, then relog to confirm persistence.

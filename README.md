@@ -1,6 +1,8 @@
 # Modern Companions (NeoForge 1.21.1)
 
 ![Header](https://i.imgur.com/V29Cq8E.jpeg)
+
+[![Modern Companions](https://img.shields.io/github/v/release/Modern-Mods/ModernCompanions?style=flat-square&label=Source%20Code&color=62B47A)](https://github.com/Modern-Mods/ModernCompanions/releases/latest) [![Report an Issue](https://img.shields.io/badge/Report%20an%20Issue-Modern%20Companions-181717?logo=github&logoColor=white)](https://github.com/Modern-Mods/ModernCompanions/issues)
  
 Modern Companions is a NeoForge 1.21.1 port and rebrand of [Human Companions](https://www.curseforge.com/minecraft/mc-mods/human-companions), with new branding, Soul Gems, a Summoning Wand, custom weapons, optional magic companions, firearm specialists, and deeper companion progression.
 

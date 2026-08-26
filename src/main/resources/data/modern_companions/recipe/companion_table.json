@@ -7,10 +7,10 @@
     "OOO"
   ],
   "key": {
-    "D": "minecraft:diamond",
-    "B": "minecraft:book",
-    "O": "minecraft:obsidian",
-    "E": "minecraft:echo_shard"
+    "D": { "item": "minecraft:diamond" },
+    "B": { "item": "minecraft:book" },
+    "O": { "item": "minecraft:obsidian" },
+    "E": { "item": "minecraft:echo_shard" }
   },
   "result": {
     "id": "modern_companions:companion_table",

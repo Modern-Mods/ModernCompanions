@@ -1,5 +1,6 @@
 package com.majorbonghits.moderncompanions.compat.magic;
 
+import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -231,7 +232,7 @@ public final class MagicCastingCompat {
 
     /** Cast a native caster item from a companion equipment view without moving it into a hand. */
     public static boolean castItem(LivingEntity caster, LivingEntity target, ItemStack stack) {
-        if (stack.isEmpty() || target == null || !target.isAlive()) return false;
+        if (!isSupportedCaster(caster) || stack.isEmpty() || target == null || !target.isAlive()) return false;
         if (ironsLoaded() && castIronItem(caster, stack)) return true;
         return arsLoaded() && castArsItem(caster, target, stack);
     }
@@ -396,9 +397,15 @@ public final class MagicCastingCompat {
 
     /** Try both real APIs when both mods are present; never substitute a vanilla imitation. */
     public static boolean cast(LivingEntity caster, LivingEntity target, String ironSpell, String... arsParts) {
+        if (!isSupportedCaster(caster) || target == null || !target.isAlive()) return false;
         if (ironsLoaded() && (!arsLoaded() || caster.getRandom().nextBoolean()) && castIron(caster, ironSpell)) return true;
         if (arsLoaded() && castArs(caster, target, arsParts)) return true;
         return ironsLoaded() && castIron(caster, ironSpell);
+    }
+
+    /** Native spell APIs are reserved for the mod's explicit mage hierarchy. */
+    private static boolean isSupportedCaster(LivingEntity caster) {
+        return caster instanceof AbstractMageCompanion;
     }
 
     private static boolean castIron(LivingEntity caster, String spellId) {

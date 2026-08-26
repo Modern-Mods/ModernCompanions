@@ -2201,7 +2201,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     }
 
     private boolean isMainHandEquipment(ItemStack stack) {
-        return !stack.isEmpty() && !(stack.getItem() instanceof ArmorItem) && (MagicCastingCompat.isMagicItem(stack)
+        return !stack.isEmpty() && !(stack.getItem() instanceof ArmorItem) && (isMagicEquipment(stack)
                 || stack.getItem() instanceof TieredItem
                 || stack.getItem() instanceof BowItem
                 || stack.getItem() instanceof CrossbowItem
@@ -2213,6 +2213,11 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
                 || stack.is(ItemTags.AXES) || stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.HOES)
                 || stack.is(ItemTags.SWORDS)
                 || stack.is(TagsInit.Items.SWORDS));
+    }
+
+    /** Caster implements are equipment only for companions that actually own the mage AI. */
+    private boolean isMagicEquipment(ItemStack stack) {
+        return hasMana() && MagicCastingCompat.isMagicItem(stack);
     }
 
     private boolean isMainHandWeapon(ItemStack stack) {
@@ -2292,15 +2297,15 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     @Nullable
     private EquipmentSlot equipmentSlotFor(ItemStack stack) {
         if (stack.getItem() instanceof ArmorItem armor) return armor.getEquipmentSlot();
-        if (stack.getItem() instanceof SwordItem || MagicCastingCompat.isMagicItem(stack)) return EquipmentSlot.MAINHAND;
+        if (stack.getItem() instanceof SwordItem || isMagicEquipment(stack)) return EquipmentSlot.MAINHAND;
         return isOffhandEquipment(stack) ? EquipmentSlot.OFFHAND : null;
     }
 
     private boolean isBetterEquipment(ItemStack candidate, ItemStack current, EquipmentSlot slot) {
         if (current.isEmpty()) return true;
         if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) return CompanionData.isBetterArmor(candidate, current);
-        if (slot == EquipmentSlot.MAINHAND && MagicCastingCompat.isMagicItem(candidate)) {
-            return current.isEmpty() || !MagicCastingCompat.isMagicItem(current);
+        if (slot == EquipmentSlot.MAINHAND && isMagicEquipment(candidate)) {
+            return current.isEmpty() || !isMagicEquipment(current);
         }
         if (slot == EquipmentSlot.MAINHAND && candidate.getItem() instanceof SwordItem sword
                 && current.getItem() instanceof SwordItem equippedSword) return sword.getDamage(candidate) > equippedSword.getDamage(current);

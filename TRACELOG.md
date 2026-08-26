@@ -1,3 +1,14 @@
+## 2026-08-26 (Mage-only native spell bridge)
+
+- Prompt/task: Multiple reports say non-mage companions use an Iron's Spellbooks fire spell instead of melee, and Cleric can lose its expected holy offense.
+- Steps:
+  - Added a regression check covering the non-mage casting boundary and the Cleric Holy Spark/Fire Breath contract.
+  - Restricted the shared native Iron's/Ars casting bridge to `AbstractMageCompanion` casters.
+  - Restricted shared caster-item equipment selection to companions that own the mage AI, preventing non-mages from automatically or manually acquiring spell implements.
+  - Bumped the project version from 4.62 to 4.63.
+- Rationale: Native spell dispatch and caster-item classification were shared seams with no explicit role guard. Enforcing the mage hierarchy once prevents optional magic equipment from turning ordinary companion classes into casters while preserving Cleric's dedicated Holy Spark path.
+- Build/Test: The new `mageCombatSafetyCheck` failed before the production guard and passed afterward; Java 21 `gradlew.bat check build --console=plain --no-daemon` passed and produced `build/libs/ModernCompanions-4.63.jar`. Fresh/reloaded companion, provider matrix, active-profile, and multiplayer gameplay smoke remain manual.
+
 ## 2026-08-24 (Explicit vanilla-only taming food control)
 
 - Prompt/task: Investigate a report that companions still request food from other mods when the player configured vanilla taming foods only.

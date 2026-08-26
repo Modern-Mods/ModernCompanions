@@ -26,6 +26,8 @@ public final class MageCombatSafetyTest {
             "src/main/java/com/majorbonghits/moderncompanions/entity/Cleric.java");
     private static final Path MAGIC_KIT = Path.of(
             "src/main/java/com/majorbonghits/moderncompanions/entity/magic/MagicCompanionKit.java");
+    private static final Path MAGIC_COMPAT = Path.of(
+            "src/main/java/com/majorbonghits/moderncompanions/compat/magic/MagicCastingCompat.java");
 
     private MageCombatSafetyTest() {}
 
@@ -40,6 +42,7 @@ public final class MageCombatSafetyTest {
         String knight = Files.readString(KNIGHT);
         String cleric = Files.readString(CLERIC);
         String magicKit = Files.readString(MAGIC_KIT);
+        String magicCompat = Files.readString(MAGIC_COMPAT);
 
         assert companion.contains("if (!value) this.setTarget(null);")
                 : "turning Alert off must clear a retained combat target";
@@ -62,7 +65,15 @@ public final class MageCombatSafetyTest {
                 : "Knight must not acquire a fireball path";
         assert !cleric.contains("Fireball")
                 : "Cleric must not acquire a fireball path";
+        assert !cleric.toLowerCase().contains("fire_breath")
+                : "Cleric must not acquire Iron's Fire Breath path";
+        assert cleric.contains("HolySparkProjectile")
+                : "Cleric offense must remain the dedicated Holy Spark path";
         assert magicKit.contains("CLERIC(\"heal\", \"greater_heal\"")
                 : "Cleric must retain its healing kit instead of a fire spell";
+        assert companion.contains("hasMana() && MagicCastingCompat.isMagicItem(stack)")
+                : "caster equipment must be restricted to magical companions";
+        assert magicCompat.contains("caster instanceof AbstractMageCompanion")
+                : "the native spell bridge must reject non-mage casters";
     }
 }

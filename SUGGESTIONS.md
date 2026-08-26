@@ -1,3 +1,5 @@
+- 2026-08-26 (mage-only native spell bridge): In a fresh dev world with Iron's Spellbooks and/or Ars Nouveau, verify Knight, Vanguard, Axeguard, Berserker, Scout, Archer, Arbalist, Beastmaster, Alchemist, and Stormcaller never equip or cast caster implements and continue melee/ranged combat; verify Cleric uses Holy Spark and existing mage spellbooks do not change its offense unexpectedly. Repeat with fresh and reloaded companions and with the active 4.63 JAR only.
+
 - 2026-08-25 (Companion Table recipe path): In a fresh NeoForge dev world, confirm the relocated `recipe/companion_table.json` appears once in JEI and crafts the Companion Table from the documented Diamond–Book–Diamond, Obsidian–Echo Shard–Obsidian, Obsidian–Obsidian–Obsidian pattern.
 
 - 2026-08-25 (Companion Table recipe ingredient schema): In a fresh NeoForge dev world with the exact 4.62 JAR, confirm the table recipe loads from the server recipe manager and crafts with the four item ingredients; confirm JEI's display and the actual crafting-table output agree.

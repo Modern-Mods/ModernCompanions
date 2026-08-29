@@ -98,6 +98,9 @@ public class CompanionRenderer extends HumanoidMobRenderer<AbstractHumanCompanio
         }
         if (companion.getUsedItemHand() == hand && companion.getUseItemRemainingTicks() > 0) {
             UseAnim anim = stack.getUseAnimation();
+            if (anim == UseAnim.BLOCK) {
+                return HumanoidModel.ArmPose.BLOCK;
+            }
             if (anim == UseAnim.BOW) {
                 return HumanoidModel.ArmPose.BOW_AND_ARROW;
             }

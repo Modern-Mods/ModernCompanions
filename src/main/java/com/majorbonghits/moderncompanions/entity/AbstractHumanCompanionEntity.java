@@ -74,10 +74,12 @@ import net.minecraft.world.item.MaceItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.TieredItem;
 import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.item.alchemy.PotionContents;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -96,6 +98,7 @@ import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.level.pathfinder.PathType;
@@ -337,6 +340,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
     public com.majorbonghits.moderncompanions.entity.job.LumberjackJobGoal lumberjackGoal;
     public com.majorbonghits.moderncompanions.entity.job.ChefJobGoal chefGoal;
     private int lastFoodRequestTick = -200;
+    private int shieldThreatTicks;
     private int specialistAttr = -1; // 0=STR,1=DEX,2=INT,3=END; -1 none
 
     private int totalExperience;
@@ -3673,6 +3677,12 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         this.entityData.set(STAMINA_MAX, Math.max(1, tag.contains("StaminaMax") ? tag.getInt("StaminaMax") : STAMINA_MAX_DEFAULT));
         this.entityData.set(STAMINA, bounded(tag.contains("Stamina") ? tag.getInt("Stamina") : getStaminaMax(), getStaminaMax()));
+        this.entityData.set(SPELLBOOK, ItemStack.EMPTY);
+        if (tag.contains("Spellbook", 9)) {
+            SimpleContainer spellbook = new SimpleContainer(1);
+            spellbook.fromTag(tag.getList("Spellbook", 10), this.registryAccess());
+            setSpellbookItem(spellbook.getItem(0));
+        }
         int savedManaMax = tag.contains("ManaMax") ? tag.getInt("ManaMax") : MANA_MAX_DEFAULT;
         int manaMax = CompanionResourceRules.manaMaxAtLeastDefault(savedManaMax, MANA_MAX_DEFAULT);
         this.entityData.set(MANA_MAX, manaMax);
@@ -3682,12 +3692,6 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             savedMana = Math.max(savedMana, MANA_MAX_DEFAULT);
         }
         this.entityData.set(MANA, bounded(savedMana, getManaMax()));
-        this.entityData.set(SPELLBOOK, ItemStack.EMPTY);
-        if (tag.contains("Spellbook", 9)) {
-            SimpleContainer spellbook = new SimpleContainer(1);
-            spellbook.fromTag(tag.getList("Spellbook", 10), this.registryAccess());
-            setSpellbookItem(spellbook.getItem(0));
-        }
         migrateStaleCasterEquipment();
         if (tag.contains("CosmeticArmor", 10)) {
             NonNullList<ItemStack> cosmeticArmor = NonNullList.withSize(4, ItemStack.EMPTY);
@@ -3802,6 +3806,7 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             updateSprintState();
             tickCompanionResources();
             equipOffhandFromInventory();
+            tickCompanionShieldUse();
             if (this.tickCount % 2 == 0) updateHeldLight();
             if (this.tickCount % 20 == 0) consumeUsefulCompanionPotion();
             if (this.tickCount % 100 == 0 && this.level() instanceof ServerLevel server) {
@@ -4072,6 +4077,56 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
 
     /* ---------- Combat & equipment ---------- */
 
+    /** Raises a real offhand shield only while a target is approaching or recently connected. */
+    protected void tickCompanionShieldUse() {
+        if (shieldThreatTicks > 0) shieldThreatTicks--;
+        if (isEating() || !isShieldItem(getFunctionalEquipmentItem(EquipmentSlot.OFFHAND))) {
+            stopCompanionShieldUse();
+            return;
+        }
+
+        if (shouldRaiseCompanionShield()) {
+            if (!isUsingCompanionShield()) startUsingItem(InteractionHand.OFF_HAND);
+        } else {
+            stopCompanionShieldUse();
+        }
+    }
+
+    private boolean shouldRaiseCompanionShield() {
+        LivingEntity target = getTarget();
+        if (target == null || !target.isAlive()) return shieldThreatTicks > 0;
+
+        boolean inMeleeRange = isWithinMeleeAttackRange(target);
+        boolean targetRanged = target instanceof net.minecraft.world.entity.monster.RangedAttackMob
+                || target.getMainHandItem().getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem
+                || target.getOffhandItem().getItem() instanceof net.minecraft.world.item.ProjectileWeaponItem;
+        if (shieldThreatTicks > 0) return true;
+        return !inMeleeRange && (targetRanged
+                || (this.distanceToSqr(target) > 9.0D && this.getSensing().hasLineOfSight(target)));
+    }
+
+    private boolean isUsingCompanionShield() {
+        return isUsingItem() && getUsedItemHand() == InteractionHand.OFF_HAND && isShieldItem(getUseItem());
+    }
+
+    private void stopCompanionShieldUse() {
+        if (isUsingCompanionShield()) stopUsingItem();
+    }
+
+    @Override
+    protected void hurtCurrentlyUsedShield(float amount) {
+        if (!isShieldItem(this.useItem) || amount < ShieldItem.MINIMUM_DURABILITY_DAMAGE) return;
+
+        InteractionHand hand = getUsedItemHand();
+        this.useItem.hurtAndBreak(1 + Mth.floor(amount), this, LivingEntity.getSlotForHand(hand));
+        if (this.useItem.isEmpty()) {
+            this.setItemSlot(LivingEntity.getSlotForHand(hand), ItemStack.EMPTY);
+            this.useItem = ItemStack.EMPTY;
+            this.playSound(SoundEvents.SHIELD_BREAK, 0.8F,
+                    0.8F + this.level().random.nextFloat() * 0.4F);
+        }
+    }
+
     @Override
     public boolean hurt(DamageSource source, float amount) {
         if (source.getEntity() == this.getOwner() && !ModConfig.safeGet(ModConfig.FRIENDLY_FIRE_PLAYER)) {
@@ -4079,6 +4134,9 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
         }
         if (source.is(net.minecraft.tags.DamageTypeTags.IS_FALL) && !ModConfig.safeGet(ModConfig.FALL_DAMAGE)) {
             return false;
+        }
+        if (amount > 0.0F && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_SHIELD)) {
+            shieldThreatTicks = 10;
         }
         float before = this.getHealth();
         float adjusted = applyEnduranceResistance(source, amount);
@@ -4350,6 +4408,51 @@ public abstract class AbstractHumanCompanionEntity extends TamableAnimal {
             if (staminaEnabled && meleeCost > 0 && getStamina() <= 0) lastExhaustedMeleeTick = this.tickCount;
         }
         return hit;
+    }
+
+    /** Performs a second hand attack while retaining vanilla weapon and enchantment hooks. */
+    protected boolean doHurtTargetWithEquipment(Entity entity, EquipmentSlot slot, float damageMultiplier) {
+        if (!canHarm(entity) || !entity.isAlive()) return false;
+        ItemStack weapon = getFunctionalEquipmentItem(slot);
+        if (weapon.isEmpty()) return false;
+
+        forceSwingAnimation(slot == EquipmentSlot.OFFHAND ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND);
+        DamageSource source = this.damageSources().mobAttack(this);
+        double baseDamage = this.getAttributeValue(Attributes.ATTACK_DAMAGE);
+        baseDamage -= itemAttackDamage(getMainHandItem());
+        baseDamage += itemAttackDamage(weapon);
+        float damage = (float) Math.max(0.0D, baseDamage * damageMultiplier);
+        if (this.level() instanceof ServerLevel server) {
+            damage = EnchantmentHelper.modifyDamage(server, weapon, entity, source, damage);
+            weapon.hurtAndBreak(1, this, slot);
+        }
+
+        boolean hit = entity.hurt(source, damage);
+        if (hit) {
+            float knockback = (float) this.getAttributeValue(Attributes.ATTACK_KNOCKBACK);
+            if (this.level() instanceof ServerLevel server) {
+                knockback = EnchantmentHelper.modifyKnockback(server, weapon, entity, source, knockback);
+                EnchantmentHelper.doPostAttackEffectsWithItemSource(server, entity, source, weapon);
+            }
+            if (knockback > 0.0F && entity instanceof LivingEntity living) {
+                living.knockback((double) (knockback * 0.5F),
+                        (double) Mth.sin(this.getYRot() * 0.017453292F),
+                        (double) (-Mth.cos(this.getYRot() * 0.017453292F)));
+                this.setDeltaMovement(this.getDeltaMovement().multiply(0.6D, 1.0D, 0.6D));
+            }
+            this.setLastHurtMob(entity);
+            this.playAttackSound();
+        }
+        return hit;
+    }
+
+    private double itemAttackDamage(ItemStack stack) {
+        if (stack.isEmpty()) return 0.0D;
+        double base = this.getAttributeBaseValue(Attributes.ATTACK_DAMAGE);
+        ItemAttributeModifiers modifiers = stack.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,
+                ItemAttributeModifiers.EMPTY);
+        if (modifiers.modifiers().isEmpty()) modifiers = stack.getItem().getDefaultAttributeModifiers();
+        return modifiers.compute(base, EquipmentSlot.MAINHAND) - base;
     }
 
     /**

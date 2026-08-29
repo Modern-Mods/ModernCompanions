@@ -2,15 +2,19 @@ package com.majorbonghits.moderncompanions.compat.magic;
 
 import com.majorbonghits.moderncompanions.entity.magic.AbstractMageCompanion;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
 import net.neoforged.fml.ModList;
 
@@ -115,9 +119,62 @@ public final class MagicCastingCompat {
     }
 
     public static int maxMana(LivingEntity entity, int fallback) {
-        int ironMax = (int) Math.round(attributeValue(entity, IRONS, "max_mana", fallback));
+        double ironMax = attributeValue(entity, IRONS, "max_mana", fallback);
+        if (entity instanceof AbstractMageCompanion mage) {
+            ironMax = spellbookMaxMana(ironMax, mage.getSpellbookItem(), mage);
+        }
         int arsBonus = (int) Math.round(attributeValue(entity, ARS, "ars_nouveau.perk.max_mana", 100.0D) - 100.0D);
-        return Math.max(1, Math.max(fallback, ironMax) + arsBonus);
+        return Math.max(1, (int) Math.round(Math.max(fallback, ironMax)) + arsBonus);
+    }
+
+    /** Spellbooks are stored outside vanilla equipment, so apply their native mana modifiers here. */
+    private static double spellbookMaxMana(double base, ItemStack spellbook, LivingEntity entity) {
+        if (spellbook.isEmpty()) return base;
+        double value = base;
+        ItemAttributeModifiers itemModifiers = spellbook.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,
+                ItemAttributeModifiers.EMPTY);
+        for (ItemAttributeModifiers.Entry entry : itemModifiers.modifiers()) {
+            if (isIronMaxMana(entry.attribute())) value = applyModifier(base, value, entry.modifier());
+        }
+        return curioSpellbookMaxMana(base, value, spellbook, entity);
+    }
+
+    private static double curioSpellbookMaxMana(double base, double value, ItemStack spellbook, LivingEntity entity) {
+        try {
+            Class<?> curioItem = Class.forName("top.theillusivec4.curios.api.type.capability.ICurioItem");
+            if (!curioItem.isInstance(spellbook.getItem())) return value;
+            Class<?> slotContextClass = Class.forName("top.theillusivec4.curios.api.SlotContext");
+            Object slotContext = newInstance(slotContextClass, "spellbook", entity, 0, false, true);
+            Object modifiers = curioItem.getMethod("getAttributeModifiers", slotContextClass,
+                    ResourceLocation.class, ItemStack.class)
+                    .invoke(spellbook.getItem(), slotContext,
+                            ResourceLocation.fromNamespaceAndPath(IRONS, "spellbook"), spellbook);
+            for (Object entry : (Iterable<?>) call(modifiers, "entries")) {
+                Map.Entry<?, ?> modifierEntry = (Map.Entry<?, ?>) entry;
+                if (modifierEntry.getKey() instanceof Holder<?> attribute
+                        && modifierEntry.getValue() instanceof AttributeModifier attributeModifier
+                        && isIronMaxMana(attribute)) {
+                    value = applyModifier(base, value, attributeModifier);
+                }
+            }
+            return value;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
+            // Curios is optional; keep item-component bonuses if its callback is unavailable.
+            return value;
+        }
+    }
+
+    private static boolean isIronMaxMana(Holder<?> attribute) {
+        return attribute.unwrapKey().map(key -> key.location()
+                .equals(ResourceLocation.fromNamespaceAndPath(IRONS, "max_mana"))).orElse(false);
+    }
+
+    private static double applyModifier(double base, double value, AttributeModifier modifier) {
+        return switch (modifier.operation()) {
+            case ADD_VALUE -> value + modifier.amount();
+            case ADD_MULTIPLIED_BASE -> value + modifier.amount() * base;
+            case ADD_MULTIPLIED_TOTAL -> value + modifier.amount() * value;
+        };
     }
 
     public static int manaRegenInterval(LivingEntity entity, int fallback) {

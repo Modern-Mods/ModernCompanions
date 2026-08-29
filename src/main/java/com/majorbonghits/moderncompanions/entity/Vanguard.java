@@ -60,7 +60,6 @@ public class Vanguard extends Knight {
             checkShield();
             tickDefenseAura();
             tickTaunt();
-            tickShieldUse();
         }
         super.tick();
     }
@@ -138,7 +137,8 @@ public class Vanguard extends Knight {
         }
     }
 
-    private void tickShieldUse() {
+    @Override
+    protected void tickCompanionShieldUse() {
         if (shieldCooldownTicks > 0) shieldCooldownTicks--;
         if (projectileThreatTicks > 0) projectileThreatTicks--;
         if (minBlockTicks > 0) minBlockTicks--;

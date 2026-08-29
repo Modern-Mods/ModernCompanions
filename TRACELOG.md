@@ -3430,3 +3430,15 @@
   - Changed the four keys to `{ "item": "..." }` objects and bumped the project version from 4.61 to 4.62.
 - Rationale: The server recipe serializer now receives the same ingredient shape used by vanilla and every other shipped shaped recipe; JEI's separate display entry can no longer hide a malformed runtime recipe.
 - Build/Test: `companionTableRecipeCheck` failed before the JSON fix and passed after it; full Java 21 `gradlew.bat check build --console=plain --no-daemon` and packaged-JAR inspection remain required. Fresh-world crafting/JEI smoke remains manual.
+
+## 2026-08-29 (companion combat and integration fixes)
+
+- Prompt/task: Fix companion shield use, add the Placement Wand recipe, enable Berserker dual wielding, preserve mage mana through gem/scroll deployment, apply Iron's Spellbooks mana modifiers, and restore TacZ automatic-fire cadence.
+- Steps:
+  - Added shared server-side shield decisions and real offhand use for companions; vanilla damage blocking now supplies damage reduction and impact events, while the companion applies shield durability/break handling. Added the client block arm pose and migrated Vanguard's specialist shield policy to the shared tick hook.
+  - Added Berserker offhand weapon acceptance and a second equipment-aware strike at 80% damage.
+  - Restored the saved spellbook before clamping saved mana, read Iron's item-component and native Curios three-argument attribute modifiers, and kept component bonuses when the optional Curios callback is unavailable.
+  - Removed the fixed TacZ eight-tick gate so the native gun operator controls each weapon's fire cadence, and moved `placement_wand.json` to the active singular `recipe/` data path.
+  - Added `CompanionCombatRegressionTest`, wired its `companionCombatCheck` Gradle task into `check`, and bumped the version from 4.64 to 4.65.
+- Rationale: The shared entity combat, renderer, magic compatibility, and firearm seams cover all affected companion classes while preserving vanilla shield events and optional-mod isolation.
+- Build/Test: `companionCombatCheck` passed; Java 21 `gradlew.bat check build --console=plain --no-daemon --no-watch-fs` passed with 27 actionable tasks; `build/libs/ModernCompanions-4.65.jar` (8,190,865 bytes) contains the seven required updated classes/data entries and omits the obsolete plural recipe path. The task-file `git diff --check` passed; the unexcluded check reports only pre-existing user-owned trailing whitespace at `Ideas.md:5`. Live rendering, shield, provider, TacZ, crafting, deployment, and multiplayer smoke remain manual.

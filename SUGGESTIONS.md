@@ -776,3 +776,11 @@
 - In dev worlds with neither provider, Iron's Spellbooks only, Ars Nouveau only, and both providers, toggle Alert off during combat; confirm mages stop casting, clear retained targets, and do not retaliate through owner/revenge target paths.
 - Place the owner, same-owner companions, tamed pets, and the Fire Mage beside a hostile target; verify basic and heavy fallback fireballs damage only accepted hostile targets, do not ignite protected entities or the caster, and do not apply explosion splash damage.
 - Confirm Knight remains melee-only and Cleric continues using its holy/support path; repeat with `friendlyFireCompanions` enabled and disabled and with the exact 4.60 JAR.
+
+## 2026-08-29 (companion combat and integration fixes)
+
+- In a dev world, give ordinary companions and Vanguard shields, approach melee and ranged attackers, and confirm the offhand shield raises only during threat, the client arm pose matches, blocked damage is reduced to zero, the shield impact sound plays, durability decreases, and a broken shield stops blocking. Confirm the companion lowers the shield before attacking.
+- Equip a Berserker with two weapons and verify both hands swing against a target, the offhand hit deals exactly 80% of its normal equipment-aware damage, and both weapons lose durability independently.
+- Convert a mage with more than 100 mana into every supported gem/scroll path and redeploy it; confirm saved current mana is restored before the spellbook-derived maximum is applied. With Iron's Spellbooks and Curios installed, equip a mana-boosting spellbook and verify the companion's max mana changes and survives relogging.
+- With TacZ, test a semi-automatic and a fully automatic weapon; confirm the companion follows each weapon's native cadence rather than a fixed eight-tick interval, including reload and no-ammo behavior.
+- In a fresh world, craft the Placement Wand from the moved `data/modern_companions/recipe/placement_wand.json` resource and confirm it appears in the recipe viewer and crafting table.

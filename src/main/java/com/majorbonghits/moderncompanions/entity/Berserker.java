@@ -56,10 +56,23 @@ public class Berserker extends AbstractHumanCompanionEntity {
     @Override
     public boolean doHurtTarget(Entity entity) {
         boolean hit = super.doHurtTarget(entity);
-        if (!this.level().isClientSide() && entity instanceof LivingEntity living && hit) {
+        boolean offhandHit = false;
+        if (!this.level().isClientSide() && entity.isAlive()) {
+            ItemStack offhand = getFunctionalEquipmentItem(EquipmentSlot.OFFHAND);
+            if (isPreferredWeapon(offhand)) {
+                offhandHit = doHurtTargetWithEquipment(entity, EquipmentSlot.OFFHAND, 0.8F);
+            }
+        }
+        if (!this.level().isClientSide() && entity instanceof LivingEntity living && (hit || offhandHit)) {
             cleaveAround(living);
         }
-        return hit;
+        return hit || offhandHit;
+    }
+
+    @Override
+    public boolean canEquipInSlot(EquipmentSlot slot, ItemStack stack) {
+        return slot == EquipmentSlot.OFFHAND && isPreferredWeapon(stack)
+                || super.canEquipInSlot(slot, stack);
     }
 
     @Override
@@ -111,6 +124,18 @@ public class Berserker extends AbstractHumanCompanionEntity {
             this.setItemSlot(EquipmentSlot.MAINHAND, desired);
         }
         setPreferredWeaponBonus(!preferred.isEmpty() && ItemStack.isSameItemSameComponents(desired, preferred));
+        equipOffhandWeapon();
+    }
+
+    private void equipOffhandWeapon() {
+        if (!getFunctionalEquipmentItem(EquipmentSlot.OFFHAND).isEmpty()) return;
+        for (int i = 0; i < this.inventory.getContainerSize(); i++) {
+            ItemStack stack = this.inventory.getItem(i);
+            if (isPreferredWeapon(stack)) {
+                this.setItemSlot(EquipmentSlot.OFFHAND, stack);
+                return;
+            }
+        }
     }
 
     private boolean isPreferredWeapon(ItemStack stack) {

@@ -13,7 +13,6 @@ import java.util.EnumSet;
 public final class FirearmAttackGoal extends Goal {
     private static final double MAX_RANGE_SQR = 20.0D * 20.0D;
     private final AbstractHumanCompanionEntity companion;
-    private int fireCooldown;
     private int lastAmmoNotice = -200;
 
     public FirearmAttackGoal(AbstractHumanCompanionEntity companion) {
@@ -49,11 +48,8 @@ public final class FirearmAttackGoal extends Goal {
         }
         companion.getNavigation().stop();
         aimAt(target);
-        if (fireCooldown-- > 0) return;
         FirearmSupport.TacZShotResult result = FirearmSupport.shootTacZ(companion, target);
-        if (result == FirearmSupport.TacZShotResult.SUCCESS) {
-            fireCooldown = 8;
-        } else if (result == FirearmSupport.TacZShotResult.NO_AMMO) {
+        if (result == FirearmSupport.TacZShotResult.NO_AMMO) {
             if (FirearmSupport.canReloadTacZ(companion)) {
                 FirearmSupport.reloadTacZ(companion);
             } else if (companion.tickCount - lastAmmoNotice >= 200 && companion.getOwner() != null) {

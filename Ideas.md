@@ -1,5 +1,18 @@
 # Ideas
 
+
+
+- Companions should NOT be able to drown. 
+    - Give them infinite breath
+
+
+
+
+
+
+
+
+
 - We need to analyze all magical companions, their spellbooks and combat logic to make sure they are using spells that are meaningful. 
 
 
